@@ -189,43 +189,35 @@ def build_agent(
         except Exception as exc:
             return _record_error("write_file", str(exc))
 
-    @agent.tool
-    def run_shell(
-        ctx: RunContext[None],
-        command: str,
-        timeout_sec: int = 90,
-    ) -> str:
-        _ = ctx
-        _record_call("run_shell")
-        _consume_budget()
-        return _run_allowed_shell(command, timeout_sec)
+    if cfg.allowed_shell_commands:
 
-    @agent.tool
-    def run_test_command(ctx: RunContext[None]) -> str:
-        _ = ctx
-        _record_call("run_test_command")
-        _consume_budget()
-        if cfg.test_command is None:
-            payload = {
-                "returncode": 0,
-                "stdout": "",
-                "stderr": "tests not configured",
-            }
-            return json.dumps(payload)
-        return _run_allowed_shell(cfg.test_command, 90)
+        @agent.tool
+        def run_shell(
+            ctx: RunContext[None],
+            command: str,
+            timeout_sec: int = 90,
+        ) -> str:
+            _ = ctx
+            _record_call("run_shell")
+            _consume_budget()
+            return _run_allowed_shell(command, timeout_sec)
 
-    @agent.tool
-    def run_eval_command(ctx: RunContext[None]) -> str:
-        _ = ctx
-        _record_call("run_eval_command")
-        _consume_budget()
-        if cfg.eval_command is None:
-            payload = {
-                "returncode": 0,
-                "stdout": "",
-                "stderr": "eval not configured",
-            }
-            return json.dumps(payload)
-        return _run_allowed_shell(cfg.eval_command, 90)
+    if cfg.test_command is not None:
+
+        @agent.tool
+        def run_test_command(ctx: RunContext[None]) -> str:
+            _ = ctx
+            _record_call("run_test_command")
+            _consume_budget()
+            return _run_allowed_shell(cfg.test_command, 90)
+
+    if cfg.eval_command is not None:
+
+        @agent.tool
+        def run_eval_command(ctx: RunContext[None]) -> str:
+            _ = ctx
+            _record_call("run_eval_command")
+            _consume_budget()
+            return _run_allowed_shell(cfg.eval_command, 90)
 
     return agent, telemetry

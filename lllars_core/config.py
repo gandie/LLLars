@@ -34,6 +34,25 @@ def canonicalize_shell_command(command: str) -> str:
     return normalized
 
 
+def build_default_tool_policy(
+    test_command: str | None,
+    eval_command: str | None,
+    allowed_shell_commands: set[str],
+) -> str:
+    lines = [
+        "Tool policy:",
+        "- Only edit files inside the project root.",
+        "- Use list_files/read_file/write_file for file operations.",
+    ]
+    if test_command is not None:
+        lines.append("- Use run_test_command for tests.")
+    if eval_command is not None:
+        lines.append("- Use run_eval_command for eval.")
+    if allowed_shell_commands:
+        lines.append("- run_shell is restricted to the config allowlist.")
+    return "\n".join(lines)
+
+
 def load_config(config_path: Path) -> HarnessConfig:
     if not config_path.exists():
         raise FileNotFoundError(f"Missing config file: {config_path}")
@@ -83,12 +102,10 @@ def load_config(config_path: Path) -> HarnessConfig:
 
     tool_policy = str(cfg.get("tool-policy", "")).strip()
     if not tool_policy:
-        tool_policy = (
-            "Tool policy:\n"
-            "- Only edit files inside the project root.\n"
-            "- Use list_files/read_file/write_file for file operations.\n"
-            "- Use run_test_command for tests and run_eval_command for eval.\n"
-            "- run_shell is restricted to the config allowlist.\n"
+        tool_policy = build_default_tool_policy(
+            test_command=test_command,
+            eval_command=eval_command,
+            allowed_shell_commands=allowed_shell_commands,
         )
 
     return HarnessConfig(
