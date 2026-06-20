@@ -16,6 +16,8 @@ from pydantic_ai import (
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.providers.ollama import OllamaProvider
 
+from pydantic_ai_todo import TodoCapability
+
 from lllars_core.config import HarnessConfig, canonicalize_shell_command
 from lllars_core.shell import run_powershell
 
@@ -94,6 +96,7 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
             "provider": "ollama",
             "project_root": str(cfg.project_root),
         },
+        capabilities=[TodoCapability(enable_subtasks=True)],
     )
 
     if cfg.instrumentation_enabled:
