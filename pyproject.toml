@@ -23,7 +23,7 @@ dev = [
 lllars = "lllars:main"
 
 [tool.setuptools]
-py-modules = ["lllars", "generator"]
+py-modules = ["lllars"]
 
 [tool.setuptools.packages.find]
 include = ["lllars_core*"]

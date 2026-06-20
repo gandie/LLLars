@@ -46,6 +46,81 @@ def canonicalize_shell_command(command: str) -> str:
     return normalized
 
 
+def _load_config_object(config_path: Path) -> dict:
+    if not config_path.exists():
+        raise FileNotFoundError(f"Missing config file: {config_path}")
+
+    cfg = json.loads(config_path.read_text(encoding="utf-8"))
+    if not isinstance(cfg, dict):
+        raise ValueError("Top-level config must be a JSON object")
+    return cfg
+
+
+def _require_non_empty_str(
+    cfg: dict,
+    key: str,
+    error_message: str,
+) -> str:
+    value = str(cfg.get(key, "")).strip()
+    if not value:
+        raise ValueError(error_message)
+    return value
+
+
+def _resolve_project_root(cfg: dict) -> Path:
+    project_root_raw = _require_non_empty_str(
+        cfg,
+        "project_root",
+        "Config requires project_root",
+    )
+    project_root = (ROOT / project_root_raw).resolve()
+    if not project_root.exists() or not project_root.is_dir():
+        raise ValueError(f"Invalid project_root: {project_root}")
+    return project_root
+
+
+def _load_commands(cfg: dict) -> tuple[str | None, str | None]:
+    commands = cfg.get("commands")
+    if not isinstance(commands, dict):
+        raise ValueError("Config requires commands object")
+
+    test_command_raw = str(commands.get("test", "")).strip()
+    eval_command_raw = str(commands.get("eval", "")).strip()
+
+    test_command = test_command_raw if test_command_raw else None
+    eval_command = eval_command_raw if eval_command_raw else None
+    return test_command, eval_command
+
+
+def _collect_allowed_shell_commands(
+    cfg: dict,
+    test_command: str | None,
+    eval_command: str | None,
+) -> tuple[str, ...]:
+    allowed_shell_commands_list: list[str] = []
+    seen_allowed_commands: set[str] = set()
+
+    def _append_allowed(raw_command: str) -> None:
+        canonical = canonicalize_shell_command(raw_command)
+        if canonical and canonical not in seen_allowed_commands:
+            seen_allowed_commands.add(canonical)
+            allowed_shell_commands_list.append(canonical)
+
+    if test_command:
+        _append_allowed(test_command)
+    if eval_command:
+        _append_allowed(eval_command)
+
+    extra = cfg.get("allowed_shell_commands", [])
+    if isinstance(extra, list):
+        for item in extra:
+            text = str(item).strip()
+            if text:
+                _append_allowed(text)
+
+    return tuple(allowed_shell_commands_list)
+
+
 def build_default_tool_policy(
     test_command: str | None,
     eval_command: str | None,
@@ -69,57 +144,25 @@ def build_default_tool_policy(
 
 
 def load_config(config_path: Path) -> HarnessConfig:
-    if not config_path.exists():
-        raise FileNotFoundError(f"Missing config file: {config_path}")
+    cfg = _load_config_object(config_path)
 
-    cfg = json.loads(config_path.read_text(encoding="utf-8"))
-    if not isinstance(cfg, dict):
-        raise ValueError("Top-level config must be a JSON object")
-
-    model = str(cfg.get("model", "")).strip()
-    provider_url = str(cfg.get("provider-url", "")).strip()
-    if not model or not provider_url:
-        raise ValueError("Config requires model and provider-url")
-
-    project_root_raw = str(cfg.get("project_root", "")).strip()
-    if not project_root_raw:
-        raise ValueError("Config requires project_root")
-    project_root = (ROOT / project_root_raw).resolve()
-    if not project_root.exists() or not project_root.is_dir():
-        raise ValueError(f"Invalid project_root: {project_root}")
-
-    commands = cfg.get("commands")
-    if not isinstance(commands, dict):
-        raise ValueError("Config requires commands object")
-
-    test_command_raw = str(commands.get("test", "")).strip()
-    test_command = test_command_raw if test_command_raw else None
-
-    eval_command_raw = str(commands.get("eval", "")).strip()
-    eval_command = eval_command_raw if eval_command_raw else None
-
-    allowed_shell_commands_list: list[str] = []
-    seen_allowed_commands: set[str] = set()
-
-    def _append_allowed(raw_command: str) -> None:
-        canonical = canonicalize_shell_command(raw_command)
-        if canonical and canonical not in seen_allowed_commands:
-            seen_allowed_commands.add(canonical)
-            allowed_shell_commands_list.append(canonical)
-
-    if test_command:
-        _append_allowed(test_command)
-    if eval_command:
-        _append_allowed(eval_command)
-
-    extra = cfg.get("allowed_shell_commands", [])
-    if isinstance(extra, list):
-        for item in extra:
-            text = str(item).strip()
-            if text:
-                _append_allowed(text)
-
-    allowed_shell_commands = tuple(allowed_shell_commands_list)
+    model = _require_non_empty_str(
+        cfg,
+        "model",
+        "Config requires model and provider-url",
+    )
+    provider_url = _require_non_empty_str(
+        cfg,
+        "provider-url",
+        "Config requires model and provider-url",
+    )
+    project_root = _resolve_project_root(cfg)
+    test_command, eval_command = _load_commands(cfg)
+    allowed_shell_commands = _collect_allowed_shell_commands(
+        cfg,
+        test_command,
+        eval_command,
+    )
 
     system_prompt = str(cfg.get("system-prompt", "")).strip()
     if not system_prompt:

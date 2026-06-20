@@ -22,6 +22,62 @@ from lllars_core.console import (
 )
 
 
+def _drain_agent_events(
+    event_queue: Any,
+    latest_thought: str,
+    payload: dict[str, Any] | None,
+) -> tuple[str, dict[str, Any] | None]:
+    while True:
+        try:
+            event = event_queue.get_nowait()
+        except Empty:
+            return latest_thought, payload
+        except Exception:
+            return latest_thought, payload
+
+        if not isinstance(event, dict):
+            continue
+
+        event_type = str(event.get("type", ""))
+        if event_type == "thought":
+            message = str(event.get("message", "")).strip()
+            if message:
+                latest_thought = truncate(message, 90)
+            continue
+
+        if event_type == "result":
+            maybe_payload = event.get("payload")
+            if isinstance(maybe_payload, dict):
+                payload = maybe_payload
+
+
+def _terminate_worker_process(proc: mp.Process) -> None:
+    proc.terminate()
+    proc.join(timeout=5)
+    if proc.is_alive():
+        proc.kill()
+        proc.join(timeout=5)
+
+
+def _render_running_progress(
+    elapsed: int,
+    timeout_sec: int,
+    spinner: list[str],
+    spin_idx: int,
+    latest_thought: str,
+    last_render_width: int,
+) -> tuple[int, int]:
+    line = (
+        f"{Color.CYAN}[agent] {spinner[spin_idx % 4]} "
+        f"running {elapsed}s/{timeout_sec}s{Color.RESET}"
+    )
+    if latest_thought:
+        line += f" {Color.YELLOW}| {latest_thought}{Color.RESET}"
+    pad = " " * max(0, last_render_width - len(line))
+    print(f"\r{line}{pad}", end="", flush=True)
+    return len(line), spin_idx + 1
+
+
 def run_single_agent(
     cfg: HarnessConfig,
     prompt_text: str,
@@ -158,38 +214,15 @@ def run_agent_with_timeout(
     spinner = ["|", "/", "-", "\\"]
     spin_idx = 0
 
-    def _drain_events() -> None:
-        nonlocal latest_thought
-        nonlocal payload
-        while True:
-            try:
-                event = event_queue.get_nowait()
-            except Empty:
-                return
-            except Exception:
-                return
-            if not isinstance(event, dict):
-                continue
-            event_type = str(event.get("type", ""))
-            if event_type == "thought":
-                message = str(event.get("message", "")).strip()
-                if message:
-                    latest_thought = truncate(message, 90)
-                continue
-            if event_type == "result":
-                maybe_payload = event.get("payload")
-                if isinstance(maybe_payload, dict):
-                    payload = maybe_payload
-
     while proc.is_alive():
-        _drain_events()
+        latest_thought, payload = _drain_agent_events(
+            event_queue,
+            latest_thought,
+            payload,
+        )
         elapsed = int(time.time() - start_time)
         if elapsed > timeout_sec:
-            proc.terminate()
-            proc.join(timeout=5)
-            if proc.is_alive():
-                proc.kill()
-                proc.join(timeout=5)
+            _terminate_worker_process(proc)
             if show_progress:
                 print(
                     (
@@ -206,20 +239,22 @@ def run_agent_with_timeout(
                 [],
             )
         if show_progress:
-            line = (
-                f"{Color.CYAN}[agent] {spinner[spin_idx % 4]} "
-                f"running {elapsed}s/{timeout_sec}s{Color.RESET}"
+            last_render_width, spin_idx = _render_running_progress(
+                elapsed,
+                timeout_sec,
+                spinner,
+                spin_idx,
+                latest_thought,
+                last_render_width,
             )
-            if latest_thought:
-                line += f" {Color.YELLOW}| {latest_thought}{Color.RESET}"
-            pad = " " * max(0, last_render_width - len(line))
-            print(f"\r{line}{pad}", end="", flush=True)
-            last_render_width = len(line)
-            spin_idx += 1
         time.sleep(0.2)
 
     proc.join(timeout=5)
-    _drain_events()
+    latest_thought, payload = _drain_agent_events(
+        event_queue,
+        latest_thought,
+        payload,
+    )
 
     if show_progress:
         elapsed_done = time.time() - start_time

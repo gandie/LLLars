@@ -70,22 +70,7 @@ def parse_ollama_model(model_value: str) -> str:
     return value
 
 
-def build_agent(
-    cfg: HarnessConfig,
-    emit_thought: Callable[[str], None],
-) -> Agent[AgentDeps, str]:
-    def _tool_error(
-        tool_name: str,
-        message: str,
-        hint: str | None = None,
-    ) -> str:
-        clean = " ".join(message.strip().split())
-        payload = f"[tool-error:{tool_name}] {clean}"
-        if hint:
-            payload = f"{payload} Hint: {hint}"
-        emit_thought(payload)
-        return payload
-
+def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
     model_obj = OllamaModel(
         parse_ollama_model(cfg.model),
         provider=OllamaProvider(
@@ -116,35 +101,43 @@ def build_agent(
             include_content=cfg.instrumentation_include_content,
         )
 
-    @agent.instructions
-    def runtime_tooling_instructions(ctx: RunContext[AgentDeps]) -> str:
-        deps = ctx.deps
-        lines = [
-            cfg.tool_policy,
-            "",
-            "Execution environment:",
-            f"- OS: {deps.os_name}",
-            f"- Shell: {deps.shell_name}",
-            f"- Project root: {deps.project_root}",
-            "",
-            "Operational rules:",
-            "- Use only registered tools.",
-            "- Do not create or execute bash/sh scripts.",
-            "- Use PowerShell-compatible commands only.",
-        ]
-        if deps.allowed_shell_commands:
-            lines.append(
-                "- For shell execution, call "
-                "list_allowed_shell_commands, then "
-                "run_allowlisted_shell(command_id=...)."
-            )
-        else:
-            lines.append(
-                "- No shell command tool is available in "
-                "this configuration."
-            )
-        return "\n".join(lines)
+    return agent
 
+
+def _runtime_tooling_instructions(
+    cfg: HarnessConfig,
+    deps: AgentDeps,
+) -> str:
+    lines = [
+        cfg.tool_policy,
+        "",
+        "Execution environment:",
+        f"- OS: {deps.os_name}",
+        f"- Shell: {deps.shell_name}",
+        f"- Project root: {deps.project_root}",
+        "",
+        "Operational rules:",
+        "- Use only registered tools.",
+        "- Do not create or execute bash/sh scripts.",
+        "- Use PowerShell-compatible commands only.",
+    ]
+    if deps.allowed_shell_commands:
+        lines.append(
+            "- For shell execution, call "
+            "list_allowed_shell_commands, then "
+            "run_allowlisted_shell(command_id=...)."
+        )
+    else:
+        lines.append(
+            "- No shell command tool is available in "
+            "this configuration."
+        )
+    return "\n".join(lines)
+
+
+def _make_allowed_shell_runner(
+    cfg: HarnessConfig,
+) -> Callable[[str, int], str]:
     def _run_allowed_shell(command: str, timeout_sec: int) -> str:
         canonical = canonicalize_shell_command(command)
         if canonical not in cfg.allowed_shell_commands:
@@ -165,6 +158,14 @@ def build_agent(
             )
         )
 
+    return _run_allowed_shell
+
+
+def _register_file_tools(
+    agent: Agent[AgentDeps, str],
+    cfg: HarnessConfig,
+    tool_error: Callable[[str, str, str | None], str],
+) -> None:
     @agent.tool
     def list_files(
         ctx: RunContext[AgentDeps],
@@ -176,7 +177,7 @@ def build_agent(
         try:
             target = resolve_under(cfg.project_root, path)
             if not target.exists():
-                return _tool_error(
+                return tool_error(
                     "list_files",
                     f"Path not found: {path}",
                     "Choose an existing path under project_root.",
@@ -193,7 +194,7 @@ def build_agent(
                 )
             )
         except Exception as exc:
-            return _tool_error(
+            return tool_error(
                 "list_files",
                 str(exc),
                 "Only access files inside project_root.",
@@ -206,14 +207,14 @@ def build_agent(
         try:
             target = resolve_under(cfg.project_root, path)
             if not target.exists() or not target.is_file():
-                return _tool_error(
+                return tool_error(
                     "read_file",
                     f"File not found: {path}",
                     "Pass a valid file path under project_root.",
                 )
             return target.read_text(encoding="utf-8")
         except Exception as exc:
-            return _tool_error(
+            return tool_error(
                 "read_file",
                 str(exc),
                 "Only access files inside project_root.",
@@ -234,12 +235,20 @@ def build_agent(
             rel = str(target.relative_to(cfg.project_root)).replace("\\", "/")
             return f"Wrote {rel}"
         except Exception as exc:
-            return _tool_error(
+            return tool_error(
                 "write_file",
                 str(exc),
                 "Use a writable path inside project_root.",
             )
 
+
+def _register_shell_tools(
+    agent: Agent[AgentDeps, str],
+    cfg: HarnessConfig,
+    emit_thought: Callable[[str], None],
+    tool_error: Callable[[str, str, str | None], str],
+    run_allowed_shell: Callable[[str, int], str],
+) -> None:
     if cfg.allowed_shell_commands:
 
         @agent.tool
@@ -275,9 +284,9 @@ def build_agent(
                         "a listed ID."
                     )
                 command = cfg.allowed_shell_commands[command_id - 1]
-                return _run_allowed_shell(command, timeout_sec)
+                return run_allowed_shell(command, timeout_sec)
             except Exception as exc:
-                return _tool_error(
+                return tool_error(
                     "run_allowlisted_shell",
                     str(exc),
                     "Use a valid command_id from list_allowed_shell_commands.",
@@ -291,9 +300,9 @@ def build_agent(
             _ = ctx
             emit_thought("tool: run_test_command")
             try:
-                return _run_allowed_shell(cfg.test_command, 90)
+                return run_allowed_shell(cfg.test_command, 90)
             except Exception as exc:
-                return _tool_error("run_test_command", str(exc))
+                return tool_error("run_test_command", str(exc), None)
 
     if cfg.eval_command is not None:
 
@@ -303,8 +312,41 @@ def build_agent(
             _ = ctx
             emit_thought("tool: run_eval_command")
             try:
-                return _run_allowed_shell(cfg.eval_command, 90)
+                return run_allowed_shell(cfg.eval_command, 90)
             except Exception as exc:
-                return _tool_error("run_eval_command", str(exc))
+                return tool_error("run_eval_command", str(exc), None)
+
+
+def build_agent(
+    cfg: HarnessConfig,
+    emit_thought: Callable[[str], None],
+) -> Agent[AgentDeps, str]:
+    def _tool_error(
+        tool_name: str,
+        message: str,
+        hint: str | None = None,
+    ) -> str:
+        clean = " ".join(message.strip().split())
+        payload = f"[tool-error:{tool_name}] {clean}"
+        if hint:
+            payload = f"{payload} Hint: {hint}"
+        emit_thought(payload)
+        return payload
+
+    agent = _build_agent_instance(cfg)
+
+    @agent.instructions
+    def runtime_tooling_instructions(ctx: RunContext[AgentDeps]) -> str:
+        return _runtime_tooling_instructions(cfg, ctx.deps)
+
+    run_allowed_shell = _make_allowed_shell_runner(cfg)
+    _register_file_tools(agent, cfg, _tool_error)
+    _register_shell_tools(
+        agent,
+        cfg,
+        emit_thought,
+        _tool_error,
+        run_allowed_shell,
+    )
 
     return agent
