@@ -50,6 +50,18 @@ def build_agent(
     cfg: HarnessConfig,
     emit_thought: Callable[[str], None],
 ) -> Agent:
+    def _tool_error(
+        tool_name: str,
+        message: str,
+        hint: str | None = None,
+    ) -> str:
+        clean = " ".join(message.strip().split())
+        payload = f"[tool-error:{tool_name}] {clean}"
+        if hint:
+            payload = f"{payload} Hint: {hint}"
+        emit_thought(payload)
+        return payload
+
     model_obj = OllamaModel(
         parse_ollama_model(cfg.model),
         provider=OllamaProvider(
@@ -99,35 +111,66 @@ def build_agent(
         recursive: bool = True,
     ) -> str:
         _ = ctx
-        target = resolve_under(cfg.project_root, path)
-        if not target.exists():
-            return f"Path not found: {path}"
-        if target.is_file():
-            return str(target.relative_to(cfg.project_root)).replace("\\", "/")
-        iterator = target.rglob("*") if recursive else target.iterdir()
-        return "\n".join(
-            sorted(
-                str(item.relative_to(cfg.project_root)).replace("\\", "/")
-                for item in iterator
+        try:
+            target = resolve_under(cfg.project_root, path)
+            if not target.exists():
+                return _tool_error(
+                    "list_files",
+                    f"Path not found: {path}",
+                    "Choose an existing path under project_root.",
+                )
+            if target.is_file():
+                return str(target.relative_to(cfg.project_root)).replace(
+                    "\\", "/"
+                )
+            iterator = target.rglob("*") if recursive else target.iterdir()
+            return "\n".join(
+                sorted(
+                    str(item.relative_to(cfg.project_root)).replace("\\", "/")
+                    for item in iterator
+                )
             )
-        )
+        except Exception as exc:
+            return _tool_error(
+                "list_files",
+                str(exc),
+                "Only access files inside project_root.",
+            )
 
     @agent.tool
     def read_file(ctx: RunContext[None], path: str) -> str:
         _ = ctx
-        target = resolve_under(cfg.project_root, path)
-        if not target.exists() or not target.is_file():
-            return f"File not found: {path}"
-        return target.read_text(encoding="utf-8")
+        try:
+            target = resolve_under(cfg.project_root, path)
+            if not target.exists() or not target.is_file():
+                return _tool_error(
+                    "read_file",
+                    f"File not found: {path}",
+                    "Pass a valid file path under project_root.",
+                )
+            return target.read_text(encoding="utf-8")
+        except Exception as exc:
+            return _tool_error(
+                "read_file",
+                str(exc),
+                "Only access files inside project_root.",
+            )
 
     @agent.tool
     def write_file(ctx: RunContext[None], path: str, content: str) -> str:
         _ = ctx
-        target = resolve_under(cfg.project_root, path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")
-        rel = str(target.relative_to(cfg.project_root)).replace("\\", "/")
-        return f"Wrote {rel}"
+        try:
+            target = resolve_under(cfg.project_root, path)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+            rel = str(target.relative_to(cfg.project_root)).replace("\\", "/")
+            return f"Wrote {rel}"
+        except Exception as exc:
+            return _tool_error(
+                "write_file",
+                str(exc),
+                "Use a writable path inside project_root.",
+            )
 
     if cfg.allowed_shell_commands:
 
@@ -139,7 +182,14 @@ def build_agent(
         ) -> str:
             _ = ctx
             emit_thought("tool: run_shell")
-            return _run_allowed_shell(command, timeout_sec)
+            try:
+                return _run_allowed_shell(command, timeout_sec)
+            except Exception as exc:
+                return _tool_error(
+                    "run_shell",
+                    str(exc),
+                    "Use an allowlisted command and valid timeout.",
+                )
 
     if cfg.test_command is not None:
 
@@ -147,7 +197,10 @@ def build_agent(
         def run_test_command(ctx: RunContext[None]) -> str:
             _ = ctx
             emit_thought("tool: run_test_command")
-            return _run_allowed_shell(cfg.test_command, 90)
+            try:
+                return _run_allowed_shell(cfg.test_command, 90)
+            except Exception as exc:
+                return _tool_error("run_test_command", str(exc))
 
     if cfg.eval_command is not None:
 
@@ -155,6 +208,9 @@ def build_agent(
         def run_eval_command(ctx: RunContext[None]) -> str:
             _ = ctx
             emit_thought("tool: run_eval_command")
-            return _run_allowed_shell(cfg.eval_command, 90)
+            try:
+                return _run_allowed_shell(cfg.eval_command, 90)
+            except Exception as exc:
+                return _tool_error("run_eval_command", str(exc))
 
     return agent

@@ -79,7 +79,6 @@ def run_single_agent(
             "runtime_telemetry": runtime_telemetry,
         }
     except Exception:
-        raise
         return {
             "returncode": 125,
             "stdout": "",
