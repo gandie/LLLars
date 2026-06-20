@@ -15,13 +15,22 @@
     "python eval_prime_generator.py"
   ],
 
-  "tool_call_budget": 100,
-  "tool_call_budget_per_tool": {
-  },
-  "tool_error_circuit_breaker_threshold": 3,
-  "file_read_char_limit": 20000,
+  "usage_request_limit": null,
+  "usage_tool_calls_limit": 100,
+  "usage_input_tokens_limit": null,
+  "usage_output_tokens_limit": null,
+  "usage_total_tokens_limit": null,
+  "usage_count_tokens_before_request": false,
+
+  "agent_retries_tools": 1,
+  "agent_retries_output": 1,
+  "tool_timeout_sec": 90,
+  "max_concurrency": null,
+
+  "instrumentation_enabled": false,
+  "instrumentation_include_content": false,
 
   "system-prompt": "You are senior Python developer and mathematician working on a project to generate prime numbers. You have access to tools for file operations and running shell commands. Your task is to implement a prime number generator that can produce as many prime numbers as possible within a 1 second time limit. Focus on optimizing your algorithm for speed and efficiency. Remember to adhere to the tool usage policies and constraints provided.",
 
-  "tool-policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- You have two allowed shell commands: 'python prime_generator.py 1' to run the prime generator with a 1 second time limit, and 'python eval_prime_generator.py' to evaluate your implementation. Use these commands to test and validate your code.\n- You have a tool call budget of 100 calls, with no more than 100 calls per individual tool. Be mindful of this budget when planning your implementation and testing strategy.\n- If you encounter errors while using tools, be cautious as repeated errors may trigger a circuit breaker that could limit your access to certain tools. Aim for efficient and error-free usage of your tools to maximize your chances of success."
+  "tool-policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- You have two allowed shell commands: 'python prime_generator.py 1' to run the prime generator with a 1 second time limit, and 'python eval_prime_generator.py' to evaluate your implementation. Use these commands to test and validate your code.\n- Stay within configured native usage limits and retries."
 }

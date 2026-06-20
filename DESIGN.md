@@ -1,5 +1,9 @@
 # DESIGN
 
+> Historical note: this document captures a previous orchestration direction.
+> The current runtime has since migrated to native PydanticAI usage limits,
+> retries, timeout, and instrumentation controls.
+
 ## Session Artifact
 
 Date: 2026-06-20

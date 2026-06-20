@@ -10,7 +10,7 @@ from typing import Any
 
 from pydantic_ai import UsageLimits
 
-from lllars_core.agent_builder import build_agent, default_runtime_telemetry
+from lllars_core.agent_builder import build_agent
 from lllars_core.config import HarnessConfig
 from lllars_core.console import (
     Color,
@@ -25,15 +25,8 @@ def run_single_agent(
     prompt_text: str,
     thought_log_path: Path | None = None,
     emit_thought: Callable[[str], None] | None = None,
-    on_telemetry_update: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
-    runtime_telemetry = default_runtime_telemetry()
-
-    def _persist(telemetry: dict[str, Any]) -> None:
-        nonlocal runtime_telemetry
-        runtime_telemetry = telemetry
-        if on_telemetry_update is not None:
-            on_telemetry_update(dict(telemetry))
+    runtime_telemetry: dict[str, Any] = {}
 
     def _emit(message: str) -> None:
         emit_live_thought(message, thought_log_path)
@@ -41,41 +34,42 @@ def run_single_agent(
             emit_thought(message)
 
     try:
-        agent, runtime_telemetry = build_agent(
+        agent = build_agent(
             cfg,
             emit_thought=_emit,
-            on_telemetry_update=_persist,
         )
         _emit("agent: started")
         result = agent.run_sync(
             prompt_text,
             usage_limits=UsageLimits(
-                request_limit=None,
-                tool_calls_limit=None,
-                input_tokens_limit=None,
-                output_tokens_limit=None,
-                total_tokens_limit=None,
+                request_limit=cfg.usage_request_limit,
+                tool_calls_limit=cfg.usage_tool_calls_limit,
+                input_tokens_limit=cfg.usage_input_tokens_limit,
+                output_tokens_limit=cfg.usage_output_tokens_limit,
+                total_tokens_limit=cfg.usage_total_tokens_limit,
+                count_tokens_before_request=(
+                    cfg.usage_count_tokens_before_request
+                ),
             ),
+            metadata={
+                "entrypoint": "run_sync",
+                "prompt_chars": len(prompt_text),
+            },
         )
         _emit("agent: completed")
 
-        try:
-            req = 0
-            resp = 0
-            response_ids = 0
-            for msg in result.all_messages():
-                kind = str(getattr(msg, "kind", ""))
-                if kind == "request":
-                    req += 1
-                elif kind == "response":
-                    resp += 1
-                    if getattr(msg, "provider_response_id", None):
-                        response_ids += 1
-            runtime_telemetry["ollama_requests_estimated"] = req
-            runtime_telemetry["ollama_responses_estimated"] = resp
-            runtime_telemetry["provider_response_ids_seen"] = response_ids
-        except Exception:
-            pass
+        usage = result.usage
+        runtime_telemetry = {
+            "run_id": result.run_id,
+            "conversation_id": result.conversation_id,
+            "metadata": result.metadata or {},
+            "requests": usage.requests,
+            "tool_calls": usage.tool_calls,
+            "input_tokens": usage.input_tokens,
+            "output_tokens": usage.output_tokens,
+            "total_tokens": usage.total_tokens,
+            "details": dict(usage.details),
+        }
 
         return {
             "returncode": 0,
@@ -106,23 +100,11 @@ def _worker_run_single_agent(
         except Exception:
             return
 
-    def _persist(telemetry: dict[str, Any]) -> None:
-        try:
-            event_queue.put(
-                {
-                    "type": "telemetry",
-                    "runtime_telemetry": dict(telemetry),
-                }
-            )
-        except Exception:
-            return
-
     payload = run_single_agent(
         cfg=cfg,
         prompt_text=prompt_text,
         thought_log_path=None,
         emit_thought=_emit,
-        on_telemetry_update=_persist,
     )
     try:
         event_queue.put({"type": "result", "payload": payload})
@@ -146,7 +128,7 @@ def run_agent_with_timeout(
 
     start_time = time.time()
     latest_thought = ""
-    latest_telemetry = default_runtime_telemetry()
+    latest_telemetry: dict[str, Any] = {}
     payload: dict[str, Any] | None = None
     last_render_width = 0
     spinner = ["|", "/", "-", "\\"]
@@ -154,7 +136,6 @@ def run_agent_with_timeout(
 
     def _drain_events() -> None:
         nonlocal latest_thought
-        nonlocal latest_telemetry
         nonlocal payload
         while True:
             try:
@@ -170,11 +151,6 @@ def run_agent_with_timeout(
                 message = str(event.get("message", "")).strip()
                 if message:
                     latest_thought = truncate(message, 90)
-                continue
-            if event_type == "telemetry":
-                runtime = event.get("runtime_telemetry")
-                if isinstance(runtime, dict):
-                    latest_telemetry = dict(runtime)
                 continue
             if event_type == "result":
                 maybe_payload = event.get("payload")
@@ -251,7 +227,7 @@ def run_agent_with_timeout(
         (
             payload.get("runtime_telemetry")
             if isinstance(payload.get("runtime_telemetry"), dict)
-            else default_runtime_telemetry()
+            else {}
         ),
         [str(item) for item in thought_trace],
     )

@@ -7,9 +7,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = ROOT / "lllars.example.json"
 DEFAULT_TIMEOUT_SEC = 600
-DEFAULT_TOOL_CALL_BUDGET = 24
-DEFAULT_FILE_READ_CHAR_LIMIT = 20000
-DEFAULT_TOOL_ERROR_CIRCUIT_BREAKER_THRESHOLD = 3
+DEFAULT_USAGE_TOOL_CALLS_LIMIT = 24
+DEFAULT_AGENT_RETRIES_TOOLS = 1
+DEFAULT_AGENT_RETRIES_OUTPUT = 1
+DEFAULT_TOOL_TIMEOUT_SEC = 90.0
 
 
 @dataclass(frozen=True)
@@ -24,10 +25,18 @@ class HarnessConfig:
     allowed_shell_commands: set[str]
     system_prompt: str
     tool_policy: str
-    tool_call_budget: int
-    tool_call_budget_per_tool: dict[str, int]
-    tool_error_circuit_breaker_threshold: int
-    file_read_char_limit: int
+    usage_request_limit: int | None
+    usage_tool_calls_limit: int | None
+    usage_input_tokens_limit: int | None
+    usage_output_tokens_limit: int | None
+    usage_total_tokens_limit: int | None
+    usage_count_tokens_before_request: bool
+    agent_retries_tools: int
+    agent_retries_output: int
+    tool_timeout_sec: float | None
+    max_concurrency: int | None
+    instrumentation_enabled: bool
+    instrumentation_include_content: bool
 
 
 def canonicalize_shell_command(command: str) -> str:
@@ -111,32 +120,37 @@ def load_config(config_path: Path) -> HarnessConfig:
             allowed_shell_commands=allowed_shell_commands,
         )
 
-    per_tool_budget_raw = cfg.get("tool_call_budget_per_tool", {})
-    tool_call_budget_per_tool: dict[str, int] = {}
-    if isinstance(per_tool_budget_raw, dict):
-        for key, value in per_tool_budget_raw.items():
-            name = str(key).strip()
-            if not name:
-                continue
-            try:
-                parsed = int(value)
-            except (TypeError, ValueError):
-                continue
-            if parsed >= 0:
-                tool_call_budget_per_tool[name] = parsed
+    def _optional_int(key: str, default: int | None) -> int | None:
+        raw = cfg.get(key, default)
+        if raw is None:
+            return None
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return default
+        if value < 0:
+            return None
+        return value
 
-    breaker_threshold_raw = cfg.get(
-        "tool_error_circuit_breaker_threshold",
-        DEFAULT_TOOL_ERROR_CIRCUIT_BREAKER_THRESHOLD,
-    )
-    try:
-        tool_error_circuit_breaker_threshold = int(breaker_threshold_raw)
-    except (TypeError, ValueError):
-        tool_error_circuit_breaker_threshold = (
-            DEFAULT_TOOL_ERROR_CIRCUIT_BREAKER_THRESHOLD
-        )
-    if tool_error_circuit_breaker_threshold < 0:
-        tool_error_circuit_breaker_threshold = 0
+    def _optional_float(key: str, default: float | None) -> float | None:
+        raw = cfg.get(key, default)
+        if raw is None:
+            return None
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return default
+        if value <= 0:
+            return None
+        return value
+
+    def _non_negative_int(key: str, default: int) -> int:
+        raw = cfg.get(key, default)
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return default
+        return max(0, value)
 
     return HarnessConfig(
         model=model,
@@ -149,14 +163,37 @@ def load_config(config_path: Path) -> HarnessConfig:
         allowed_shell_commands=allowed_shell_commands,
         system_prompt=system_prompt,
         tool_policy=tool_policy,
-        tool_call_budget=int(
-            cfg.get("tool_call_budget", DEFAULT_TOOL_CALL_BUDGET)
+        usage_request_limit=_optional_int("usage_request_limit", None),
+        usage_tool_calls_limit=_optional_int(
+            "usage_tool_calls_limit",
+            DEFAULT_USAGE_TOOL_CALLS_LIMIT,
         ),
-        tool_call_budget_per_tool=tool_call_budget_per_tool,
-        tool_error_circuit_breaker_threshold=(
-            tool_error_circuit_breaker_threshold
+        usage_input_tokens_limit=_optional_int(
+            "usage_input_tokens_limit", None
         ),
-        file_read_char_limit=int(
-            cfg.get("file_read_char_limit", DEFAULT_FILE_READ_CHAR_LIMIT)
+        usage_output_tokens_limit=_optional_int(
+            "usage_output_tokens_limit", None
+        ),
+        usage_total_tokens_limit=_optional_int(
+            "usage_total_tokens_limit", None
+        ),
+        usage_count_tokens_before_request=bool(
+            cfg.get("usage_count_tokens_before_request", False)
+        ),
+        agent_retries_tools=_non_negative_int(
+            "agent_retries_tools", DEFAULT_AGENT_RETRIES_TOOLS
+        ),
+        agent_retries_output=_non_negative_int(
+            "agent_retries_output", DEFAULT_AGENT_RETRIES_OUTPUT
+        ),
+        tool_timeout_sec=_optional_float(
+            "tool_timeout_sec", DEFAULT_TOOL_TIMEOUT_SEC
+        ),
+        max_concurrency=_optional_int("max_concurrency", None),
+        instrumentation_enabled=bool(
+            cfg.get("instrumentation_enabled", False)
+        ),
+        instrumentation_include_content=bool(
+            cfg.get("instrumentation_include_content", False)
         ),
     )

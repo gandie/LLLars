@@ -56,26 +56,42 @@ Copy-Item .\lllars.example.json .\lllars.json
 lllars --config .\lllars.json --prompt "Describe this repository"
 ```
 
-### Tool orchestration controls
+### Native runtime controls
 
-Optional config knobs for tighter runtime behavior:
+The harness now uses native PydanticAI runtime controls instead of custom
+budgets/circuit breakers.
 
-- `tool_call_budget`: global tool-call limit per run.
-- `tool_call_budget_per_tool`: per-tool call limits (object by tool name).
-- `tool_error_circuit_breaker_threshold`: disables a tool for the current run
-	after the same tool returns the same error this many times.
+Supported config knobs:
+
+- `usage_request_limit`
+- `usage_tool_calls_limit`
+- `usage_input_tokens_limit`
+- `usage_output_tokens_limit`
+- `usage_total_tokens_limit`
+- `usage_count_tokens_before_request`
+- `agent_retries_tools`
+- `agent_retries_output`
+- `tool_timeout_sec`
+- `max_concurrency`
+- `instrumentation_enabled`
+- `instrumentation_include_content`
 
 Example:
 
 ```json
 {
-	"tool_call_budget": 24,
-	"tool_call_budget_per_tool": {
-		"read_file": 20,
-		"write_file": 6,
-		"run_shell": 2
-	},
-	"tool_error_circuit_breaker_threshold": 3
+	"usage_request_limit": null,
+	"usage_tool_calls_limit": 24,
+	"usage_input_tokens_limit": null,
+	"usage_output_tokens_limit": null,
+	"usage_total_tokens_limit": null,
+	"usage_count_tokens_before_request": false,
+	"agent_retries_tools": 1,
+	"agent_retries_output": 1,
+	"tool_timeout_sec": 90,
+	"max_concurrency": null,
+	"instrumentation_enabled": false,
+	"instrumentation_include_content": false
 }
 ```
 
@@ -89,7 +105,7 @@ logic is separated by concern.
 - `lllars.py`: thin console entrypoint wrapper
 - `lllars_core/cli.py`: argument parsing and top-level orchestration
 - `lllars_core/config.py`: config model, defaults, and config loading
-- `lllars_core/agent_builder.py`: agent/tool construction and telemetry wiring
+- `lllars_core/agent_builder.py`: agent/tool construction and native runtime config wiring
 - `lllars_core/runner.py`: agent execution and timeout subprocess orchestration
 - `lllars_core/shell.py`: PowerShell command execution, test/eval helpers
 - `lllars_core/console.py`: terminal output formatting and summaries

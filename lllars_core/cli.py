@@ -33,19 +33,26 @@ def main() -> None:
     else:
         raise SystemExit("Provide --prompt or --prompt-file")
 
-    per_tool_items = sorted(cfg.tool_call_budget_per_tool.items())
-    if per_tool_items:
-        per_tool_text = ", ".join(
-            f"{name}={limit}" for name, limit in per_tool_items
-        )
-    else:
-        per_tool_text = "none"
+    def _fmt(value: object) -> str:
+        return "none" if value is None else str(value)
+
     print(
-        f"{Color.CYAN}[orchestration]{Color.RESET} "
-        f"tool_budget={cfg.tool_call_budget}; "
-        f"per_tool=[{per_tool_text}]; "
-        "circuit_breaker_threshold="
-        f"{cfg.tool_error_circuit_breaker_threshold}"
+        f"{Color.CYAN}[native-core]{Color.RESET} "
+        f"request_limit={_fmt(cfg.usage_request_limit)}; "
+        f"tool_calls_limit={_fmt(cfg.usage_tool_calls_limit)}; "
+        f"input_tokens_limit={_fmt(cfg.usage_input_tokens_limit)}; "
+        f"output_tokens_limit={_fmt(cfg.usage_output_tokens_limit)}; "
+        f"total_tokens_limit={_fmt(cfg.usage_total_tokens_limit)}; "
+        "count_tokens_before_request="
+        f"{cfg.usage_count_tokens_before_request}; "
+        "retries={"
+        f"tools:{cfg.agent_retries_tools},"
+        f"output:{cfg.agent_retries_output}"
+        "}; "
+        f"tool_timeout_sec={_fmt(cfg.tool_timeout_sec)}; "
+        f"max_concurrency={_fmt(cfg.max_concurrency)}; "
+        "instrumentation="
+        f"{cfg.instrumentation_enabled}"
     )
 
     start = time.time()

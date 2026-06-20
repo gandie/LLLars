@@ -14,14 +14,20 @@
 
   "allowed_shell_commands": [],
 
-  "tool_call_budget": 24,
-  "tool_call_budget_per_tool": {
-    "read_file": 20,
-    "write_file": 6,
-    "run_shell": 2
-  },
-  "tool_error_circuit_breaker_threshold": 3,
-  "file_read_char_limit": 20000,
+  "usage_request_limit": null,
+  "usage_tool_calls_limit": 24,
+  "usage_input_tokens_limit": null,
+  "usage_output_tokens_limit": null,
+  "usage_total_tokens_limit": null,
+  "usage_count_tokens_before_request": false,
+
+  "agent_retries_tools": 1,
+  "agent_retries_output": 1,
+  "tool_timeout_sec": 90,
+  "max_concurrency": null,
+
+  "instrumentation_enabled": false,
+  "instrumentation_include_content": false,
 
   "system-prompt": "You are a coding agent working in a local git repository. Make only necessary changes for the task and keep edits focused.",
 
