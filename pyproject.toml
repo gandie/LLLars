@@ -13,6 +13,12 @@ dependencies = [
   "pydantic-ai>=0.0.20",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "black>=25.0.0",
+  "flake8>=7.0.0",
+]
+
 [project.scripts]
 lllars = "lllars:main"
 

@@ -234,8 +234,10 @@ def run_agent_with_timeout(
         str(payload.get("stdout", "")) or "",
         str(payload.get("stderr", "")) or "",
         int(payload.get("returncode", 125)),
-        payload.get("runtime_telemetry")
-        if isinstance(payload.get("runtime_telemetry"), dict)
-        else default_runtime_telemetry(),
+        (
+            payload.get("runtime_telemetry")
+            if isinstance(payload.get("runtime_telemetry"), dict)
+            else default_runtime_telemetry()
+        ),
         [str(item) for item in thought_trace],
     )

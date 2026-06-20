@@ -55,9 +55,7 @@ def main() -> None:
         if args.internal_thought_log:
             thought_log_path = Path(args.internal_thought_log)
 
-        prompt_text = Path(args.internal_prompt_file).read_text(
-            encoding="utf-8"
-        )
+        prompt_text = Path(args.internal_prompt_file).read_text(encoding="utf-8")
         payload = run_single_agent(
             cfg,
             prompt_text,
@@ -95,18 +93,12 @@ def main() -> None:
     if cfg.test_command:
         print(f"{Color.CYAN}[checks] running tests...{Color.RESET}")
     else:
-        print(
-            f"{Color.YELLOW}[checks] tests not configured (skipped)"
-            f"{Color.RESET}"
-        )
+        print(f"{Color.YELLOW}[checks] tests not configured (skipped)" f"{Color.RESET}")
     test_info = run_tests(cfg)
     if cfg.eval_command:
         print(f"{Color.CYAN}[checks] running eval...{Color.RESET}")
     else:
-        print(
-            f"{Color.YELLOW}[checks] eval not configured (skipped)"
-            f"{Color.RESET}"
-        )
+        print(f"{Color.YELLOW}[checks] eval not configured (skipped)" f"{Color.RESET}")
     eval_json, eval_error = run_eval(cfg)
 
     success = (

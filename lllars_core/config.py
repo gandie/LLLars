@@ -102,9 +102,7 @@ def load_config(config_path: Path) -> HarnessConfig:
         allowed_shell_commands=allowed_shell_commands,
         system_prompt=system_prompt,
         tool_policy=tool_policy,
-        tool_call_budget=int(
-            cfg.get("tool_call_budget", DEFAULT_TOOL_CALL_BUDGET)
-        ),
+        tool_call_budget=int(cfg.get("tool_call_budget", DEFAULT_TOOL_CALL_BUDGET)),
         file_read_char_limit=int(
             cfg.get("file_read_char_limit", DEFAULT_FILE_READ_CHAR_LIMIT)
         ),

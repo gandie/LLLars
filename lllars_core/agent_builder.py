@@ -68,9 +68,7 @@ def build_agent(
 ) -> tuple[Agent, dict[str, Any]]:
     model_obj = OllamaModel(
         parse_ollama_model(cfg.model),
-        provider=OllamaProvider(
-            base_url=normalize_ollama_base_url(cfg.provider_url)
-        ),
+        provider=OllamaProvider(base_url=normalize_ollama_base_url(cfg.provider_url)),
     )
 
     agent = Agent(
@@ -95,9 +93,7 @@ def build_agent(
         _flush()
 
     def _record_error(name: str, message: str) -> str:
-        telemetry["tool_errors_total"] = (
-            int(telemetry["tool_errors_total"]) + 1
-        )
+        telemetry["tool_errors_total"] = int(telemetry["tool_errors_total"]) + 1
         by_name = telemetry["tool_errors_by_name"]
         if isinstance(by_name, dict):
             by_name[name] = int(by_name.get(name, 0)) + 1
@@ -143,9 +139,7 @@ def build_agent(
             if not target.exists():
                 return _record_error("list_files", f"Path not found: {path}")
             if target.is_file():
-                return str(target.relative_to(cfg.project_root)).replace(
-                    "\\", "/"
-                )
+                return str(target.relative_to(cfg.project_root)).replace("\\", "/")
             iterator = target.rglob("*") if recursive else target.iterdir()
             return "\n".join(
                 sorted(
@@ -168,8 +162,8 @@ def build_agent(
                 return _record_error("read_file", f"File not found: {path}")
             content = target.read_text(encoding="utf-8")
             trimmed = content[: cfg.file_read_char_limit]
-            telemetry["read_chars_total"] = (
-                int(telemetry["read_chars_total"]) + len(trimmed)
+            telemetry["read_chars_total"] = int(telemetry["read_chars_total"]) + len(
+                trimmed
             )
             _flush()
             return trimmed
@@ -186,8 +180,8 @@ def build_agent(
             target = resolve_under(cfg.project_root, path)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
-            telemetry["write_chars_total"] = (
-                int(telemetry["write_chars_total"]) + len(content)
+            telemetry["write_chars_total"] = int(telemetry["write_chars_total"]) + len(
+                content
             )
             _flush()
             rel = str(target.relative_to(cfg.project_root)).replace("\\", "/")
