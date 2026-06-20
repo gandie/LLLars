@@ -15,6 +15,12 @@
   ],
 
   "tool_call_budget": 24,
+  "tool_call_budget_per_tool": {
+    "read_file": 20,
+    "write_file": 6,
+    "run_shell": 2
+  },
+  "tool_error_circuit_breaker_threshold": 3,
   "file_read_char_limit": 20000,
 
   "system-prompt": "You are a coding agent working in a local git repository. Make only necessary changes for the task and keep edits focused.",

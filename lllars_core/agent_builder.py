@@ -21,6 +21,9 @@ def default_runtime_telemetry() -> dict[str, Any]:
         "tool_errors_by_name": {},
         "tool_error_samples": [],
         "tool_budget_exceeded": False,
+        "tool_budget_exceeded_by_name": {},
+        "tool_circuit_breaker_trips_total": 0,
+        "tools_disabled_by_circuit_breaker": [],
         "read_calls": 0,
         "write_calls": 0,
         "list_calls": 0,
@@ -78,7 +81,9 @@ def build_agent(
     )
 
     telemetry = default_runtime_telemetry()
-    tool_calls = {"count": 0}
+    tool_calls = {"count": 0, "by_name": {}}
+    error_signatures: dict[tuple[str, str], int] = {}
+    disabled_tools: dict[str, str] = {}
 
     def _flush() -> None:
         if on_telemetry_update is not None:
@@ -100,16 +105,60 @@ def build_agent(
         samples = telemetry["tool_error_samples"]
         if isinstance(samples, list) and len(samples) < 5:
             samples.append(f"{name}: {message}")
+
+        threshold = int(cfg.tool_error_circuit_breaker_threshold)
+        if threshold > 0:
+            signature = " ".join(message.strip().lower().split())
+            key = (name, signature)
+            next_count = int(error_signatures.get(key, 0)) + 1
+            error_signatures[key] = next_count
+            if next_count >= threshold and name not in disabled_tools:
+                disabled_tools[name] = message
+                telemetry["tool_circuit_breaker_trips_total"] = int(
+                    telemetry["tool_circuit_breaker_trips_total"]
+                ) + 1
+                disabled = telemetry["tools_disabled_by_circuit_breaker"]
+                if isinstance(disabled, list) and name not in disabled:
+                    disabled.append(name)
+                emit_thought(
+                    f"circuit-breaker: disabled {name} after "
+                    f"{next_count} repeated errors"
+                )
+
         emit_thought(f"error in {name}: {message}")
         _flush()
         return f"[tool-error] {message}"
 
-    def _consume_budget() -> None:
+    def _ensure_enabled(name: str) -> None:
+        if name in disabled_tools:
+            raise RuntimeError(
+                "Tool disabled by circuit breaker: "
+                f"{name} ({disabled_tools[name]})"
+            )
+
+    def _consume_budget(name: str) -> None:
         tool_calls["count"] += 1
+        by_name = tool_calls["by_name"]
+        by_name[name] = int(by_name.get(name, 0)) + 1
+
         if tool_calls["count"] > cfg.tool_call_budget:
             telemetry["tool_budget_exceeded"] = True
             _flush()
             raise RuntimeError("Tool call budget exceeded")
+
+        per_tool_limit = cfg.tool_call_budget_per_tool.get(name)
+        if per_tool_limit is not None and by_name[name] > per_tool_limit:
+            telemetry["tool_budget_exceeded"] = True
+            budget_exceeded = telemetry["tool_budget_exceeded_by_name"]
+            if isinstance(budget_exceeded, dict):
+                budget_exceeded[name] = int(budget_exceeded.get(name, 0)) + 1
+            _flush()
+            raise RuntimeError(f"Tool call budget exceeded for {name}")
+
+    def _guarded_start(name: str) -> None:
+        _record_call(name)
+        _ensure_enabled(name)
+        _consume_budget(name)
 
     def _run_allowed_shell(command: str, timeout_sec: int) -> str:
         canonical = canonicalize_shell_command(command)
@@ -132,9 +181,8 @@ def build_agent(
     ) -> str:
         _ = ctx
         try:
-            _record_call("list_files")
+            _guarded_start("list_files")
             telemetry["list_calls"] = int(telemetry["list_calls"]) + 1
-            _consume_budget()
             target = resolve_under(cfg.project_root, path)
             if not target.exists():
                 return _record_error("list_files", f"Path not found: {path}")
@@ -154,9 +202,8 @@ def build_agent(
     def read_file(ctx: RunContext[None], path: str) -> str:
         _ = ctx
         try:
-            _record_call("read_file")
+            _guarded_start("read_file")
             telemetry["read_calls"] = int(telemetry["read_calls"]) + 1
-            _consume_budget()
             target = resolve_under(cfg.project_root, path)
             if not target.exists() or not target.is_file():
                 return _record_error("read_file", f"File not found: {path}")
@@ -174,9 +221,8 @@ def build_agent(
     def write_file(ctx: RunContext[None], path: str, content: str) -> str:
         _ = ctx
         try:
-            _record_call("write_file")
+            _guarded_start("write_file")
             telemetry["write_calls"] = int(telemetry["write_calls"]) + 1
-            _consume_budget()
             target = resolve_under(cfg.project_root, path)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
@@ -198,26 +244,32 @@ def build_agent(
             timeout_sec: int = 90,
         ) -> str:
             _ = ctx
-            _record_call("run_shell")
-            _consume_budget()
-            return _run_allowed_shell(command, timeout_sec)
+            try:
+                _guarded_start("run_shell")
+                return _run_allowed_shell(command, timeout_sec)
+            except Exception as exc:
+                return _record_error("run_shell", str(exc))
 
     if cfg.test_command is not None:
 
         @agent.tool
         def run_test_command(ctx: RunContext[None]) -> str:
             _ = ctx
-            _record_call("run_test_command")
-            _consume_budget()
-            return _run_allowed_shell(cfg.test_command, 90)
+            try:
+                _guarded_start("run_test_command")
+                return _run_allowed_shell(cfg.test_command, 90)
+            except Exception as exc:
+                return _record_error("run_test_command", str(exc))
 
     if cfg.eval_command is not None:
 
         @agent.tool
         def run_eval_command(ctx: RunContext[None]) -> str:
             _ = ctx
-            _record_call("run_eval_command")
-            _consume_budget()
-            return _run_allowed_shell(cfg.eval_command, 90)
+            try:
+                _guarded_start("run_eval_command")
+                return _run_allowed_shell(cfg.eval_command, 90)
+            except Exception as exc:
+                return _record_error("run_eval_command", str(exc))
 
     return agent, telemetry

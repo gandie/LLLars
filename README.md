@@ -56,6 +56,29 @@ Copy-Item .\lllars.example.json .\lllars.json
 lllars --config .\lllars.json --prompt "Describe this repository"
 ```
 
+### Tool orchestration controls
+
+Optional config knobs for tighter runtime behavior:
+
+- `tool_call_budget`: global tool-call limit per run.
+- `tool_call_budget_per_tool`: per-tool call limits (object by tool name).
+- `tool_error_circuit_breaker_threshold`: disables a tool for the current run
+	after the same tool returns the same error this many times.
+
+Example:
+
+```json
+{
+	"tool_call_budget": 24,
+	"tool_call_budget_per_tool": {
+		"read_file": 20,
+		"write_file": 6,
+		"run_shell": 2
+	},
+	"tool_error_circuit_breaker_threshold": 3
+}
+```
+
 ## Architecture
 
 The project is intentionally split so the executable stays small and orchestration

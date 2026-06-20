@@ -9,6 +9,7 @@ DEFAULT_CONFIG_PATH = ROOT / "lllars.example.json"
 DEFAULT_TIMEOUT_SEC = 600
 DEFAULT_TOOL_CALL_BUDGET = 24
 DEFAULT_FILE_READ_CHAR_LIMIT = 20000
+DEFAULT_TOOL_ERROR_CIRCUIT_BREAKER_THRESHOLD = 3
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,8 @@ class HarnessConfig:
     system_prompt: str
     tool_policy: str
     tool_call_budget: int
+    tool_call_budget_per_tool: dict[str, int]
+    tool_error_circuit_breaker_threshold: int
     file_read_char_limit: int
 
 
@@ -108,6 +111,33 @@ def load_config(config_path: Path) -> HarnessConfig:
             allowed_shell_commands=allowed_shell_commands,
         )
 
+    per_tool_budget_raw = cfg.get("tool_call_budget_per_tool", {})
+    tool_call_budget_per_tool: dict[str, int] = {}
+    if isinstance(per_tool_budget_raw, dict):
+        for key, value in per_tool_budget_raw.items():
+            name = str(key).strip()
+            if not name:
+                continue
+            try:
+                parsed = int(value)
+            except (TypeError, ValueError):
+                continue
+            if parsed >= 0:
+                tool_call_budget_per_tool[name] = parsed
+
+    breaker_threshold_raw = cfg.get(
+        "tool_error_circuit_breaker_threshold",
+        DEFAULT_TOOL_ERROR_CIRCUIT_BREAKER_THRESHOLD,
+    )
+    try:
+        tool_error_circuit_breaker_threshold = int(breaker_threshold_raw)
+    except (TypeError, ValueError):
+        tool_error_circuit_breaker_threshold = (
+            DEFAULT_TOOL_ERROR_CIRCUIT_BREAKER_THRESHOLD
+        )
+    if tool_error_circuit_breaker_threshold < 0:
+        tool_error_circuit_breaker_threshold = 0
+
     return HarnessConfig(
         model=model,
         provider_url=provider_url,
@@ -119,7 +149,13 @@ def load_config(config_path: Path) -> HarnessConfig:
         allowed_shell_commands=allowed_shell_commands,
         system_prompt=system_prompt,
         tool_policy=tool_policy,
-        tool_call_budget=int(cfg.get("tool_call_budget", DEFAULT_TOOL_CALL_BUDGET)),
+        tool_call_budget=int(
+            cfg.get("tool_call_budget", DEFAULT_TOOL_CALL_BUDGET)
+        ),
+        tool_call_budget_per_tool=tool_call_budget_per_tool,
+        tool_error_circuit_breaker_threshold=(
+            tool_error_circuit_breaker_threshold
+        ),
         file_read_char_limit=int(
             cfg.get("file_read_char_limit", DEFAULT_FILE_READ_CHAR_LIMIT)
         ),
