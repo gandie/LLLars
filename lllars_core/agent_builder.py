@@ -211,6 +211,13 @@ def build_agent(
         _ = ctx
         _record_call("run_test_command")
         _consume_budget()
+        if cfg.test_command is None:
+            payload = {
+                "returncode": 0,
+                "stdout": "",
+                "stderr": "tests not configured",
+            }
+            return json.dumps(payload)
         return _run_allowed_shell(cfg.test_command, 90)
 
     @agent.tool

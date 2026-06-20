@@ -64,6 +64,13 @@ def run_eval(cfg: HarnessConfig) -> tuple[dict[str, Any] | None, str | None]:
 
 
 def run_tests(cfg: HarnessConfig) -> dict[str, Any]:
+    if cfg.test_command is None:
+        return {
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "tests not configured",
+            "skipped": True,
+        }
     return run_powershell(command=cfg.test_command, cwd=ROOT, timeout_sec=120)
 
 

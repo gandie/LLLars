@@ -92,10 +92,21 @@ def main() -> None:
     )
     elapsed = round(time.time() - start, 2)
 
-    print(f"{Color.CYAN}[checks] running tests...{Color.RESET}")
+    if cfg.test_command:
+        print(f"{Color.CYAN}[checks] running tests...{Color.RESET}")
+    else:
+        print(
+            f"{Color.YELLOW}[checks] tests not configured (skipped)"
+            f"{Color.RESET}"
+        )
     test_info = run_tests(cfg)
     if cfg.eval_command:
         print(f"{Color.CYAN}[checks] running eval...{Color.RESET}")
+    else:
+        print(
+            f"{Color.YELLOW}[checks] eval not configured (skipped)"
+            f"{Color.RESET}"
+        )
     eval_json, eval_error = run_eval(cfg)
 
     success = (

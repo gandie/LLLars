@@ -16,7 +16,7 @@ class HarnessConfig:
     model: str
     provider_url: str
     project_root: Path
-    test_command: str
+    test_command: str | None
     eval_command: str | None
     eval_expect_json: bool
     eval_success_pass_rate: float
@@ -58,14 +58,15 @@ def load_config(config_path: Path) -> HarnessConfig:
     if not isinstance(commands, dict):
         raise ValueError("Config requires commands object")
 
-    test_command = str(commands.get("test", "")).strip()
-    if not test_command:
-        raise ValueError("Config requires commands.test")
+    test_command_raw = str(commands.get("test", "")).strip()
+    test_command = test_command_raw if test_command_raw else None
 
     eval_command_raw = str(commands.get("eval", "")).strip()
     eval_command = eval_command_raw if eval_command_raw else None
 
-    allowed_shell_commands = {canonicalize_shell_command(test_command)}
+    allowed_shell_commands: set[str] = set()
+    if test_command:
+        allowed_shell_commands.add(canonicalize_shell_command(test_command))
     if eval_command:
         allowed_shell_commands.add(canonicalize_shell_command(eval_command))
 
