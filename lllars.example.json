@@ -1,0 +1,23 @@
+{
+  "model": "ollama:rafw007/qwen35-claude-coder:4b",
+  "provider-url": "http://localhost:11434",
+
+  "project_root": "benchmark_order_insights",
+
+  "commands": {
+    "test": "./benchmark_order_insights/venv/Scripts/pytest.exe ./benchmark_order_insights/tests -q",
+    "eval": "./benchmark_order_insights/venv/Scripts/python.exe ./benchmark_order_insights/run_eval.py --json"
+  },
+
+  "eval_expect_json": true,
+  "eval_success_pass_rate": 100.0,
+
+  "allowed_shell_commands": [],
+
+  "tool_call_budget": 24,
+  "file_read_char_limit": 20000,
+
+  "system-prompt": "You are a coding agent working in a local git repository. Make only necessary changes for the task and keep edits focused.",
+
+  "tool-policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- Use run_test_command for tests and run_eval_command for eval.\n- run_shell is restricted to the config allowlist."
+}
