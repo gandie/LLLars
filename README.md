@@ -107,6 +107,23 @@ message scraping.
 The final `thought_trace` is built primarily from these streamed events, with a
 fallback merge from run messages for compatibility.
 
+### Environment-aware native agent behavior
+
+The harness now uses native PydanticAI dependency-typed instructions to make
+runtime environment constraints explicit during each run.
+
+What this adds:
+
+- Runtime instructions include OS, shell type, and project root.
+- Shell execution uses explicit allowlisted command IDs instead of free-form
+	command text.
+- Agent can discover commands via `list_allowed_shell_commands` and execute one
+	with `run_allowlisted_shell(command_id=...)`.
+- Shell commands run in configured `project_root`.
+
+This reduces tool misuse (for example trying bash scripts on Windows) while
+remaining fully config-driven.
+
 ## Architecture
 
 The project is intentionally split so the executable stays small and orchestration

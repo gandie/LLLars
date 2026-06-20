@@ -2,19 +2,43 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
+import platform
 
 from pydantic_ai import (
     Agent,
     InstrumentationSettings,
+    ModelRetry,
     ModelSettings,
     RunContext,
 )
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.providers.ollama import OllamaProvider
 
-from lllars_core.config import HarnessConfig, ROOT, canonicalize_shell_command
+from lllars_core.config import HarnessConfig, canonicalize_shell_command
 from lllars_core.shell import run_powershell
+
+
+@dataclass(frozen=True)
+class AgentDeps:
+    project_root: str
+    os_name: str
+    shell_name: str
+    allowed_shell_commands: tuple[str, ...]
+    has_test_command: bool
+    has_eval_command: bool
+
+
+def make_agent_deps(cfg: HarnessConfig) -> AgentDeps:
+    return AgentDeps(
+        project_root=str(cfg.project_root),
+        os_name=platform.system() or "unknown",
+        shell_name="PowerShell",
+        allowed_shell_commands=cfg.allowed_shell_commands,
+        has_test_command=cfg.test_command is not None,
+        has_eval_command=cfg.eval_command is not None,
+    )
 
 
 def resolve_under(root: Path, user_path: str) -> Path:
@@ -49,7 +73,7 @@ def parse_ollama_model(model_value: str) -> str:
 def build_agent(
     cfg: HarnessConfig,
     emit_thought: Callable[[str], None],
-) -> Agent:
+) -> Agent[AgentDeps, str]:
     def _tool_error(
         tool_name: str,
         message: str,
@@ -69,9 +93,10 @@ def build_agent(
         ),
     )
 
-    agent = Agent(
+    agent = Agent[AgentDeps, str](
         model_obj,
-        instructions=f"{cfg.system_prompt}\n\n{cfg.tool_policy}",
+        deps_type=AgentDeps,
+        instructions=cfg.system_prompt,
         model_settings=ModelSettings(),
         retries={
             "tools": cfg.agent_retries_tools,
@@ -91,25 +116,62 @@ def build_agent(
             include_content=cfg.instrumentation_include_content,
         )
 
+    @agent.instructions
+    def runtime_tooling_instructions(ctx: RunContext[AgentDeps]) -> str:
+        deps = ctx.deps
+        lines = [
+            cfg.tool_policy,
+            "",
+            "Execution environment:",
+            f"- OS: {deps.os_name}",
+            f"- Shell: {deps.shell_name}",
+            f"- Project root: {deps.project_root}",
+            "",
+            "Operational rules:",
+            "- Use only registered tools.",
+            "- Do not create or execute bash/sh scripts.",
+            "- Use PowerShell-compatible commands only.",
+        ]
+        if deps.allowed_shell_commands:
+            lines.append(
+                "- For shell execution, call "
+                "list_allowed_shell_commands, then "
+                "run_allowlisted_shell(command_id=...)."
+            )
+        else:
+            lines.append(
+                "- No shell command tool is available in "
+                "this configuration."
+            )
+        return "\n".join(lines)
+
     def _run_allowed_shell(command: str, timeout_sec: int) -> str:
         canonical = canonicalize_shell_command(command)
         if canonical not in cfg.allowed_shell_commands:
             payload = {
                 "returncode": 126,
                 "stdout": "",
-                "stderr": "[lllars] rejected shell command: not in allowlist",
+                "stderr": (
+                    "[lllars] rejected shell command: not in allowlist. "
+                    "Use list_allowed_shell_commands first."
+                ),
             }
             return json.dumps(payload)
         return json.dumps(
-            run_powershell(command=command, cwd=ROOT, timeout_sec=timeout_sec)
+            run_powershell(
+                command=command,
+                cwd=cfg.project_root,
+                timeout_sec=timeout_sec,
+            )
         )
 
     @agent.tool
     def list_files(
-        ctx: RunContext[None],
+        ctx: RunContext[AgentDeps],
         path: str = ".",
         recursive: bool = True,
     ) -> str:
+        """List files and folders under project root."""
         _ = ctx
         try:
             target = resolve_under(cfg.project_root, path)
@@ -138,7 +200,8 @@ def build_agent(
             )
 
     @agent.tool
-    def read_file(ctx: RunContext[None], path: str) -> str:
+    def read_file(ctx: RunContext[AgentDeps], path: str) -> str:
+        """Read a UTF-8 text file under project root."""
         _ = ctx
         try:
             target = resolve_under(cfg.project_root, path)
@@ -157,7 +220,12 @@ def build_agent(
             )
 
     @agent.tool
-    def write_file(ctx: RunContext[None], path: str, content: str) -> str:
+    def write_file(
+        ctx: RunContext[AgentDeps],
+        path: str,
+        content: str,
+    ) -> str:
+        """Write UTF-8 text content to a file under project root."""
         _ = ctx
         try:
             target = resolve_under(cfg.project_root, path)
@@ -175,26 +243,51 @@ def build_agent(
     if cfg.allowed_shell_commands:
 
         @agent.tool
-        def run_shell(
-            ctx: RunContext[None],
-            command: str,
+        def list_allowed_shell_commands(ctx: RunContext[AgentDeps]) -> str:
+            """Return numeric IDs for each allowed PowerShell command."""
+            _ = ctx
+            return "\n".join(
+                f"{idx}: {cmd}"
+                for idx, cmd in enumerate(cfg.allowed_shell_commands, start=1)
+            )
+
+        @agent.tool
+        def run_allowlisted_shell(
+            ctx: RunContext[AgentDeps],
+            command_id: int,
             timeout_sec: int = 90,
         ) -> str:
+            """Run one allowed PowerShell command by numeric ID.
+
+            Always call list_allowed_shell_commands first and
+            pass one of those IDs.
+            """
             _ = ctx
-            emit_thought("tool: run_shell")
+            emit_thought("tool: run_allowlisted_shell")
             try:
+                if (
+                    command_id < 1
+                    or command_id > len(cfg.allowed_shell_commands)
+                ):
+                    raise ModelRetry(
+                        "Invalid command_id. Call "
+                        "list_allowed_shell_commands and use "
+                        "a listed ID."
+                    )
+                command = cfg.allowed_shell_commands[command_id - 1]
                 return _run_allowed_shell(command, timeout_sec)
             except Exception as exc:
                 return _tool_error(
-                    "run_shell",
+                    "run_allowlisted_shell",
                     str(exc),
-                    "Use an allowlisted command and valid timeout.",
+                    "Use a valid command_id from list_allowed_shell_commands.",
                 )
 
     if cfg.test_command is not None:
 
         @agent.tool
-        def run_test_command(ctx: RunContext[None]) -> str:
+        def run_test_command(ctx: RunContext[AgentDeps]) -> str:
+            """Run the configured test command."""
             _ = ctx
             emit_thought("tool: run_test_command")
             try:
@@ -205,7 +298,8 @@ def build_agent(
     if cfg.eval_command is not None:
 
         @agent.tool
-        def run_eval_command(ctx: RunContext[None]) -> str:
+        def run_eval_command(ctx: RunContext[AgentDeps]) -> str:
+            """Run the configured evaluation command."""
             _ = ctx
             emit_thought("tool: run_eval_command")
             try:

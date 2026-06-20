@@ -10,7 +10,7 @@ from typing import Any
 
 from pydantic_ai import AgentStreamEvent, RunContext, UsageLimits
 
-from lllars_core.agent_builder import build_agent
+from lllars_core.agent_builder import build_agent, make_agent_deps
 from lllars_core.config import HarnessConfig
 from lllars_core.console import (
     Color,
@@ -52,9 +52,11 @@ def run_single_agent(
             cfg,
             emit_thought=_emit,
         )
+        deps = make_agent_deps(cfg)
         _emit("agent: started")
         result = agent.run_sync(
             prompt_text,
+            deps=deps,
             usage_limits=UsageLimits(
                 request_limit=cfg.usage_request_limit,
                 tool_calls_limit=cfg.usage_tool_calls_limit,

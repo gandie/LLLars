@@ -22,7 +22,7 @@ class HarnessConfig:
     eval_command: str | None
     eval_expect_json: bool
     eval_success_pass_rate: float
-    allowed_shell_commands: set[str]
+    allowed_shell_commands: tuple[str, ...]
     system_prompt: str
     tool_policy: str
     usage_request_limit: int | None
@@ -49,7 +49,7 @@ def canonicalize_shell_command(command: str) -> str:
 def build_default_tool_policy(
     test_command: str | None,
     eval_command: str | None,
-    allowed_shell_commands: set[str],
+    allowed_shell_commands: tuple[str, ...],
 ) -> str:
     lines = [
         "Tool policy:",
@@ -61,7 +61,10 @@ def build_default_tool_policy(
     if eval_command is not None:
         lines.append("- Use run_eval_command for eval.")
     if allowed_shell_commands:
-        lines.append("- run_shell is restricted to the config allowlist.")
+        lines.append(
+            "- Use list_allowed_shell_commands and "
+            "run_allowlisted_shell for shell execution."
+        )
     return "\n".join(lines)
 
 
@@ -95,18 +98,28 @@ def load_config(config_path: Path) -> HarnessConfig:
     eval_command_raw = str(commands.get("eval", "")).strip()
     eval_command = eval_command_raw if eval_command_raw else None
 
-    allowed_shell_commands: set[str] = set()
+    allowed_shell_commands_list: list[str] = []
+    seen_allowed_commands: set[str] = set()
+
+    def _append_allowed(raw_command: str) -> None:
+        canonical = canonicalize_shell_command(raw_command)
+        if canonical and canonical not in seen_allowed_commands:
+            seen_allowed_commands.add(canonical)
+            allowed_shell_commands_list.append(canonical)
+
     if test_command:
-        allowed_shell_commands.add(canonicalize_shell_command(test_command))
+        _append_allowed(test_command)
     if eval_command:
-        allowed_shell_commands.add(canonicalize_shell_command(eval_command))
+        _append_allowed(eval_command)
 
     extra = cfg.get("allowed_shell_commands", [])
     if isinstance(extra, list):
         for item in extra:
             text = str(item).strip()
             if text:
-                allowed_shell_commands.add(canonicalize_shell_command(text))
+                _append_allowed(text)
+
+    allowed_shell_commands = tuple(allowed_shell_commands_list)
 
     system_prompt = str(cfg.get("system-prompt", "")).strip()
     if not system_prompt:

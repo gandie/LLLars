@@ -31,5 +31,5 @@
 
   "system-prompt": "You are a coding agent working in a local git repository. Make only necessary changes for the task and keep edits focused.",
 
-  "tool-policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- Tests and eval may be absent; continue without them when not configured.\n- run_shell is restricted to the config allowlist."
+  "tool-policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- Tests and eval may be absent; continue without them when not configured.\n- For shell execution, call list_allowed_shell_commands first, then run_allowlisted_shell(command_id=...)."
 }
