@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 authors = [{ name = "LLLars Contributors" }]
 dependencies = [
   "pydantic-ai>=0.0.20",
+  "pydantic-ai-todo",
 ]
 
 [project.optional-dependencies]
