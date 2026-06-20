@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lllars"
+version = "0.1.0"
+description = "LLLars - local single-shot coding agent harness"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "LLLars Contributors" }]
+dependencies = [
+  "pydantic-ai>=0.0.20",
+]
+
+[project.scripts]
+lllars = "lllars:main"
+
+[tool.setuptools]
+py-modules = ["lllars", "generator"]

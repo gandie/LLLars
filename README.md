@@ -19,3 +19,39 @@ itself are hidden behind walls not reachable for ordinary users.
 
 In practice, poor balancing of those four items leads to chaos and
 overengineering, in worst case even dressed as progress.
+
+## Installation
+
+### Requirements
+
+- Python 3.11+
+- PowerShell (Windows)
+- A running Ollama endpoint (default: `http://localhost:11434`)
+
+### Install from local source
+
+```powershell
+pip install .
+```
+
+This installs the `lllars` CLI entry point.
+
+### Editable install (development)
+
+```powershell
+pip install -e .
+```
+
+### Quick start
+
+1. Copy and adapt the example config:
+
+```powershell
+Copy-Item .\lllars.example.json .\lllars.json
+```
+
+2. Run the agent:
+
+```powershell
+lllars --config .\lllars.json --prompt "Describe this repository"
+```

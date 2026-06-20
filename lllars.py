@@ -83,7 +83,7 @@ def _truncate(value: str, max_len: int = 220) -> str:
 
 
 def _emit_live_thought(message: str) -> None:
-    target = globals().get("_LLARS_THOUGHT_LOG_PATH")
+    target = globals().get("_LLLARS_THOUGHT_LOG_PATH")
     if not isinstance(target, Path):
         return
     try:
@@ -534,7 +534,13 @@ def _run_agent_with_timeout(
                     f"\r{Color.RED}[agent] timeout after {timeout_sec}s{Color.RESET}"
                     + " " * 20
                 )
-            return "", "[llars] agent timed out", 124, _default_runtime_telemetry(), []
+            return (
+                "",
+                "[lllars] agent timed out",
+                124,
+                _default_runtime_telemetry(),
+                [],
+            )
         if show_progress:
             line = (
                 f"{Color.CYAN}[agent] {spinner[spin_idx % 4]} "
@@ -682,7 +688,7 @@ def _is_eval_success(cfg: HarnessConfig, eval_json: dict[str, Any] | None) -> bo
 
 
 def args_config_path() -> Path:
-    value = globals().get("_LLARS_CONFIG_PATH")
+    value = globals().get("_LLLARS_CONFIG_PATH")
     if isinstance(value, Path):
         return value
     return DEFAULT_CONFIG_PATH
@@ -702,14 +708,16 @@ def main() -> None:
     args = ap.parse_args()
 
     config_path = Path(args.config).resolve()
-    globals()["_LLARS_CONFIG_PATH"] = config_path
+    globals()["_LLLARS_CONFIG_PATH"] = config_path
     cfg = _load_config(config_path)
 
     if args.internal_run:
         if not args.internal_prompt_file or not args.internal_output_json:
             raise SystemExit(125)
         if args.internal_thought_log:
-            globals()["_LLARS_THOUGHT_LOG_PATH"] = Path(args.internal_thought_log)
+            globals()["_LLLARS_THOUGHT_LOG_PATH"] = Path(
+                args.internal_thought_log
+            )
         prompt_text = Path(args.internal_prompt_file).read_text(encoding="utf-8")
         payload = _run_single_agent(cfg, prompt_text)
         Path(args.internal_output_json).write_text(
