@@ -55,3 +55,33 @@ Copy-Item .\lllars.example.json .\lllars.json
 ```powershell
 lllars --config .\lllars.json --prompt "Describe this repository"
 ```
+
+## Architecture
+
+The project is intentionally split so the executable stays small and orchestration
+logic is separated by concern.
+
+### Module map
+
+- `lllars.py`: thin console entrypoint wrapper
+- `lllars_core/cli.py`: argument parsing and top-level orchestration
+- `lllars_core/config.py`: config model, defaults, and config loading
+- `lllars_core/agent_builder.py`: agent/tool construction and telemetry wiring
+- `lllars_core/runner.py`: agent execution and timeout subprocess orchestration
+- `lllars_core/shell.py`: PowerShell command execution, test/eval helpers
+- `lllars_core/console.py`: terminal output formatting and summaries
+
+### Runtime flow
+
+1. `lllars.py` forwards to `lllars_core.cli.main`.
+2. CLI loads config and prompt input.
+3. Runner executes the agent with timeout safeguards.
+4. Shell helpers run test/eval commands.
+5. Console helpers print summary and verbose diagnostics.
+
+### Why this split
+
+- Keeps the installed executable simple and stable.
+- Isolates agent building from runtime orchestration.
+- Makes config, shell, and console concerns independently testable.
+- Supports safer refactoring by reducing cross-module coupling.
