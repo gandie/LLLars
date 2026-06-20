@@ -152,14 +152,15 @@ def print_summary(result: dict[str, Any], verbose: bool) -> None:
         if stderr_preview:
             print(f"agent_error: {stderr_preview}")
 
-    if not verbose:
-        return
-
-    print("\n-- verbose --")
     agent_stdout = str(result.get("agent_stdout", "")).strip()
     if agent_stdout:
         print("agent_output:")
         print(truncate(agent_stdout, 1200))
+
+    if not verbose:
+        return
+
+    print("\n-- verbose --")
 
     agent_stderr = str(result.get("agent_stderr", "")).strip()
     if agent_stderr:
