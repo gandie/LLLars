@@ -21,6 +21,67 @@ def truncate(value: str, max_len: int = 220) -> str:
     return text[: max_len - 3] + "..."
 
 
+def append_trace(trace: list[str], message: str, limit: int = 24) -> None:
+    clean = truncate(message, 180)
+    if not clean:
+        return
+    if trace and trace[-1] == clean:
+        return
+    trace.append(clean)
+    if len(trace) > limit:
+        del trace[:-limit]
+
+
+def summarize_agent_stream_event(event: Any) -> str | None:
+    kind = event.__class__.__name__
+
+    if kind == "PartStartEvent":
+        part = getattr(event, "part", None)
+        part_kind = part.__class__.__name__.replace("Part", "")
+        tool_name = getattr(part, "tool_name", None)
+        if isinstance(tool_name, str) and tool_name:
+            return f"model: started tool call part ({tool_name})"
+        return f"model: started {part_kind.lower()} part"
+
+    if kind == "FunctionToolCallEvent":
+        part = getattr(event, "part", None)
+        tool_name = getattr(part, "tool_name", None)
+        args = getattr(part, "args", None)
+        if isinstance(args, dict):
+            args_preview = truncate(json.dumps(args), 120)
+        else:
+            args_preview = truncate(str(args), 120)
+        if isinstance(tool_name, str) and tool_name:
+            return f"tool: call {tool_name} args={args_preview}"
+        return "tool: call"
+
+    if kind == "FunctionToolResultEvent":
+        part = getattr(event, "part", None)
+        tool_name = getattr(part, "tool_name", None)
+        if isinstance(tool_name, str) and tool_name:
+            return f"tool: result {tool_name}"
+        return "tool: result"
+
+    if kind == "BuiltinToolCallEvent":
+        part = getattr(event, "part", None)
+        tool_name = getattr(part, "tool_name", None)
+        if isinstance(tool_name, str) and tool_name:
+            return f"native-tool: call {tool_name}"
+        return "native-tool: call"
+
+    if kind == "BuiltinToolResultEvent":
+        result = getattr(event, "result", None)
+        tool_name = getattr(result, "tool_name", None)
+        if isinstance(tool_name, str) and tool_name:
+            return f"native-tool: result {tool_name}"
+        return "native-tool: result"
+
+    if kind == "FinalResultEvent":
+        return "model: final result started"
+
+    return None
+
+
 def emit_live_thought(message: str, thought_log_path: Path | None) -> None:
     if thought_log_path is None:
         return

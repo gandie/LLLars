@@ -3,19 +3,21 @@ from __future__ import annotations
 import multiprocessing as mp
 import time
 import traceback
-from collections.abc import Callable
+from collections.abc import AsyncIterable, Callable
 from pathlib import Path
 from queue import Empty
 from typing import Any
 
-from pydantic_ai import UsageLimits
+from pydantic_ai import AgentStreamEvent, RunContext, UsageLimits
 
 from lllars_core.agent_builder import build_agent
 from lllars_core.config import HarnessConfig
 from lllars_core.console import (
     Color,
+    append_trace,
     emit_live_thought,
     extract_thought_trace,
+    summarize_agent_stream_event,
     truncate,
 )
 
@@ -27,11 +29,23 @@ def run_single_agent(
     emit_thought: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     runtime_telemetry: dict[str, Any] = {}
+    live_trace: list[str] = []
 
     def _emit(message: str) -> None:
         emit_live_thought(message, thought_log_path)
         if emit_thought is not None:
             emit_thought(message)
+
+    async def _event_stream_handler(
+        ctx: RunContext[None],
+        event_stream: AsyncIterable[AgentStreamEvent],
+    ) -> None:
+        _ = ctx
+        async for event in event_stream:
+            summary = summarize_agent_stream_event(event)
+            if summary:
+                _emit(summary)
+                append_trace(live_trace, summary)
 
     try:
         agent = build_agent(
@@ -55,8 +69,16 @@ def run_single_agent(
                 "entrypoint": "run_sync",
                 "prompt_chars": len(prompt_text),
             },
+            event_stream_handler=_event_stream_handler,
         )
         _emit("agent: completed")
+
+        thought_trace = list(live_trace)
+        if not thought_trace:
+            thought_trace = extract_thought_trace(result)
+        else:
+            for item in extract_thought_trace(result):
+                append_trace(thought_trace, item)
 
         usage = result.usage
         runtime_telemetry = {
@@ -69,13 +91,14 @@ def run_single_agent(
             "output_tokens": usage.output_tokens,
             "total_tokens": usage.total_tokens,
             "details": dict(usage.details),
+            "live_trace_events": len(live_trace),
         }
 
         return {
             "returncode": 0,
             "stdout": str(result.output),
             "stderr": "",
-            "thought_trace": extract_thought_trace(result),
+            "thought_trace": thought_trace,
             "runtime_telemetry": runtime_telemetry,
         }
     except Exception:
@@ -83,7 +106,7 @@ def run_single_agent(
             "returncode": 125,
             "stdout": "",
             "stderr": traceback.format_exc(),
-            "thought_trace": [],
+            "thought_trace": list(live_trace),
             "runtime_telemetry": runtime_telemetry,
         }
 

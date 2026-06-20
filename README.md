@@ -95,6 +95,18 @@ Example:
 }
 ```
 
+### Live introspection while running
+
+Live terminal progress now uses native PydanticAI stream events from
+`event_stream_handler` on `run_sync(...)`.
+
+This means progress lines are emitted from agent lifecycle events (model parts,
+tool calls/results, and final-result start) instead of relying only on post-run
+message scraping.
+
+The final `thought_trace` is built primarily from these streamed events, with a
+fallback merge from run messages for compatibility.
+
 ## Architecture
 
 The project is intentionally split so the executable stays small and orchestration
