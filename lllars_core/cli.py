@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import time
 from pathlib import Path
 
@@ -11,7 +10,7 @@ from lllars_core.config import (
     load_config,
 )
 from lllars_core.console import Color, print_summary
-from lllars_core.runner import run_agent_with_timeout, run_single_agent
+from lllars_core.runner import run_agent_with_timeout
 from lllars_core.shell import is_eval_success, run_eval, run_tests
 
 
@@ -22,52 +21,10 @@ def main() -> None:
     ap.add_argument("--prompt-file", help="Path to prompt text file")
     ap.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
     ap.add_argument("--verbose", "-v", action="store_true")
-    ap.add_argument(
-        "--internal-run",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-    ap.add_argument(
-        "--internal-prompt-file",
-        default="",
-        help=argparse.SUPPRESS,
-    )
-    ap.add_argument(
-        "--internal-output-json",
-        default="",
-        help=argparse.SUPPRESS,
-    )
-    ap.add_argument(
-        "--internal-thought-log",
-        default="",
-        help=argparse.SUPPRESS,
-    )
     args = ap.parse_args()
 
     config_path = Path(args.config).resolve()
     cfg = load_config(config_path)
-
-    if args.internal_run:
-        if not args.internal_prompt_file or not args.internal_output_json:
-            raise SystemExit(125)
-
-        thought_log_path = None
-        if args.internal_thought_log:
-            thought_log_path = Path(args.internal_thought_log)
-
-        prompt_text = Path(args.internal_prompt_file).read_text(
-            encoding="utf-8"
-        )
-        payload = run_single_agent(
-            cfg,
-            prompt_text,
-            thought_log_path=thought_log_path,
-        )
-        Path(args.internal_output_json).write_text(
-            json.dumps(payload, indent=2),
-            encoding="utf-8",
-        )
-        raise SystemExit(int(payload.get("returncode", 125)))
 
     if args.prompt:
         prompt_text = args.prompt
@@ -102,8 +59,7 @@ def main() -> None:
         cfg=cfg,
         prompt_text=prompt_text,
         timeout_sec=args.timeout_sec,
-        show_progress=not args.internal_run,
-        config_path=config_path,
+        show_progress=True,
     )
     elapsed = round(time.time() - start, 2)
 
