@@ -1,3 +1,4 @@
+benchmark_order_insights/
 venv
 __pycache__
 *.egg-info
