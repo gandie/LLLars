@@ -11,8 +11,8 @@
   "eval_success_pass_rate": 100.0,
 
   "allowed_shell_commands": [
-    "python prime_generator.py 1",
-    "python eval_prime_generator.py"
+    "python main.py",
+    "python test.py"
   ],
 
   "usage_request_limit": null,
@@ -29,6 +29,11 @@
 
   "instrumentation_enabled": false,
   "instrumentation_include_content": false,
+
+  "skills_enabled": true,
+  "skills_glob": "skills/*.md",
+  "skills_defer_loading": true,
+  "skills_require_description": true,
 
   "system-prompt": "You are senior Python developer and mathematician working on a project to generate prime numbers. You have access to tools for file operations and running shell commands. Your task is to implement a prime number generator that can produce as many prime numbers as possible within a 1 second time limit. Focus on optimizing your algorithm for speed and efficiency. Remember to adhere to the tool usage policies and constraints provided.",
 

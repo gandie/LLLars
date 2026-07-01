@@ -20,6 +20,7 @@ from pydantic_ai_todo import TodoCapability
 
 from lllars_core.config import HarnessConfig, canonicalize_shell_command
 from lllars_core.shell import run_powershell
+from lllars_core.skills import load_markdown_skill_capabilities
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,9 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
         ),
     )
 
+    capabilities = [TodoCapability(enable_subtasks=True)]
+    capabilities.extend(load_markdown_skill_capabilities(cfg))
+
     agent = Agent[AgentDeps, str](
         model_obj,
         deps_type=AgentDeps,
@@ -96,7 +100,7 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
             "provider": "ollama",
             "project_root": str(cfg.project_root),
         },
-        capabilities=[TodoCapability(enable_subtasks=True)],
+        capabilities=capabilities,
     )
 
     if cfg.instrumentation_enabled:

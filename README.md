@@ -75,6 +75,10 @@ Supported config knobs:
 - `max_concurrency`
 - `instrumentation_enabled`
 - `instrumentation_include_content`
+- `skills_enabled`
+- `skills_glob`
+- `skills_defer_loading`
+- `skills_require_description`
 
 Example:
 
@@ -91,9 +95,47 @@ Example:
 	"tool_timeout_sec": 90,
 	"max_concurrency": null,
 	"instrumentation_enabled": false,
-	"instrumentation_include_content": false
+	"instrumentation_include_content": false,
+	"skills_enabled": false,
+	"skills_glob": "skills/*.md",
+	"skills_defer_loading": true,
+	"skills_require_description": true
 }
 ```
+
+### Markdown skills (prototype)
+
+The harness can load capability skills from markdown files with YAML frontmatter,
+based on the PydanticAI capability pattern.
+
+Config fields:
+
+- `skills_enabled`: enable markdown skill loading
+- `skills_glob`: glob under `project_root` (for example `skills/*.md`)
+- `skills_defer_loading`: when true, skills are loaded on demand via
+  `load_capability`
+- `skills_require_description`: require `description` in frontmatter
+
+Skill file format:
+
+```markdown
+---
+id: refunds
+description: Use for refund eligibility and refund handling.
+---
+Always confirm order ID before issuing a refund.
+Never issue refunds over $500 without manager approval.
+```
+
+Validation behavior:
+
+- `id` is required and must be unique across loaded skill files.
+- `description` is required unless `skills_require_description=false`.
+- Skill body (instructions) must be non-empty.
+- If `skills_enabled=true` and no files match `skills_glob`, startup fails fast.
+
+For resumable history behavior in deferred capabilities, keep each skill `id`
+stable over time.
 
 ### Live introspection while running
 

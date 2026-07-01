@@ -37,6 +37,10 @@ class HarnessConfig:
     max_concurrency: int | None
     instrumentation_enabled: bool
     instrumentation_include_content: bool
+    skills_enabled: bool
+    skills_glob: str
+    skills_defer_loading: bool
+    skills_require_description: bool
 
 
 def canonicalize_shell_command(command: str) -> str:
@@ -208,6 +212,18 @@ def load_config(config_path: Path) -> HarnessConfig:
             return default
         return max(0, value)
 
+    skills_enabled = bool(cfg.get("skills_enabled", False))
+    skills_glob = str(cfg.get("skills_glob", "")).strip()
+    skills_defer_loading = bool(cfg.get("skills_defer_loading", True))
+    skills_require_description = bool(
+        cfg.get("skills_require_description", True)
+    )
+
+    if skills_enabled and not skills_glob:
+        raise ValueError(
+            "skills_enabled is true but skills_glob is empty"
+        )
+
     return HarnessConfig(
         model=model,
         provider_url=provider_url,
@@ -252,4 +268,8 @@ def load_config(config_path: Path) -> HarnessConfig:
         instrumentation_include_content=bool(
             cfg.get("instrumentation_include_content", False)
         ),
+        skills_enabled=skills_enabled,
+        skills_glob=skills_glob,
+        skills_defer_loading=skills_defer_loading,
+        skills_require_description=skills_require_description,
     )
