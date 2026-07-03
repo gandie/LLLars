@@ -141,10 +141,31 @@ def print_summary(result: dict[str, Any], verbose: bool) -> None:
     elif isinstance(eval_error, str) and eval_error.strip():
         eval_text = f"error: {truncate(eval_error, 90)}"
 
+    runtime_telemetry = result.get("runtime_telemetry", {})
+    if isinstance(runtime_telemetry, dict):
+        loaded_ids = runtime_telemetry.get("skills_loaded_ids", [])
+        used_ids = runtime_telemetry.get("skills_used_ids", [])
+        loaded_count = int(
+            runtime_telemetry.get("skills_loaded_count", 0)
+        )
+        used_count = int(runtime_telemetry.get("skills_used_count", 0))
+    else:
+        loaded_ids = []
+        used_ids = []
+        loaded_count = 0
+        used_count = 0
+
+    loaded_text = ", ".join(str(item) for item in loaded_ids) or "none"
+    used_text = ", ".join(str(item) for item in used_ids) or "none"
+
     print(f"{status_color}{Color.BOLD}{status_text}{Color.RESET}")
     print(
         f"time: {elapsed}s | agent_rc: {agent_rc} "
         f"| test_rc: {test_rc} | eval: {eval_text}"
+    )
+    print(
+        f"skills_loaded={loaded_count} [{loaded_text}] | "
+        f"skills_used={used_count} [{used_text}]"
     )
 
     if not success:
@@ -168,7 +189,7 @@ def print_summary(result: dict[str, Any], verbose: bool) -> None:
         print(truncate(agent_stderr, 1200))
 
     print("telemetry:")
-    print(json.dumps(result.get("runtime_telemetry", {}), indent=2))
+    print(json.dumps(runtime_telemetry, indent=2))
 
     print("raw_result:")
     print(json.dumps(result, indent=2))

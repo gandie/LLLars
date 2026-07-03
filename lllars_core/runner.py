@@ -7,6 +7,7 @@ from collections.abc import AsyncIterable, Callable
 from pathlib import Path
 from queue import Empty
 from typing import Any
+import json
 
 from pydantic_ai import AgentStreamEvent, RunContext, UsageLimits
 
@@ -20,6 +21,36 @@ from lllars_core.console import (
     summarize_agent_stream_event,
     truncate,
 )
+from lllars_core.skills import configured_markdown_skill_ids
+
+
+def _extract_loaded_skill_id(event: AgentStreamEvent) -> str | None:
+    if event.__class__.__name__ != "FunctionToolCallEvent":
+        return None
+
+    part = getattr(event, "part", None)
+    tool_name = getattr(part, "tool_name", None)
+    if tool_name != "load_capability":
+        return None
+
+    args = getattr(part, "args", None)
+    if isinstance(args, dict):
+        value = args.get("id")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        return None
+
+    if isinstance(args, str):
+        try:
+            parsed = json.loads(args)
+        except Exception:
+            return None
+        if not isinstance(parsed, dict):
+            return None
+        value = parsed.get("id")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def _drain_agent_events(
@@ -86,6 +117,9 @@ def run_single_agent(
 ) -> dict[str, Any]:
     runtime_telemetry: dict[str, Any] = {}
     live_trace: list[str] = []
+    configured_skill_ids = configured_markdown_skill_ids(cfg)
+    used_skill_ids: list[str] = []
+    used_skill_id_set: set[str] = set()
 
     def _emit(message: str) -> None:
         emit_live_thought(message, thought_log_path)
@@ -98,6 +132,14 @@ def run_single_agent(
     ) -> None:
         _ = ctx
         async for event in event_stream:
+            loaded_skill_id = _extract_loaded_skill_id(event)
+            if (
+                loaded_skill_id
+                and loaded_skill_id not in used_skill_id_set
+            ):
+                used_skill_id_set.add(loaded_skill_id)
+                used_skill_ids.append(loaded_skill_id)
+                _emit(f"skills-used: {loaded_skill_id}")
             summary = summarize_agent_stream_event(event)
             if summary:
                 _emit(summary)
@@ -109,6 +151,12 @@ def run_single_agent(
             emit_thought=_emit,
         )
         deps = make_agent_deps(cfg)
+        if configured_skill_ids:
+            _emit(
+                "skills-loaded: " + ", ".join(configured_skill_ids)
+            )
+        else:
+            _emit("skills-loaded: none")
         _emit("agent: started")
         result = agent.run_sync(
             prompt_text,
@@ -150,6 +198,12 @@ def run_single_agent(
             "total_tokens": usage.total_tokens,
             "details": dict(usage.details),
             "live_trace_events": len(live_trace),
+            "skills_enabled": cfg.skills_enabled,
+            "skills_defer_loading": cfg.skills_defer_loading,
+            "skills_loaded_ids": list(configured_skill_ids),
+            "skills_loaded_count": len(configured_skill_ids),
+            "skills_used_ids": list(used_skill_ids),
+            "skills_used_count": len(used_skill_ids),
         }
 
         return {

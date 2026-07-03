@@ -12,6 +12,7 @@ from lllars_core.config import (
 from lllars_core.console import Color, print_summary
 from lllars_core.runner import run_agent_with_timeout
 from lllars_core.shell import is_eval_success, run_eval, run_tests
+from lllars_core.skills import configured_markdown_skill_ids
 
 
 def main() -> None:
@@ -53,6 +54,16 @@ def main() -> None:
         f"max_concurrency={_fmt(cfg.max_concurrency)}; "
         "instrumentation="
         f"{cfg.instrumentation_enabled}"
+    )
+
+    skill_ids = configured_markdown_skill_ids(cfg)
+    skill_ids_text = ", ".join(skill_ids) if skill_ids else "none"
+    print(
+        f"{Color.CYAN}[skills]{Color.RESET} "
+        f"enabled={cfg.skills_enabled}; "
+        f"defer_loading={cfg.skills_defer_loading}; "
+        f"loaded={len(skill_ids)}; "
+        f"ids={skill_ids_text}"
     )
 
     start = time.time()

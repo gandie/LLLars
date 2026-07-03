@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -9,11 +10,38 @@ from pydantic_ai.capabilities import AbstractCapability, Capability
 from lllars_core.config import HarnessConfig
 
 
+@dataclass(frozen=True)
+class MarkdownSkillSpec:
+    skill_id: str
+    description: str | None
+    instructions: str
+    source_path: str
+
+
+def _discover_skill_paths(cfg: HarnessConfig) -> list[Path]:
+    if not cfg.skills_enabled:
+        return []
+
+    skill_paths = sorted(
+        (
+            path
+            for path in cfg.project_root.glob(cfg.skills_glob)
+            if path.is_file()
+        ),
+        key=lambda path: str(path.relative_to(cfg.project_root)).lower(),
+    )
+    if not skill_paths:
+        raise ValueError(
+            "No markdown skills matched skills_glob under project_root: "
+            f"{cfg.skills_glob}"
+        )
+    return skill_paths
+
+
 def _parse_markdown_skill(
     path: Path,
     require_description: bool,
-    defer_loading: bool,
-) -> AbstractCapability[Any]:
+) -> MarkdownSkillSpec:
     raw = path.read_text(encoding="utf-8")
     if not raw.startswith("---"):
         raise ValueError(
@@ -49,12 +77,42 @@ def _parse_markdown_skill(
             f"Invalid skill file {path}: instructions body is empty"
         )
 
-    return Capability[Any](
-        id=capability_id,
+    return MarkdownSkillSpec(
+        skill_id=capability_id,
         description=description or None,
         instructions=instructions,
-        defer_loading=defer_loading,
+        source_path=str(path),
     )
+
+
+def load_markdown_skill_specs(cfg: HarnessConfig) -> list[MarkdownSkillSpec]:
+    if not cfg.skills_enabled:
+        return []
+
+    skill_paths = _discover_skill_paths(cfg)
+    specs: list[MarkdownSkillSpec] = []
+    seen_ids: set[str] = set()
+
+    for path in skill_paths:
+        spec = _parse_markdown_skill(
+            path=path,
+            require_description=cfg.skills_require_description,
+        )
+        if spec.skill_id in seen_ids:
+            raise ValueError(
+                "Duplicate skill id found while loading markdown skills: "
+                f"{spec.skill_id}"
+            )
+        seen_ids.add(spec.skill_id)
+        specs.append(spec)
+
+    return specs
+
+
+def configured_markdown_skill_ids(cfg: HarnessConfig) -> tuple[str, ...]:
+    if not cfg.skills_enabled:
+        return ()
+    return tuple(spec.skill_id for spec in load_markdown_skill_specs(cfg))
 
 
 def load_markdown_skill_capabilities(
@@ -63,36 +121,15 @@ def load_markdown_skill_capabilities(
     if not cfg.skills_enabled:
         return []
 
-    skill_paths = sorted(
-        (
-            path
-            for path in cfg.project_root.glob(cfg.skills_glob)
-            if path.is_file()
-        ),
-        key=lambda path: str(path.relative_to(cfg.project_root)).lower(),
-    )
-    if not skill_paths:
-        raise ValueError(
-            "No markdown skills matched skills_glob under project_root: "
-            f"{cfg.skills_glob}"
-        )
-
     capabilities: list[AbstractCapability[Any]] = []
-    seen_ids: set[str] = set()
-
-    for path in skill_paths:
-        capability = _parse_markdown_skill(
-            path=path,
-            require_description=cfg.skills_require_description,
-            defer_loading=cfg.skills_defer_loading,
-        )
-        capability_id = str(capability.id)
-        if capability_id in seen_ids:
-            raise ValueError(
-                "Duplicate skill id found while loading markdown skills: "
-                f"{capability_id}"
+    for spec in load_markdown_skill_specs(cfg):
+        capabilities.append(
+            Capability[Any](
+                id=spec.skill_id,
+                description=spec.description,
+                instructions=spec.instructions,
+                defer_loading=cfg.skills_defer_loading,
             )
-        seen_ids.add(capability_id)
-        capabilities.append(capability)
+        )
 
     return capabilities
