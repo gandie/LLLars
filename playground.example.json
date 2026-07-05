@@ -36,7 +36,7 @@
   "skills_require_description": true,
 
   "mcp_enabled": true,
-  "mcp_config_path": "playground/mcp.servers.json",
+  "mcp_config_path": "mcp.servers.json",
   "mcp_init_timeout_sec": 60,
 
   "system-prompt": "You are senior Python developer. You have access to tools for file operations and running shell commands. Remember to adhere to the tool usage policies and constraints provided.",
