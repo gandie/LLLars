@@ -11,6 +11,7 @@ DEFAULT_USAGE_TOOL_CALLS_LIMIT = 24
 DEFAULT_AGENT_RETRIES_TOOLS = 1
 DEFAULT_AGENT_RETRIES_OUTPUT = 1
 DEFAULT_TOOL_TIMEOUT_SEC = 90.0
+DEFAULT_MCP_INIT_TIMEOUT_SEC = 60.0
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,9 @@ class HarnessConfig:
     skills_glob: str
     skills_defer_loading: bool
     skills_require_description: bool
+    mcp_enabled: bool
+    mcp_config_path: Path | None
+    mcp_init_timeout_sec: float
 
 
 def canonicalize_shell_command(command: str) -> str:
@@ -224,6 +228,32 @@ def load_config(config_path: Path) -> HarnessConfig:
             "skills_enabled is true but skills_glob is empty"
         )
 
+    mcp_enabled = bool(cfg.get("mcp_enabled", False))
+    mcp_config_raw = str(cfg.get("mcp_config_path", "")).strip()
+    mcp_config_path: Path | None = None
+    if mcp_config_raw:
+        mcp_config_path = (ROOT / mcp_config_raw).resolve()
+
+    mcp_init_timeout_raw = cfg.get(
+        "mcp_init_timeout_sec", DEFAULT_MCP_INIT_TIMEOUT_SEC
+    )
+    try:
+        mcp_init_timeout_sec = float(mcp_init_timeout_raw)
+    except (TypeError, ValueError):
+        mcp_init_timeout_sec = DEFAULT_MCP_INIT_TIMEOUT_SEC
+    if mcp_init_timeout_sec <= 0:
+        mcp_init_timeout_sec = DEFAULT_MCP_INIT_TIMEOUT_SEC
+
+    if mcp_enabled:
+        if mcp_config_path is None:
+            raise ValueError(
+                "mcp_enabled is true but mcp_config_path is empty"
+            )
+        if not mcp_config_path.exists() or not mcp_config_path.is_file():
+            raise ValueError(
+                f"Invalid mcp_config_path: {mcp_config_path}"
+            )
+
     return HarnessConfig(
         model=model,
         provider_url=provider_url,
@@ -272,4 +302,7 @@ def load_config(config_path: Path) -> HarnessConfig:
         skills_glob=skills_glob,
         skills_defer_loading=skills_defer_loading,
         skills_require_description=skills_require_description,
+        mcp_enabled=mcp_enabled,
+        mcp_config_path=mcp_config_path,
+        mcp_init_timeout_sec=mcp_init_timeout_sec,
     )

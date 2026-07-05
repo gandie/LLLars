@@ -12,6 +12,7 @@ import json
 from pydantic_ai import AgentStreamEvent, RunContext, UsageLimits
 
 from lllars_core.agent_builder import build_agent, make_agent_deps
+from lllars_core.asyncio_compat import configure_windows_event_loop_policy
 from lllars_core.config import HarnessConfig
 from lllars_core.console import (
     Color,
@@ -115,6 +116,8 @@ def run_single_agent(
     thought_log_path: Path | None = None,
     emit_thought: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
+    configure_windows_event_loop_policy()
+
     runtime_telemetry: dict[str, Any] = {}
     live_trace: list[str] = []
     configured_skill_ids = configured_markdown_skill_ids(cfg)

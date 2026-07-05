@@ -35,6 +35,10 @@
   "skills_defer_loading": false,
   "skills_require_description": true,
 
+  "mcp_enabled": true,
+  "mcp_config_path": "playground/mcp.servers.json",
+  "mcp_init_timeout_sec": 60,
+
   "system-prompt": "You are senior Python developer. You have access to tools for file operations and running shell commands. Remember to adhere to the tool usage policies and constraints provided.",
   "tool-policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- For shell execution, call list_allowed_shell_commands first, then run_allowlisted_shell(command_id=...).\n- Stay within configured native usage limits and retries."
 }

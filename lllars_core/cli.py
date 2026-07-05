@@ -10,6 +10,7 @@ from lllars_core.config import (
     load_config,
 )
 from lllars_core.console import Color, print_summary
+from lllars_core.mcp_preflight import run_mcp_preflight
 from lllars_core.runner import run_agent_with_timeout
 from lllars_core.shell import is_eval_success, run_eval, run_tests
 from lllars_core.skills import configured_markdown_skill_ids
@@ -21,6 +22,11 @@ def main() -> None:
     ap.add_argument("--prompt", help="Prompt text to run")
     ap.add_argument("--prompt-file", help="Path to prompt text file")
     ap.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
+    ap.add_argument(
+        "--skip-mcp-preflight",
+        action="store_true",
+        help="Skip MCP connectivity preflight check",
+    )
     ap.add_argument("--verbose", "-v", action="store_true")
     args = ap.parse_args()
 
@@ -65,6 +71,29 @@ def main() -> None:
         f"loaded={len(skill_ids)}; "
         f"ids={skill_ids_text}"
     )
+
+    mcp_config_text = (
+        str(cfg.mcp_config_path)
+        if cfg.mcp_config_path is not None
+        else "none"
+    )
+    print(
+        f"{Color.CYAN}[mcp]{Color.RESET} "
+        f"enabled={cfg.mcp_enabled}; "
+        f"config={mcp_config_text}; "
+        f"init_timeout_sec={cfg.mcp_init_timeout_sec}"
+    )
+
+    if cfg.mcp_enabled and not args.skip_mcp_preflight:
+        print(f"{Color.CYAN}[mcp] preflight...{Color.RESET}")
+        mcp_ok, mcp_lines = run_mcp_preflight(cfg)
+        if mcp_ok:
+            print(f"{Color.GREEN}[mcp] preflight ok{Color.RESET}")
+        else:
+            print(f"{Color.RED}[mcp] preflight failed{Color.RESET}")
+            for item in mcp_lines:
+                print(f"{Color.YELLOW}[mcp] {item}{Color.RESET}")
+            raise SystemExit(2)
 
     start = time.time()
     (

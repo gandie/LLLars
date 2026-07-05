@@ -19,6 +19,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 from pydantic_ai_todo import TodoCapability
 
 from lllars_core.config import HarnessConfig, canonicalize_shell_command
+from lllars_core.mcp_loader import load_toolsets_from_mcp_config
 from lllars_core.shell import run_powershell
 from lllars_core.skills import load_markdown_skill_capabilities
 
@@ -84,6 +85,13 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
     capabilities = [TodoCapability(enable_subtasks=True)]
     capabilities.extend(load_markdown_skill_capabilities(cfg))
 
+    toolsets: list[object] = []
+    if cfg.mcp_enabled and cfg.mcp_config_path is not None:
+        toolsets = load_toolsets_from_mcp_config(
+            mcp_config_path=cfg.mcp_config_path,
+            init_timeout_sec=cfg.mcp_init_timeout_sec,
+        )
+
     agent = Agent[AgentDeps, str](
         model_obj,
         deps_type=AgentDeps,
@@ -101,6 +109,7 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
             "project_root": str(cfg.project_root),
         },
         capabilities=capabilities,
+        toolsets=toolsets,
     )
 
     if cfg.instrumentation_enabled:
