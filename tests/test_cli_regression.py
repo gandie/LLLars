@@ -12,7 +12,15 @@ from lllars_core.runtime_models import RunResult
 
 class CliRegressionTests(unittest.TestCase):
     def test_oneshot_requires_prompt_or_prompt_file(self) -> None:
-        cfg = SimpleNamespace()
+        cfg = SimpleNamespace(
+            model="test-model",
+            provider_url="http://localhost:11434",
+            project_root=Path("playground").resolve(),
+            mount_work_root=Path("playground").resolve(),
+            command_profile="none",
+            test_command=None,
+            eval_command=None,
+        )
 
         with (
             patch.object(
@@ -29,7 +37,15 @@ class CliRegressionTests(unittest.TestCase):
                 main()
 
     def test_oneshot_uses_run_job_and_returns_success_exit_code(self) -> None:
-        cfg = SimpleNamespace()
+        cfg = SimpleNamespace(
+            model="test-model",
+            provider_url="http://localhost:11434",
+            project_root=Path("playground").resolve(),
+            mount_work_root=Path("playground").resolve(),
+            command_profile="none",
+            test_command=None,
+            eval_command=None,
+        )
 
         with (
             patch.object(
@@ -81,7 +97,12 @@ class CliRegressionTests(unittest.TestCase):
         print_summary.assert_called_once()
 
     def test_serve_uses_runtime_app_with_uvicorn(self) -> None:
-        cfg = SimpleNamespace(queue_backend="inmemory")
+        cfg = SimpleNamespace(
+            queue_backend="inmemory",
+            service_host="127.0.0.1",
+            service_port=8123,
+            service_workers=1,
+        )
 
         with (
             patch.object(
@@ -122,7 +143,12 @@ class CliRegressionTests(unittest.TestCase):
         )
 
     def test_serve_rejects_unsupported_queue_backend(self) -> None:
-        cfg = SimpleNamespace(queue_backend="inmemory")
+        cfg = SimpleNamespace(
+            queue_backend="redis",
+            service_host="127.0.0.1",
+            service_port=8000,
+            service_workers=1,
+        )
 
         with (
             patch.object(

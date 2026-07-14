@@ -15,8 +15,25 @@ from lllars_core.runtime_api import RuntimeService, create_runtime_app
 
 
 class RuntimeApiTests(unittest.TestCase):
+    def test_submit_rejects_missing_run_fields_in_request(
+        self,
+    ) -> None:
+        cfg = SimpleNamespace(model="", provider_url="")
+        app = create_runtime_app(cfg)
+        client = TestClient(app)
+
+        submit_resp = client.post(
+            "/jobs",
+            json={"prompt": "hello", "timeout_sec": 5},
+        )
+
+        self.assertEqual(submit_resp.status_code, 422)
+
     def test_submit_and_poll_until_terminal_state(self) -> None:
-        cfg = SimpleNamespace()
+        cfg = SimpleNamespace(
+            model="test-model",
+            provider_url="http://localhost:11434",
+        )
         app = create_runtime_app(cfg)
         client = TestClient(app)
 
@@ -33,7 +50,16 @@ class RuntimeApiTests(unittest.TestCase):
         ):
             submit_resp = client.post(
                 "/jobs",
-                json={"prompt": "hello", "timeout_sec": 5},
+                json={
+                    "prompt": "hello",
+                    "run": {
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
+                    "timeout_sec": 5,
+                },
             )
 
             self.assertEqual(submit_resp.status_code, 202)
@@ -79,7 +105,16 @@ class RuntimeApiTests(unittest.TestCase):
             cfg = SimpleNamespace(mount_artifacts_root=Path(tmpdir))
             service = RuntimeService(cfg=cfg)
             spec = service.store.create(
-                JobSpec(prompt="hello", timeout_sec=5),
+                JobSpec(
+                    prompt="hello",
+                    run={
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
+                    timeout_sec=5,
+                ),
                 job_id="job-success",
             ).spec
 
@@ -126,7 +161,16 @@ class RuntimeApiTests(unittest.TestCase):
             cfg = SimpleNamespace(mount_artifacts_root=Path(tmpdir))
             service = RuntimeService(cfg=cfg)
             spec = service.store.create(
-                JobSpec(prompt="hello", timeout_sec=5),
+                JobSpec(
+                    prompt="hello",
+                    run={
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
+                    timeout_sec=5,
+                ),
                 job_id="job-failure",
             ).spec
 

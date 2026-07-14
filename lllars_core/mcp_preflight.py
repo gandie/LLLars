@@ -30,6 +30,13 @@ def _build_ollama_tags_url(provider_url: str) -> str:
 
 
 def _check_model_endpoint(cfg: HarnessConfig) -> tuple[bool, list[str]]:
+    if cfg.service_mode == "serve" and (
+        not str(cfg.model).strip() or not str(cfg.provider_url).strip()
+    ):
+        return True, [
+            "model_endpoint: skipped (serve mode without run config)"
+        ]
+
     if cfg.network_policy == "offline":
         return True, ["model_endpoint: skipped (network_policy=offline)"]
 

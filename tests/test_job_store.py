@@ -7,6 +7,18 @@ from lllars_core.job_store import InMemoryJobStore, InvalidTransitionError
 from lllars_core.runtime_models import JobSpec, RunResult
 
 
+def _job_spec(prompt: str = "hello") -> JobSpec:
+    return JobSpec(
+        prompt=prompt,
+        run={
+            "model": "test-model",
+            "provider_url": "http://localhost:11434",
+            "project_root": ".",
+            "command_profile": "none",
+        },
+    )
+
+
 def _ok_result() -> RunResult:
     return RunResult(
         success=True,
@@ -20,7 +32,7 @@ def _ok_result() -> RunResult:
 class InMemoryJobStoreTests(unittest.TestCase):
     def test_create_get_list_primitives(self) -> None:
         store = InMemoryJobStore()
-        created = store.create(JobSpec(prompt="hello"), job_id="job-1")
+        created = store.create(_job_spec(), job_id="job-1")
 
         self.assertEqual(created.job_id, "job-1")
         self.assertEqual(created.status, "queued")
@@ -36,14 +48,14 @@ class InMemoryJobStoreTests(unittest.TestCase):
 
     def test_invalid_transition_cannot_skip_state(self) -> None:
         store = InMemoryJobStore()
-        store.create(JobSpec(prompt="hello"), job_id="job-1")
+        store.create(_job_spec(), job_id="job-1")
 
         with self.assertRaises(InvalidTransitionError):
             store.update("job-1", status="succeeded", result=_ok_result())
 
     def test_valid_running_to_succeeded_transition(self) -> None:
         store = InMemoryJobStore()
-        store.create(JobSpec(prompt="hello"), job_id="job-1")
+        store.create(_job_spec(), job_id="job-1")
         store.update("job-1", status="running")
 
         finished = store.update(
@@ -60,7 +72,7 @@ class InMemoryJobStoreTests(unittest.TestCase):
 
     def test_cancel_is_idempotent_for_terminal_states(self) -> None:
         store = InMemoryJobStore()
-        store.create(JobSpec(prompt="hello"), job_id="job-1")
+        store.create(_job_spec(), job_id="job-1")
 
         first = store.cancel("job-1")
         second = store.cancel("job-1")
@@ -70,7 +82,7 @@ class InMemoryJobStoreTests(unittest.TestCase):
 
     def test_cancel_race_with_success_transition(self) -> None:
         store = InMemoryJobStore()
-        store.create(JobSpec(prompt="hello"), job_id="job-1")
+        store.create(_job_spec(), job_id="job-1")
         store.update("job-1", status="running")
 
         barrier = threading.Barrier(2)

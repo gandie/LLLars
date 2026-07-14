@@ -32,6 +32,9 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
             rc = run_smoke_test(
                 base_url="http://127.0.0.1:8000",
                 prompt="hello",
+                model="test-model",
+                provider_url="http://localhost:11434",
+                project_root=".",
                 poll_interval_sec=0.01,
                 timeout_sec=1.0,
             )
@@ -58,6 +61,9 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
             rc = run_smoke_test(
                 base_url="http://127.0.0.1:8000",
                 prompt="hello",
+                model="test-model",
+                provider_url="http://localhost:11434",
+                project_root=".",
                 poll_interval_sec=0.01,
                 timeout_sec=1.0,
             )

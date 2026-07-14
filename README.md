@@ -175,10 +175,10 @@ Environment file support:
 Copy-Item .\.env.runtime.example .\.env.runtime -Force
 ```
 
-Run the runtime API with build + env-file support:
+Run the runtime API with the env-file-first contract:
 
 ```powershell
-docker compose -f .\docker-compose.runtime.yml up --build
+docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime up --build
 ```
 
 This compose target wires the runtime mount boundaries explicitly:
@@ -186,22 +186,38 @@ This compose target wires the runtime mount boundaries explicitly:
 - `/work` -> named volume `lllars-work`
 - `/config` -> named volume `lllars-config`
 - `/artifacts` -> named volume `lllars-artifacts`
+- `/.env.runtime` -> mounted to `/config/.env.runtime` and loaded by runtime config `env_file`
 
 Behavior details:
 
 - Image is built from `Dockerfile.runtime` and installs `lllars` during image build.
-- Runtime bootstraps `/config/runtime.json` from `/config/playground.example.json` using values from `.env.runtime`.
-- Service binds to `0.0.0.0:8000` in-container and publishes `localhost:${LLLARS_PORT}`.
-- On first start, defaults are seeded into volumes (`playground` into `/work`, example config into `/config`).
+- Runtime bootstraps `/work/runtime.container.json` from the checked-in split template (`docker/runtime.container.json`) once, with `env_file=/config/.env.runtime`.
+- The template keeps only `service` keys; serve startup does not require run settings.
+- Run settings are only required when submitting jobs.
+- Service host/port/workers/queue defaults are resolved through `load_config(...)` from the same env file.
+- Service binds to `service.host:service.port` and publishes `localhost:${LLLARS_PORT}`.
+- On first start, defaults are seeded into volumes (`playground` into `/work`, runtime config template into `/config`).
 
 Common environment knobs in `.env.runtime`:
 
+- `MODEL`
 - `OLLAMA_BASE_URL`
+- `PROJECT_ROOT`
+- `COMMAND_PROFILE`
+- `MOUNT_WORK_ROOT`
+- `MOUNT_CONFIG_ROOT`
+- `MOUNT_ARTIFACTS_ROOT`
+- `LLLARS_HOST`
 - `LLLARS_PORT`
+- `LLLARS_WORKERS`
 - `QUEUE_BACKEND`
 - `NETWORK_POLICY`
 - `MCP_ENABLED`
 - `SKIP_MCP_PREFLIGHT`
+
+Legacy fallback:
+
+- Existing mounted JSON flow remains possible by directly editing `/work/runtime.container.json` in the container volume and reusing `.env.runtime` for values.
 
 Minimal submit check (service accepts job requests on documented port):
 

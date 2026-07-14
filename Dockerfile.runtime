@@ -5,16 +5,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /opt/lllars
 
-COPY pyproject.toml README.md lllars.py playground.example.json ./
-COPY lllars_core ./lllars_core
-COPY playground ./playground
-COPY mcp.servers.json ./mcp.servers.json
-COPY docker/runtime-entrypoint.sh /usr/local/bin/runtime-entrypoint.sh
+COPY . .
 
 RUN pip install --no-cache-dir . \
-    && chmod +x /usr/local/bin/runtime-entrypoint.sh \
+    && chmod +x /opt/lllars/docker/runtime-entrypoint.sh \
     && mkdir -p /config /work /artifacts /opt/lllars/defaults/config /opt/lllars/defaults/work \
-    && cp /opt/lllars/playground.example.json /opt/lllars/defaults/config/playground.example.json \
+    && cp /opt/lllars/docker/runtime.container.json /opt/lllars/defaults/config/ \
+    && cp /opt/lllars/.env.runtime.example /opt/lllars/defaults/config/ \
     && cp -R /opt/lllars/playground/. /opt/lllars/defaults/work/
 
-ENTRYPOINT ["/usr/local/bin/runtime-entrypoint.sh"]
+ENTRYPOINT ["/opt/lllars/docker/runtime-entrypoint.sh"]

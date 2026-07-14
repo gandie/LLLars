@@ -7,11 +7,12 @@ services:
     env_file:
       - .env.runtime
     ports:
-      - "${LLLARS_PORT:-8000}:8000"
+      - "${LLLARS_PORT:-8000}:${LLLARS_PORT:-8000}"
     volumes:
       - lllars-work:/work
       - lllars-config:/config
       - lllars-artifacts:/artifacts
+      - ./.env.runtime:/config/.env.runtime:ro
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"

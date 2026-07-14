@@ -46,6 +46,9 @@ def _request_json(
 def run_smoke_test(
     base_url: str,
     prompt: str,
+    model: str,
+    provider_url: str,
+    project_root: str,
     poll_interval_sec: float,
     timeout_sec: float,
 ) -> int:
@@ -55,7 +58,19 @@ def run_smoke_test(
     print("health:")
     print(json.dumps(health, indent=2))
 
-    submit = _request_json("POST", f"{base}/jobs", {"prompt": prompt})
+    submit = _request_json(
+        "POST",
+        f"{base}/jobs",
+        {
+            "prompt": prompt,
+            "run": {
+                "model": model,
+                "provider_url": provider_url,
+                "project_root": project_root,
+                "command_profile": "none",
+            },
+        },
+    )
     job_id = str(submit.get("job_id", "")).strip()
     if not job_id:
         raise RuntimeError(f"Submit response missing job_id: {submit}")
@@ -98,6 +113,15 @@ def main() -> None:
     )
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--prompt", default="runtime api smoke test")
+    parser.add_argument(
+        "--model",
+        default="ollama:rafw007/qwen35-claude-coder:9b",
+    )
+    parser.add_argument(
+        "--provider-url",
+        default="http://host.docker.internal:11434",
+    )
+    parser.add_argument("--project-root", default=".")
     parser.add_argument("--poll-interval-sec", type=float, default=0.3)
     parser.add_argument("--timeout-sec", type=float, default=120.0)
     args = parser.parse_args()
@@ -106,6 +130,9 @@ def main() -> None:
         run_smoke_test(
             base_url=args.base_url,
             prompt=args.prompt,
+            model=args.model,
+            provider_url=args.provider_url,
+            project_root=args.project_root,
             poll_interval_sec=args.poll_interval_sec,
             timeout_sec=args.timeout_sec,
         )

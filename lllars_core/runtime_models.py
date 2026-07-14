@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from lllars_core.config import RunConfig
+
 JobState = Literal[
     "queued",
     "running",
@@ -19,6 +21,7 @@ class _StrictModel(BaseModel):
 
 class JobSpec(_StrictModel):
     prompt: str = Field(min_length=1)
+    run: RunConfig
     timeout_sec: int = Field(default=600, gt=0)
     config_path: str | None = None
 

@@ -419,18 +419,59 @@ Risks:
 - Running the one-shot smoke command can mutate files under playground depending on prompt execution path.
 Next handoff note:
 - Proceed with T14 Docker Runtime Setup Simplification using the new split + env-file config contract.
+
+Task: T14 Docker Runtime Setup Simplification
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- docker-compose.runtime.yml
+- Dockerfile.runtime
+- docker/runtime-entrypoint.sh
+- docker/runtime.container.json
+- .env.runtime
+- .env.runtime.example
+- lllars_core/config.py
+- lllars_core/runtime_models.py
+- lllars_core/runtime_runner.py
+- lllars_core/cli.py
+- lllars_core/mcp_preflight.py
+- lllars_core/runtime_api.py
+- runtime_api_smoke_test.py
+- tests/test_config.py
+- tests/test_runtime_api.py
+- tests/test_runtime_runner.py
+- tests/test_job_store.py
+- tests/test_runtime_api_smoke_test.py
+- tests/test_cli_regression.py
+- README.md
+Validation command(s):
+- docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime config
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_job_store.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_cli_regression.py"
+Result:
+- PASS
+- Docker startup contract now uses a single env-file path with service-only bootstrap config.
+- Serve startup no longer requires run settings; run settings are carried by per-job `JobSpec.run`.
+- Run schema is reused from `RunConfig` (no duplicate run payload model).
+- Local runtime env examples simplified to service-focused variables.
+Risks:
+- Runtime smoke command still requires service process to be running before invocation.
+Next handoff note:
+- Proceed with T15 Static Runtime Frontend via FastAPI.
 ```
 
 ## Post-T12 Increment Backlog (Residual-Driven)
 
 ### Priority Sequence (Updated)
-1. T14 Docker Runtime Setup Simplification
-2. T15 Static Runtime Frontend via FastAPI
-3. T16 Runtime Cancellation Hard-Stop
-4. T17 Fully Automated Serve Smoke Test
-5. T18 Command Profile Externalization
-6. T19 Provider-Aware Startup Preflight (deferred)
-7. T20 Queue Backend: Redis Minimum (deferred)
+1. T15 Static Runtime Frontend via FastAPI
+2. T16 Runtime Cancellation Hard-Stop
+3. T17 Fully Automated Serve Smoke Test
+4. T18 Command Profile Externalization
+5. T19 Provider-Aware Startup Preflight (deferred)
+6. T20 Queue Backend: Redis Minimum (deferred)
 
 ### T13 Runtime Config Split + Native Env File Support (DONE 2026-07-14)
 - Goal: Decouple runtime service configuration from per-job run configuration and support env files natively.
@@ -452,7 +493,7 @@ Next handoff note:
 - Completion artifact:
   - Diff + tests proving env-file merge precedence and service/run split behavior.
 
-### T14 Docker Runtime Setup Simplification
+### T14 Docker Runtime Setup Simplification (DONE 2026-07-14)
 - Goal: Unlock simpler runtime deployment by aligning Docker/Compose with T13 config model.
 - Files: docker-compose.runtime.yml, Dockerfile.runtime, docker/runtime-entrypoint.sh, .env.runtime.example, README.md.
 - Adds:

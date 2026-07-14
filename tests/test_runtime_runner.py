@@ -41,7 +41,16 @@ class RuntimeRunnerTests(unittest.TestCase):
             ),
         ):
             result = run_job(
-                JobSpec(prompt="hello", timeout_sec=42),
+                JobSpec(
+                    prompt="hello",
+                    run={
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
+                    timeout_sec=42,
+                ),
                 cfg=cfg,
                 show_progress=True,
                 emit_status=status_messages.append,
@@ -98,6 +107,12 @@ class RuntimeRunnerTests(unittest.TestCase):
             run_job(
                 JobSpec(
                     prompt="hello",
+                    run={
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
                     config_path="playground.example.json",
                     timeout_sec=5,
                 )

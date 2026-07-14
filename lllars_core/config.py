@@ -162,9 +162,9 @@ class RunConfig:
     model: str
     provider_url: str
     project_root: Path
-    test_command: str | None
-    eval_command: str | None
-    command_profile: str
+    test_command: str | None = None
+    eval_command: str | None = None
+    command_profile: str = DEFAULT_COMMAND_PROFILE
 
 
 @dataclass(frozen=True)
@@ -283,16 +283,11 @@ def _flatten_split_config(cfg: dict) -> dict:
             )
         return dict(cfg)
 
-    if has_service != has_run:
-        raise ValueError(
-            "Split config requires both service and run objects"
-        )
-
-    service = cfg["service"]
-    run = cfg["run"]
-    if not isinstance(service, dict):
+    service = cfg.get("service", {})
+    run = cfg.get("run", {})
+    if has_service and not isinstance(service, dict):
         raise ValueError("Config service must be an object")
-    if not isinstance(run, dict):
+    if has_run and not isinstance(run, dict):
         raise ValueError("Config run must be an object")
 
     mixed_legacy = [
@@ -388,7 +383,9 @@ def _validate_choice(
 
 
 def _load_commands(cfg: dict) -> tuple[str | None, str | None]:
-    commands = cfg.get("commands")
+    commands = cfg.get("commands", {})
+    if commands is None:
+        commands = {}
     if not isinstance(commands, dict):
         raise ValueError("Config requires commands object")
 
@@ -488,21 +485,25 @@ def load_config(
     }
     cfg = _merge_layers(defaults, env_layer, json_layer, overrides)
 
-    model = _require_non_empty_str(
+    service_mode = _validate_choice(
         cfg,
-        "model",
-        "Config requires model and provider-url",
+        "service_mode",
+        default=DEFAULT_SERVICE_MODE,
+        valid_values=VALID_SERVICE_MODES,
     )
-    provider_url = _require_non_empty_str(
-        cfg,
-        "provider-url",
-        "Config requires model and provider-url",
+
+    model_raw = str(cfg.get("model", "")).strip()
+    provider_url_raw = str(cfg.get("provider-url", "")).strip()
+    project_root_raw = str(cfg.get("project_root", "")).strip()
+    run_configured = bool(
+        model_raw and provider_url_raw and project_root_raw
     )
-    project_root_raw = _require_non_empty_str(
-        cfg,
-        "project_root",
-        "Config requires project_root",
-    )
+
+    if service_mode != "serve" and not run_configured:
+        raise ValueError("Config requires model and provider-url")
+
+    model = model_raw
+    provider_url = provider_url_raw
     test_command, eval_command = _load_commands(cfg)
     command_profile, profile_commands = _resolve_command_profile(cfg)
     allowed_shell_commands = _collect_allowed_shell_commands(
@@ -597,12 +598,6 @@ def load_config(
                 f"Invalid mcp_config_path: {mcp_config_path}"
             )
 
-    service_mode = _validate_choice(
-        cfg,
-        "service_mode",
-        default=DEFAULT_SERVICE_MODE,
-        valid_values=VALID_SERVICE_MODES,
-    )
     queue_backend = _validate_choice(
         cfg,
         "queue_backend",
@@ -639,13 +634,18 @@ def load_config(
         cfg,
         "mount_work_root",
         config_root=config_root,
-        default_path=(config_root / project_root_raw).resolve(),
+        default_path=(config_root / project_root_raw).resolve()
+        if project_root_raw
+        else config_root,
     )
-    project_root = resolve_project_root(
-        project_root_raw,
-        config_root=config_root,
-        mount_work_root=mount_work_root,
-    )
+    if project_root_raw:
+        project_root = resolve_project_root(
+            project_root_raw,
+            config_root=config_root,
+            mount_work_root=mount_work_root,
+        )
+    else:
+        project_root = mount_work_root
     mount_config_root = _resolve_mount_root(
         cfg,
         "mount_config_root",

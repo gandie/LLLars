@@ -27,6 +27,86 @@ def _base_config(
 
 
 class ConfigFilesystemBoundaryTests(unittest.TestCase):
+    def test_split_service_only_config_is_supported_without_run_settings(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace").mkdir(parents=True)
+
+            config = {
+                "service": {
+                    "mode": "serve",
+                    "host": "0.0.0.0",
+                    "port": 9000,
+                    "workers": 1,
+                    "mount_work_root": "workspace",
+                    "mount_config_root": ".",
+                    "mount_artifacts_root": ".",
+                    "queue_backend": "inmemory",
+                    "network_policy": "inherit",
+                },
+            }
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            cfg = load_config(config_path)
+
+            self.assertEqual(cfg.service_mode, "serve")
+            self.assertEqual(cfg.model, "")
+            self.assertEqual(cfg.provider_url, "")
+            self.assertEqual(cfg.project_root, (root / "workspace").resolve())
+
+    def test_split_service_only_config_is_supported_with_env_file(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            env_file = root / "runtime.env"
+            env_file.write_text(
+                "\n".join(
+                    [
+                        "MODEL=test-model",
+                        "OLLAMA_BASE_URL=http://localhost:11434",
+                        "PROJECT_ROOT=workspace/project",
+                        "COMMAND_PROFILE=none",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            config = {
+                "env_file": "runtime.env",
+                "service": {
+                    "mode": "serve",
+                    "host": "0.0.0.0",
+                    "port": 9000,
+                    "workers": 1,
+                    "mount_work_root": "workspace",
+                    "mount_config_root": ".",
+                    "mount_artifacts_root": ".",
+                    "queue_backend": "inmemory",
+                    "network_policy": "inherit",
+                },
+            }
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            cfg = load_config(config_path)
+
+            self.assertEqual(cfg.service_mode, "serve")
+            self.assertEqual(cfg.run.model, "test-model")
+            self.assertEqual(
+                cfg.project_root,
+                (root / "workspace" / "project").resolve(),
+            )
+            self.assertIsNone(cfg.test_command)
+            self.assertIsNone(cfg.eval_command)
+
     def test_split_service_and_run_config_is_supported(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
