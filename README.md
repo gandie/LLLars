@@ -56,6 +56,26 @@ Copy-Item .\lllars.example.json .\lllars.json
 lllars --config .\lllars.json --prompt "Describe this repository"
 ```
 
+### Serve mode entrypoint
+
+The CLI now exposes a dedicated serve path while keeping the existing one-shot
+path unchanged.
+
+Inspect serve options:
+
+```powershell
+lllars serve --help
+```
+
+Serve arguments:
+
+- `--host` (default `127.0.0.1`)
+- `--port` (default `8000`)
+- `--workers` (default `1`)
+- `--queue-backend` (`inmemory` or `redis`, default `inmemory`)
+
+Current status: this entrypoint is scaffolded for runtime API work planned in T6.
+
 ### Native runtime controls
 
 The harness now uses native PydanticAI runtime controls instead of custom

@@ -6,7 +6,9 @@ from pathlib import Path
 
 from lllars_core.config import (
     DEFAULT_CONFIG_PATH,
+    DEFAULT_QUEUE_BACKEND,
     DEFAULT_TIMEOUT_SEC,
+    VALID_QUEUE_BACKENDS,
     load_config,
 )
 from lllars_core.console import Color, print_summary
@@ -16,33 +18,11 @@ from lllars_core.shell import is_eval_success, run_eval, run_tests
 from lllars_core.skills import configured_markdown_skill_ids
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="LLLARS single-shot runner")
-    ap.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
-    ap.add_argument("--prompt", help="Prompt text to run")
-    ap.add_argument("--prompt-file", help="Path to prompt text file")
-    ap.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
-    ap.add_argument(
-        "--skip-mcp-preflight",
-        action="store_true",
-        help="Skip MCP connectivity preflight check",
-    )
-    ap.add_argument("--verbose", "-v", action="store_true")
-    args = ap.parse_args()
+def _fmt(value: object) -> str:
+    return "none" if value is None else str(value)
 
-    config_path = Path(args.config).resolve()
-    cfg = load_config(config_path)
 
-    if args.prompt:
-        prompt_text = args.prompt
-    elif args.prompt_file:
-        prompt_text = Path(args.prompt_file).read_text(encoding="utf-8")
-    else:
-        raise SystemExit("Provide --prompt or --prompt-file")
-
-    def _fmt(value: object) -> str:
-        return "none" if value is None else str(value)
-
+def _print_runtime_startup(cfg: object) -> None:
     print(
         f"{Color.CYAN}[native-core]{Color.RESET} "
         f"request_limit={_fmt(cfg.usage_request_limit)}; "
@@ -94,7 +74,9 @@ def main() -> None:
         f"network_policy={cfg.network_policy}"
     )
 
-    if cfg.mcp_enabled and not args.skip_mcp_preflight:
+
+def _run_mcp_preflight(cfg: object, skip_mcp_preflight: bool) -> None:
+    if cfg.mcp_enabled and not skip_mcp_preflight:
         print(f"{Color.CYAN}[mcp] preflight...{Color.RESET}")
         mcp_ok, mcp_lines = run_mcp_preflight(cfg)
         if mcp_ok:
@@ -104,6 +86,21 @@ def main() -> None:
             for item in mcp_lines:
                 print(f"{Color.YELLOW}[mcp] {item}{Color.RESET}")
             raise SystemExit(2)
+
+
+def _run_oneshot(args: argparse.Namespace) -> None:
+    config_path = Path(args.config).resolve()
+    cfg = load_config(config_path)
+
+    if args.prompt:
+        prompt_text = args.prompt
+    elif args.prompt_file:
+        prompt_text = Path(args.prompt_file).read_text(encoding="utf-8")
+    else:
+        raise SystemExit("Provide --prompt or --prompt-file")
+
+    _print_runtime_startup(cfg)
+    _run_mcp_preflight(cfg, args.skip_mcp_preflight)
 
     start = time.time()
     (
@@ -158,3 +155,66 @@ def main() -> None:
 
     print_summary(result, verbose=args.verbose)
     raise SystemExit(0 if success else 1)
+
+
+def _run_serve(args: argparse.Namespace) -> None:
+    config_path = Path(args.config).resolve()
+    cfg = load_config(config_path)
+
+    _print_runtime_startup(cfg)
+    _run_mcp_preflight(cfg, args.skip_mcp_preflight)
+
+    queue_backend = args.queue_backend or cfg.queue_backend
+    print(
+        f"{Color.CYAN}[serve]{Color.RESET} "
+        f"host={args.host}; "
+        f"port={args.port}; "
+        f"workers={args.workers}; "
+        f"queue_backend={queue_backend}"
+    )
+    print(
+        f"{Color.YELLOW}[serve] service runtime API wiring is not yet "
+        f"implemented (planned in T6).{Color.RESET}"
+    )
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="LLLARS runner")
+    ap.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+    ap.add_argument("--prompt", help="Prompt text to run")
+    ap.add_argument("--prompt-file", help="Path to prompt text file")
+    ap.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
+    ap.add_argument(
+        "--skip-mcp-preflight",
+        action="store_true",
+        help="Skip MCP connectivity preflight check",
+    )
+    ap.add_argument("--verbose", "-v", action="store_true")
+
+    subparsers = ap.add_subparsers(dest="mode")
+    serve_ap = subparsers.add_parser(
+        "serve",
+        help="Run service mode entrypoint",
+    )
+    serve_ap.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+    serve_ap.add_argument(
+        "--skip-mcp-preflight",
+        action="store_true",
+        help="Skip MCP connectivity preflight check",
+    )
+    serve_ap.add_argument("--verbose", "-v", action="store_true")
+    serve_ap.add_argument("--host", default="127.0.0.1")
+    serve_ap.add_argument("--port", type=int, default=8000)
+    serve_ap.add_argument("--workers", type=int, default=1)
+    serve_ap.add_argument(
+        "--queue-backend",
+        choices=sorted(VALID_QUEUE_BACKENDS),
+        default=DEFAULT_QUEUE_BACKEND,
+    )
+
+    args = ap.parse_args()
+    if args.mode == "serve":
+        _run_serve(args)
+        return
+
+    _run_oneshot(args)
