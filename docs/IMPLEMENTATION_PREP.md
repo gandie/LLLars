@@ -16,7 +16,7 @@ Use this contract for every task ticket.
 
 ## Task Backlog (Agent-Ready)
 
-### T1 Runtime Config Surface
+### T1 Runtime Config Surface (DONE 2026-07-14)
 - Goal: Add runtime-mode config keys and validation defaults.
 - Files: lllars_core/config.py, playground.example.json, README.md.
 - Adds: service_mode, mount_work_root, mount_config_root, mount_artifacts_root, queue_backend, network_policy.

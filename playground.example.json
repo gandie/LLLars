@@ -39,6 +39,13 @@
   "mcp_config_path": "mcp.servers.json",
   "mcp_init_timeout_sec": 60,
 
+  "service_mode": "oneshot",
+  "mount_work_root": "playground",
+  "mount_config_root": ".",
+  "mount_artifacts_root": ".",
+  "queue_backend": "inmemory",
+  "network_policy": "inherit",
+
   "system-prompt": "You are senior Python developer. You have access to tools for file operations and running shell commands. Remember to adhere to the tool usage policies and constraints provided.",
   "tool-policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- For shell execution, call list_allowed_shell_commands first, then run_allowlisted_shell(command_id=...).\n- Stay within configured native usage limits and retries."
 }

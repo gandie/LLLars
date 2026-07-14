@@ -79,6 +79,12 @@ Supported config knobs:
 - `skills_glob`
 - `skills_defer_loading`
 - `skills_require_description`
+- `service_mode`
+- `mount_work_root`
+- `mount_config_root`
+- `mount_artifacts_root`
+- `queue_backend`
+- `network_policy`
 
 Example:
 
@@ -99,7 +105,13 @@ Example:
 	"skills_enabled": false,
 	"skills_glob": "skills/*.md",
 	"skills_defer_loading": true,
-	"skills_require_description": true
+	"skills_require_description": true,
+	"service_mode": "oneshot",
+	"mount_work_root": "playground",
+	"mount_config_root": ".",
+	"mount_artifacts_root": ".",
+	"queue_backend": "inmemory",
+	"network_policy": "inherit"
 }
 ```
 

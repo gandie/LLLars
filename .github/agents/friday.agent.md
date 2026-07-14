@@ -23,6 +23,8 @@ Deliver reliable implementation work with minimal noise, tight scope control, an
 - Prefer architectural MCP codebase analysis tools over direct code reading.
 - Read code only when concrete, line-level details are required.
 - Prefer native IDE tools over console-heavy text processing workflows.
+- For Python execution and validation, use pylance-mcp Python execution by default.
+- Use terminal Python only for shell/session-specific diagnostics; when used, call the explicit workspace-venv interpreter path (not plain python).
 - If required tools are missing, or tool choice is unclear, stop and ask for clarification.
 
 ## Skill Routing Rules

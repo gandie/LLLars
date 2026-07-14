@@ -12,6 +12,13 @@ DEFAULT_AGENT_RETRIES_TOOLS = 1
 DEFAULT_AGENT_RETRIES_OUTPUT = 1
 DEFAULT_TOOL_TIMEOUT_SEC = 90.0
 DEFAULT_MCP_INIT_TIMEOUT_SEC = 60.0
+DEFAULT_SERVICE_MODE = "oneshot"
+DEFAULT_QUEUE_BACKEND = "inmemory"
+DEFAULT_NETWORK_POLICY = "inherit"
+
+VALID_SERVICE_MODES = frozenset({"oneshot", "serve"})
+VALID_QUEUE_BACKENDS = frozenset({"inmemory", "redis"})
+VALID_NETWORK_POLICIES = frozenset({"inherit", "offline"})
 
 
 @dataclass(frozen=True)
@@ -45,6 +52,12 @@ class HarnessConfig:
     mcp_enabled: bool
     mcp_config_path: Path | None
     mcp_init_timeout_sec: float
+    service_mode: str
+    mount_work_root: Path
+    mount_config_root: Path
+    mount_artifacts_root: Path
+    queue_backend: str
+    network_policy: str
 
 
 def canonicalize_shell_command(command: str) -> str:
@@ -85,6 +98,39 @@ def _resolve_project_root(cfg: dict) -> Path:
     if not project_root.exists() or not project_root.is_dir():
         raise ValueError(f"Invalid project_root: {project_root}")
     return project_root
+
+
+def _resolve_mount_root(
+    cfg: dict,
+    key: str,
+    *,
+    default_path: Path,
+) -> Path:
+    raw_value = str(cfg.get(key, "")).strip()
+    mount_root = (
+        default_path
+        if not raw_value
+        else (ROOT / raw_value).resolve()
+    )
+    if not mount_root.exists() or not mount_root.is_dir():
+        raise ValueError(f"Invalid {key}: {mount_root}")
+    return mount_root
+
+
+def _validate_choice(
+    cfg: dict,
+    key: str,
+    *,
+    default: str,
+    valid_values: frozenset[str],
+) -> str:
+    value = str(cfg.get(key, default)).strip().lower()
+    if value not in valid_values:
+        allowed = ", ".join(sorted(valid_values))
+        raise ValueError(
+            f"Invalid {key}: {value!r}. Allowed values: {allowed}"
+        )
+    return value
 
 
 def _load_commands(cfg: dict) -> tuple[str | None, str | None]:
@@ -254,6 +300,41 @@ def load_config(config_path: Path) -> HarnessConfig:
                 f"Invalid mcp_config_path: {mcp_config_path}"
             )
 
+    service_mode = _validate_choice(
+        cfg,
+        "service_mode",
+        default=DEFAULT_SERVICE_MODE,
+        valid_values=VALID_SERVICE_MODES,
+    )
+    queue_backend = _validate_choice(
+        cfg,
+        "queue_backend",
+        default=DEFAULT_QUEUE_BACKEND,
+        valid_values=VALID_QUEUE_BACKENDS,
+    )
+    network_policy = _validate_choice(
+        cfg,
+        "network_policy",
+        default=DEFAULT_NETWORK_POLICY,
+        valid_values=VALID_NETWORK_POLICIES,
+    )
+
+    mount_work_root = _resolve_mount_root(
+        cfg,
+        "mount_work_root",
+        default_path=project_root,
+    )
+    mount_config_root = _resolve_mount_root(
+        cfg,
+        "mount_config_root",
+        default_path=config_path.parent.resolve(),
+    )
+    mount_artifacts_root = _resolve_mount_root(
+        cfg,
+        "mount_artifacts_root",
+        default_path=ROOT,
+    )
+
     return HarnessConfig(
         model=model,
         provider_url=provider_url,
@@ -305,4 +386,10 @@ def load_config(config_path: Path) -> HarnessConfig:
         mcp_enabled=mcp_enabled,
         mcp_config_path=mcp_config_path,
         mcp_init_timeout_sec=mcp_init_timeout_sec,
+        service_mode=service_mode,
+        mount_work_root=mount_work_root,
+        mount_config_root=mount_config_root,
+        mount_artifacts_root=mount_artifacts_root,
+        queue_backend=queue_backend,
+        network_policy=network_policy,
     )

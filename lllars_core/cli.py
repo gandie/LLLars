@@ -84,6 +84,16 @@ def main() -> None:
         f"init_timeout_sec={cfg.mcp_init_timeout_sec}"
     )
 
+    print(
+        f"{Color.CYAN}[runtime]{Color.RESET} "
+        f"service_mode={cfg.service_mode}; "
+        f"mount_work_root={cfg.mount_work_root}; "
+        f"mount_config_root={cfg.mount_config_root}; "
+        f"mount_artifacts_root={cfg.mount_artifacts_root}; "
+        f"queue_backend={cfg.queue_backend}; "
+        f"network_policy={cfg.network_policy}"
+    )
+
     if cfg.mcp_enabled and not args.skip_mcp_preflight:
         print(f"{Color.CYAN}[mcp] preflight...{Color.RESET}")
         mcp_ok, mcp_lines = run_mcp_preflight(cfg)
