@@ -5,11 +5,163 @@ import json
 import multiprocessing as mp
 from pathlib import Path
 import subprocess
+import tempfile
 import time
+from urllib import error as url_error
+from urllib import request as url_request
 
 from lllars_core.asyncio_compat import configure_windows_event_loop_policy
 from lllars_core.config import HarnessConfig
 from lllars_core.mcp_loader import load_toolsets_from_mcp_config
+
+
+def _normalize_model_name(model_value: str) -> str:
+    value = model_value.strip()
+    if value.startswith("ollama:"):
+        return value.split(":", 1)[1]
+    return value
+
+
+def _build_ollama_tags_url(provider_url: str) -> str:
+    base_url = provider_url.strip().rstrip("/")
+    if base_url.endswith("/v1"):
+        base_url = base_url[:-3]
+    return f"{base_url}/api/tags"
+
+
+def _check_model_endpoint(cfg: HarnessConfig) -> tuple[bool, list[str]]:
+    if cfg.network_policy == "offline":
+        return True, ["model_endpoint: skipped (network_policy=offline)"]
+
+    probe_url = _build_ollama_tags_url(cfg.provider_url)
+    request = url_request.Request(
+        probe_url,
+        headers={"Accept": "application/json"},
+    )
+    try:
+        with url_request.urlopen(request, timeout=5.0) as response:
+            status = getattr(response, "status", 200)
+            payload_raw = response.read().decode("utf-8", errors="replace")
+    except url_error.URLError as exc:
+        return False, [
+            "model_endpoint: failed "
+            f"url={probe_url} reason={exc}"
+        ]
+    except Exception as exc:
+        return False, [
+            "model_endpoint: failed "
+            f"url={probe_url} reason={exc}"
+        ]
+
+    if int(status) >= 400:
+        return False, [
+            "model_endpoint: failed "
+            f"url={probe_url} http_status={status}"
+        ]
+
+    lines = [
+        f"model_endpoint: ok url={probe_url} http_status={status}"
+    ]
+
+    try:
+        payload = json.loads(payload_raw)
+    except Exception:
+        lines.append("model_endpoint: warning response is not valid JSON")
+        return True, lines
+
+    models = payload.get("models")
+    if not isinstance(models, list):
+        lines.append("model_endpoint: warning response has no models list")
+        return True, lines
+
+    configured_model = _normalize_model_name(cfg.model)
+    model_names: list[str] = []
+    for item in models:
+        if isinstance(item, dict):
+            name = item.get("name")
+            if isinstance(name, str) and name.strip():
+                model_names.append(name.strip())
+
+    if not model_names:
+        lines.append("model_endpoint: warning models list is empty")
+        return True, lines
+
+    if configured_model not in model_names:
+        sample = ", ".join(model_names[:5])
+        return False, [
+            "model_endpoint: failed "
+            f"configured_model={configured_model!r} not present; "
+            f"available_models={sample}"
+        ]
+
+    lines.append(
+        "model_endpoint: model_found "
+        f"configured_model={configured_model!r}"
+    )
+    return True, lines
+
+
+def _check_mount_writable(
+    mount_name: str,
+    mount_path: Path,
+) -> tuple[bool, str]:
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=mount_path,
+            prefix=".lllars-preflight-",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp:
+            tmp.write("preflight")
+            tmp_path = Path(tmp.name)
+        tmp_path.unlink(missing_ok=True)
+    except Exception as exc:
+        return (
+            False,
+            "mount_writable: failed "
+            f"mount={mount_name} path={mount_path} reason={exc}",
+        )
+    return (
+        True,
+        f"mount_writable: ok mount={mount_name} path={mount_path}",
+    )
+
+
+def run_startup_preflight(
+    cfg: HarnessConfig,
+    *,
+    skip_mcp_preflight: bool = False,
+) -> tuple[bool, list[str]]:
+    ok = True
+    lines: list[str] = []
+
+    model_ok, model_lines = _check_model_endpoint(cfg)
+    ok = ok and model_ok
+    lines.extend(model_lines)
+
+    for mount_name, mount_path in (
+        ("mount_work_root", cfg.mount_work_root),
+        ("mount_artifacts_root", cfg.mount_artifacts_root),
+    ):
+        mount_ok, mount_line = _check_mount_writable(mount_name, mount_path)
+        ok = ok and mount_ok
+        lines.append(mount_line)
+
+    if skip_mcp_preflight:
+        lines.append("mcp_preflight: skipped via CLI flag")
+    else:
+        mcp_ok, mcp_lines = run_mcp_preflight(cfg)
+        ok = ok and mcp_ok
+        if mcp_ok:
+            lines.append("mcp_preflight: ok")
+        else:
+            lines.append("mcp_preflight: failed")
+        for item in mcp_lines:
+            lines.append(f"mcp_preflight.detail: {item}")
+
+    return ok, lines
 
 
 def _read_servers(

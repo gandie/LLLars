@@ -79,7 +79,7 @@ Use this contract for every task ticket.
 - Validation: artifacts produced for success and failure paths.
 - Done when: post-mortem possible from artifacts only.
 
-### T10 Startup Preflight Summary
+### T10 Startup Preflight Summary (DONE 2026-07-14)
 - Goal: Runtime startup should surface environment health.
 - Files: lllars_core/cli.py, lllars_core/mcp_preflight.py.
 - Adds: model endpoint check, MCP check, mount writeability check.
@@ -327,4 +327,24 @@ Risks:
 - Exception-path artifacts intentionally contain minimal runtime details because no RunResult exists.
 Next handoff note:
 - Proceed with T10 Startup Preflight Summary and keep startup diagnostics explicit and structured.
+
+Task: T10 Startup Preflight Summary
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/cli.py
+- lllars_core/mcp_preflight.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_*.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+- .\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "startup preflight smoke"
+Result:
+- PASS
+- Added unified startup preflight flow for model endpoint health, mount writeability, and MCP readiness.
+- Startup now exits early with structured diagnostics when preflight fails.
+- Preserved successful startup flow for healthy environment.
+Risks:
+- Model endpoint probe is currently Ollama-oriented (`/api/tags`) and would need extension for additional provider families.
+Next handoff note:
+- Proceed with T11 Deployment Assets and keep deployment examples aligned with runtime mount expectations.
 ```

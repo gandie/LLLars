@@ -11,7 +11,7 @@ from lllars_core.config import (
     load_config,
 )
 from lllars_core.console import Color, print_summary
-from lllars_core.mcp_preflight import run_mcp_preflight
+from lllars_core.mcp_preflight import run_startup_preflight
 from lllars_core.runtime_models import JobSpec
 from lllars_core.runtime_api import create_runtime_app
 from lllars_core.runtime_runner import run_job
@@ -75,17 +75,20 @@ def _print_runtime_startup(cfg: object) -> None:
     )
 
 
-def _run_mcp_preflight(cfg: object, skip_mcp_preflight: bool) -> None:
-    if cfg.mcp_enabled and not skip_mcp_preflight:
-        print(f"{Color.CYAN}[mcp] preflight...{Color.RESET}")
-        mcp_ok, mcp_lines = run_mcp_preflight(cfg)
-        if mcp_ok:
-            print(f"{Color.GREEN}[mcp] preflight ok{Color.RESET}")
-        else:
-            print(f"{Color.RED}[mcp] preflight failed{Color.RESET}")
-            for item in mcp_lines:
-                print(f"{Color.YELLOW}[mcp] {item}{Color.RESET}")
-            raise SystemExit(2)
+def _run_startup_preflight(cfg: object, skip_mcp_preflight: bool) -> None:
+    print(f"{Color.CYAN}[startup] preflight...{Color.RESET}")
+    preflight_ok, preflight_lines = run_startup_preflight(
+        cfg,
+        skip_mcp_preflight=skip_mcp_preflight,
+    )
+    if preflight_ok:
+        print(f"{Color.GREEN}[startup] preflight ok{Color.RESET}")
+        return
+
+    print(f"{Color.RED}[startup] preflight failed{Color.RESET}")
+    for item in preflight_lines:
+        print(f"{Color.YELLOW}[startup] {item}{Color.RESET}")
+    raise SystemExit(2)
 
 
 def _run_oneshot(args: argparse.Namespace) -> None:
@@ -100,7 +103,7 @@ def _run_oneshot(args: argparse.Namespace) -> None:
         raise SystemExit("Provide --prompt or --prompt-file")
 
     _print_runtime_startup(cfg)
-    _run_mcp_preflight(cfg, args.skip_mcp_preflight)
+    _run_startup_preflight(cfg, args.skip_mcp_preflight)
 
     def _emit_runtime_status(message: str) -> None:
         if message == "running tests":
@@ -134,7 +137,7 @@ def _run_serve(args: argparse.Namespace) -> None:
     cfg = load_config(config_path)
 
     _print_runtime_startup(cfg)
-    _run_mcp_preflight(cfg, args.skip_mcp_preflight)
+    _run_startup_preflight(cfg, args.skip_mcp_preflight)
 
     queue_backend = args.queue_backend or cfg.queue_backend
     print(
