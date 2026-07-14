@@ -461,17 +461,45 @@ Risks:
 - Runtime smoke command still requires service process to be running before invocation.
 Next handoff note:
 - Proceed with T15 Static Runtime Frontend via FastAPI.
+
+Task: T15 Static Runtime Frontend via FastAPI
+Date: 2026-07-15
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_api.py
+- lllars_core/static/runtime/index.html
+- lllars_core/config.py
+- lllars_core/runtime_runner.py
+- lllars_core/cli.py
+- tests/test_runtime_api.py
+- tests/test_runtime_runner.py
+- pyproject.toml
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"
+- Manual browser smoke against serve mode: submit -> poll -> logs end-to-end
+Result:
+- PASS
+- Added static runtime frontend route at `/` with API-safe fallback behavior.
+- Added minimal operator UI with prompt submission, status polling, and logs view.
+- Added full run-config form support, including skills/MCP/tool-policy fields.
+- Added responsive layout update with collapsible advanced settings panel.
+Risks:
+- Browser smoke remains operator-run and is not automated in unittest.
+Next handoff note:
+- Proceed with T16 Runtime Cancellation Hard-Stop.
 ```
 
 ## Post-T12 Increment Backlog (Residual-Driven)
 
 ### Priority Sequence (Updated)
-1. T15 Static Runtime Frontend via FastAPI
-2. T16 Runtime Cancellation Hard-Stop
-3. T17 Fully Automated Serve Smoke Test
-4. T18 Command Profile Externalization
-5. T19 Provider-Aware Startup Preflight (deferred)
-6. T20 Queue Backend: Redis Minimum (deferred)
+1. T16 Runtime Cancellation Hard-Stop
+2. T17 Fully Automated Serve Smoke Test
+3. T18 Command Profile Externalization
+4. T19 Provider-Aware Startup Preflight (deferred)
+5. T20 Queue Backend: Redis Minimum (deferred)
 
 ### T13 Runtime Config Split + Native Env File Support (DONE 2026-07-14)
 - Goal: Decouple runtime service configuration from per-job run configuration and support env files natively.
@@ -511,7 +539,7 @@ Next handoff note:
 - Completion artifact:
   - Updated compose/env examples and successful smoke output using env-file-first setup.
 
-### T15 Static Runtime Frontend via FastAPI
+### T15 Static Runtime Frontend via FastAPI (DONE 2026-07-15)
 - Goal: Provide a simple static UI served by FastAPI for manual runtime testing and operator visibility.
 - Files: lllars_core/runtime_api.py, lllars_core/runtime_models.py (if UI response shape helpers are needed), tests/test_runtime_api.py, README.md.
 - Adds:

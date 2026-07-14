@@ -162,9 +162,33 @@ class RunConfig:
     model: str
     provider_url: str
     project_root: Path
+    commands: dict[str, str] | None = None
     test_command: str | None = None
     eval_command: str | None = None
     command_profile: str = DEFAULT_COMMAND_PROFILE
+    eval_expect_json: bool | None = None
+    eval_success_pass_rate: float | None = None
+    system_prompt: str | None = None
+    tool_policy: str | None = None
+    usage_request_limit: int | None = None
+    usage_tool_calls_limit: int | None = None
+    usage_input_tokens_limit: int | None = None
+    usage_output_tokens_limit: int | None = None
+    usage_total_tokens_limit: int | None = None
+    usage_count_tokens_before_request: bool | None = None
+    agent_retries_tools: int | None = None
+    agent_retries_output: int | None = None
+    tool_timeout_sec: float | None = None
+    max_concurrency: int | None = None
+    instrumentation_enabled: bool | None = None
+    instrumentation_include_content: bool | None = None
+    skills_enabled: bool | None = None
+    skills_glob: str | None = None
+    skills_defer_loading: bool | None = None
+    skills_require_description: bool | None = None
+    mcp_enabled: bool | None = None
+    mcp_config_path: Path | None = None
+    mcp_init_timeout_sec: float | None = None
 
 
 @dataclass(frozen=True)
@@ -738,8 +762,68 @@ def load_config(
             model=model,
             provider_url=provider_url,
             project_root=project_root,
+            commands={
+                key: value
+                for key, value in {
+                    "test": test_command,
+                    "eval": eval_command,
+                }.items()
+                if value is not None
+            },
             test_command=test_command,
             eval_command=eval_command,
             command_profile=command_profile,
+            eval_expect_json=_as_bool(
+                cfg.get("eval_expect_json", True),
+                True,
+            ),
+            eval_success_pass_rate=float(
+                cfg.get("eval_success_pass_rate", 100.0)
+            ),
+            system_prompt=system_prompt,
+            tool_policy=tool_policy,
+            usage_request_limit=_optional_int("usage_request_limit", None),
+            usage_tool_calls_limit=_optional_int(
+                "usage_tool_calls_limit",
+                DEFAULT_USAGE_TOOL_CALLS_LIMIT,
+            ),
+            usage_input_tokens_limit=_optional_int(
+                "usage_input_tokens_limit", None
+            ),
+            usage_output_tokens_limit=_optional_int(
+                "usage_output_tokens_limit", None
+            ),
+            usage_total_tokens_limit=_optional_int(
+                "usage_total_tokens_limit", None
+            ),
+            usage_count_tokens_before_request=_as_bool(
+                cfg.get("usage_count_tokens_before_request", False),
+                False,
+            ),
+            agent_retries_tools=_non_negative_int(
+                "agent_retries_tools", DEFAULT_AGENT_RETRIES_TOOLS
+            ),
+            agent_retries_output=_non_negative_int(
+                "agent_retries_output", DEFAULT_AGENT_RETRIES_OUTPUT
+            ),
+            tool_timeout_sec=_optional_float(
+                "tool_timeout_sec", DEFAULT_TOOL_TIMEOUT_SEC
+            ),
+            max_concurrency=_optional_int("max_concurrency", None),
+            instrumentation_enabled=_as_bool(
+                cfg.get("instrumentation_enabled", False),
+                False,
+            ),
+            instrumentation_include_content=_as_bool(
+                cfg.get("instrumentation_include_content", False),
+                False,
+            ),
+            skills_enabled=skills_enabled,
+            skills_glob=skills_glob,
+            skills_defer_loading=skills_defer_loading,
+            skills_require_description=skills_require_description,
+            mcp_enabled=mcp_enabled,
+            mcp_config_path=mcp_config_path,
+            mcp_init_timeout_sec=mcp_init_timeout_sec,
         ),
     )

@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLLars Runtime Console</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --text: #1f2430;
+      --muted: #5d6678;
+      --accent: #0f6cbd;
+      --accent-strong: #0b57a0;
+      --border: #d2d8e2;
+      --success: #127a35;
+      --error: #b42318;
+      --warn: #9a6700;
+      --mono-bg: #0e1117;
+      --mono-text: #e6edf3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Tahoma", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top right, #ddeeff 0%, transparent 45%),
+        radial-gradient(circle at top left, #f0ede1 0%, transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: minmax(380px, 1.1fr) minmax(360px, 0.9fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.8rem;
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 18px rgba(15, 30, 60, 0.06);
+    }
+
+    .right-pane {
+      display: grid;
+      gap: 12px;
+    }
+
+    .logs-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.86rem;
+      color: var(--muted);
+      margin: 8px 0 4px;
+    }
+
+    input,
+    textarea,
+    button {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 10px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    #prompt {
+      min-height: 180px;
+    }
+
+    details.advanced {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fbfcff;
+      overflow: hidden;
+    }
+
+    details.advanced > summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-weight: 600;
+      color: #22304a;
+      user-select: none;
+    }
+
+    .advanced-body {
+      padding: 0 12px 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    button {
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      border: none;
+      margin-top: 8px;
+    }
+
+    button:hover {
+      background: var(--accent-strong);
+    }
+
+    .status {
+      font-weight: 700;
+    }
+
+    .status.queued,
+    .status.running {
+      color: var(--warn);
+    }
+
+    .status.succeeded {
+      color: var(--success);
+    }
+
+    .status.failed,
+    .status.canceled {
+      color: var(--error);
+    }
+
+    pre {
+      margin: 0;
+      background: var(--mono-bg);
+      color: var(--mono-text);
+      border-radius: 10px;
+      padding: 12px;
+      overflow: auto;
+      min-height: 52vh;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.88rem;
+    }
+
+    .hint {
+      font-size: 0.84rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    @media (max-width: 980px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      pre {
+        min-height: 220px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>LLLars Runtime Console</h1>
+    <p>Submit a job, poll status, and inspect logs from one page.</p>
+
+    <div class="dashboard">
+      <section class="card">
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" placeholder="Describe this repository."></textarea>
+
+        <details class="advanced">
+          <summary>Advanced settings</summary>
+          <div class="advanced-body">
+            <div class="grid">
+        <div>
+          <label for="model">Model</label>
+          <input id="model" value="ollama:rafw007/qwen35-claude-coder:9b" />
+        </div>
+        <div>
+          <label for="providerUrl">Provider URL</label>
+          <input id="providerUrl" value="http://192.168.178.20:11434" />
+        </div>
+        <div>
+          <label for="projectRoot">Project Root</label>
+          <input id="projectRoot" value="" />
+        </div>
+        <div>
+          <label for="commandProfile">Command Profile</label>
+          <input id="commandProfile" value="python-playground" />
+        </div>
+        <div>
+          <label for="timeoutSec">Timeout (sec)</label>
+          <input id="timeoutSec" type="number" min="1" value="600" />
+        </div>
+        <div>
+          <label for="evalExpectJson">Eval Expect JSON</label>
+          <input id="evalExpectJson" type="checkbox" />
+        </div>
+        <div>
+          <label for="evalSuccessPassRate">Eval Success Pass Rate</label>
+          <input id="evalSuccessPassRate" type="number" step="0.1" value="100.0" />
+        </div>
+        <div>
+          <label for="usageRequestLimit">Usage Request Limit (null = empty)</label>
+          <input id="usageRequestLimit" type="number" placeholder="null" />
+        </div>
+        <div>
+          <label for="usageToolCallsLimit">Usage Tool Calls Limit</label>
+          <input id="usageToolCallsLimit" type="number" value="100" />
+        </div>
+        <div>
+          <label for="usageInputTokensLimit">Usage Input Tokens Limit (null = empty)</label>
+          <input id="usageInputTokensLimit" type="number" placeholder="null" />
+        </div>
+        <div>
+          <label for="usageOutputTokensLimit">Usage Output Tokens Limit (null = empty)</label>
+          <input id="usageOutputTokensLimit" type="number" placeholder="null" />
+        </div>
+        <div>
+          <label for="usageTotalTokensLimit">Usage Total Tokens Limit (null = empty)</label>
+          <input id="usageTotalTokensLimit" type="number" placeholder="null" />
+        </div>
+        <div>
+          <label for="usageCountTokensBeforeRequest">Usage Count Tokens Before Request</label>
+          <input id="usageCountTokensBeforeRequest" type="checkbox" />
+        </div>
+        <div>
+          <label for="agentRetriesTools">Agent Retries Tools</label>
+          <input id="agentRetriesTools" type="number" value="1" />
+        </div>
+        <div>
+          <label for="agentRetriesOutput">Agent Retries Output</label>
+          <input id="agentRetriesOutput" type="number" value="1" />
+        </div>
+        <div>
+          <label for="toolTimeoutSec">Tool Timeout (sec)</label>
+          <input id="toolTimeoutSec" type="number" step="0.1" value="90" />
+        </div>
+        <div>
+          <label for="maxConcurrency">Max Concurrency (null = empty)</label>
+          <input id="maxConcurrency" type="number" placeholder="null" />
+        </div>
+        <div>
+          <label for="instrumentationEnabled">Instrumentation Enabled</label>
+          <input id="instrumentationEnabled" type="checkbox" />
+        </div>
+        <div>
+          <label for="instrumentationIncludeContent">Instrumentation Include Content</label>
+          <input id="instrumentationIncludeContent" type="checkbox" />
+        </div>
+        <div>
+          <label for="skillsEnabled">Skills Enabled</label>
+          <input id="skillsEnabled" type="checkbox" />
+        </div>
+        <div>
+          <label for="skillsGlob">Skills Glob</label>
+          <input id="skillsGlob" value="skills/*.md" />
+        </div>
+        <div>
+          <label for="skillsDeferLoading">Skills Defer Loading</label>
+          <input id="skillsDeferLoading" type="checkbox" />
+        </div>
+        <div>
+          <label for="skillsRequireDescription">Skills Require Description</label>
+          <input id="skillsRequireDescription" type="checkbox" />
+        </div>
+        <div>
+          <label for="mcpEnabled">MCP Enabled</label>
+          <input id="mcpEnabled" type="checkbox" />
+        </div>
+        <div>
+          <label for="mcpConfigPath">MCP Config Path</label>
+          <input id="mcpConfigPath" value="mcp.servers.json" />
+        </div>
+        <div>
+          <label for="mcpInitTimeoutSec">MCP Init Timeout (sec)</label>
+          <input id="mcpInitTimeoutSec" type="number" step="0.1" value="60" />
+        </div>
+        <div>
+          <label for="testCommand">Commands.test (optional)</label>
+          <input id="testCommand" placeholder="python test.py" />
+        </div>
+        <div>
+          <label for="evalCommand">Commands.eval (optional)</label>
+          <input id="evalCommand" placeholder="python eval.py" />
+        </div>
+            </div>
+
+            <label for="systemPrompt">system-prompt</label>
+            <textarea id="systemPrompt">You are senior Python developer. You have access to tools for file operations and running shell commands. Remember to adhere to the tool usage policies and constraints provided.</textarea>
+
+            <label for="toolPolicy">tool-policy</label>
+            <textarea id="toolPolicy">Tool policy:
+- Only edit files inside the project root.
+- Use list_files/read_file/write_file for file operations.
+- For shell execution, call list_allowed_shell_commands first, then run_allowlisted_shell(command_id=...).
+- Stay within configured native usage limits and retries.</textarea>
+          </div>
+        </details>
+
+        <button id="submitBtn" type="button">Submit Job</button>
+        <div class="hint">Terminal states handled: succeeded, failed, canceled.</div>
+      </section>
+
+      <div class="right-pane">
+        <section class="card status-card">
+          <div>Job ID: <span id="jobId">(none)</span></div>
+          <div>Current status: <span id="jobStatus" class="status">idle</span></div>
+          <div class="hint" id="statusNote">Submit a job to begin polling.</div>
+        </section>
+
+        <section class="card logs-card">
+          <h2>Logs</h2>
+          <pre id="logsView">(no logs yet)</pre>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const promptInput = document.getElementById("prompt");
+    const modelInput = document.getElementById("model");
+    const providerUrlInput = document.getElementById("providerUrl");
+    const projectRootInput = document.getElementById("projectRoot");
+    const commandProfileInput = document.getElementById("commandProfile");
+    const timeoutInput = document.getElementById("timeoutSec");
+    const evalExpectJsonInput = document.getElementById("evalExpectJson");
+    const evalSuccessPassRateInput = document.getElementById("evalSuccessPassRate");
+    const usageRequestLimitInput = document.getElementById("usageRequestLimit");
+    const usageToolCallsLimitInput = document.getElementById("usageToolCallsLimit");
+    const usageInputTokensLimitInput = document.getElementById("usageInputTokensLimit");
+    const usageOutputTokensLimitInput = document.getElementById("usageOutputTokensLimit");
+    const usageTotalTokensLimitInput = document.getElementById("usageTotalTokensLimit");
+    const usageCountTokensBeforeRequestInput = document.getElementById("usageCountTokensBeforeRequest");
+    const agentRetriesToolsInput = document.getElementById("agentRetriesTools");
+    const agentRetriesOutputInput = document.getElementById("agentRetriesOutput");
+    const toolTimeoutSecInput = document.getElementById("toolTimeoutSec");
+    const maxConcurrencyInput = document.getElementById("maxConcurrency");
+    const instrumentationEnabledInput = document.getElementById("instrumentationEnabled");
+    const instrumentationIncludeContentInput = document.getElementById("instrumentationIncludeContent");
+    const skillsEnabledInput = document.getElementById("skillsEnabled");
+    const skillsGlobInput = document.getElementById("skillsGlob");
+    const skillsDeferLoadingInput = document.getElementById("skillsDeferLoading");
+    const skillsRequireDescriptionInput = document.getElementById("skillsRequireDescription");
+    const mcpEnabledInput = document.getElementById("mcpEnabled");
+    const mcpConfigPathInput = document.getElementById("mcpConfigPath");
+    const mcpInitTimeoutSecInput = document.getElementById("mcpInitTimeoutSec");
+    const testCommandInput = document.getElementById("testCommand");
+    const evalCommandInput = document.getElementById("evalCommand");
+    const systemPromptInput = document.getElementById("systemPrompt");
+    const toolPolicyInput = document.getElementById("toolPolicy");
+    const submitBtn = document.getElementById("submitBtn");
+    const jobIdEl = document.getElementById("jobId");
+    const jobStatusEl = document.getElementById("jobStatus");
+    const statusNoteEl = document.getElementById("statusNote");
+    const logsViewEl = document.getElementById("logsView");
+
+    let pollingHandle = null;
+    let currentJobId = null;
+
+    function parseNullableInt(value) {
+      const raw = String(value || "").trim();
+      if (!raw) {
+        return null;
+      }
+      return Number(raw);
+    }
+
+    function parseNullableFloat(value) {
+      const raw = String(value || "").trim();
+      if (!raw) {
+        return null;
+      }
+      return Number(raw);
+    }
+
+    function setStatus(status, note) {
+      jobStatusEl.textContent = status;
+      jobStatusEl.className = "status " + status;
+      statusNoteEl.textContent = note || "";
+    }
+
+    function stopPolling() {
+      if (pollingHandle !== null) {
+        window.clearInterval(pollingHandle);
+        pollingHandle = null;
+      }
+    }
+
+    async function fetchLogs(jobId) {
+      const response = await fetch(`/jobs/${jobId}/logs`);
+      if (!response.ok) {
+        throw new Error(`Failed to load logs (${response.status})`);
+      }
+      const payload = await response.json();
+      logsViewEl.textContent = [
+        "=== agent_stdout ===",
+        payload.agent_stdout || "",
+        "",
+        "=== agent_stderr ===",
+        payload.agent_stderr || "",
+        "",
+        "=== thought_trace ===",
+        JSON.stringify(payload.thought_trace || [], null, 2),
+      ].join("\n");
+    }
+
+    async function pollStatus(jobId) {
+      const response = await fetch(`/jobs/${jobId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load status (${response.status})`);
+      }
+      const payload = await response.json();
+      const status = payload.status;
+      setStatus(status, `Last update: ${new Date().toLocaleTimeString()}`);
+
+      if (status === "succeeded" || status === "failed" || status === "canceled") {
+        stopPolling();
+        await fetchLogs(jobId);
+        return;
+      }
+
+      await fetchLogs(jobId);
+    }
+
+    async function submitJob() {
+      stopPolling();
+      logsViewEl.textContent = "Submitting job...";
+      setStatus("queued", "Submitting request");
+
+      const body = {
+        prompt: promptInput.value,
+        run: {
+          model: modelInput.value,
+          provider_url: providerUrlInput.value,
+          project_root: projectRootInput.value,
+          commands: {
+            ...(testCommandInput.value.trim() ? { test: testCommandInput.value.trim() } : {}),
+            ...(evalCommandInput.value.trim() ? { eval: evalCommandInput.value.trim() } : {}),
+          },
+          command_profile: commandProfileInput.value,
+          eval_expect_json: evalExpectJsonInput.checked,
+          eval_success_pass_rate: Number(evalSuccessPassRateInput.value || "100.0"),
+          usage_request_limit: parseNullableInt(usageRequestLimitInput.value),
+          usage_tool_calls_limit: parseNullableInt(usageToolCallsLimitInput.value),
+          usage_input_tokens_limit: parseNullableInt(usageInputTokensLimitInput.value),
+          usage_output_tokens_limit: parseNullableInt(usageOutputTokensLimitInput.value),
+          usage_total_tokens_limit: parseNullableInt(usageTotalTokensLimitInput.value),
+          usage_count_tokens_before_request: usageCountTokensBeforeRequestInput.checked,
+          agent_retries_tools: Number(agentRetriesToolsInput.value || "1"),
+          agent_retries_output: Number(agentRetriesOutputInput.value || "1"),
+          tool_timeout_sec: parseNullableFloat(toolTimeoutSecInput.value),
+          max_concurrency: parseNullableInt(maxConcurrencyInput.value),
+          instrumentation_enabled: instrumentationEnabledInput.checked,
+          instrumentation_include_content: instrumentationIncludeContentInput.checked,
+          skills_enabled: skillsEnabledInput.checked,
+          skills_glob: skillsGlobInput.value,
+          skills_defer_loading: skillsDeferLoadingInput.checked,
+          skills_require_description: skillsRequireDescriptionInput.checked,
+          mcp_enabled: mcpEnabledInput.checked,
+          mcp_config_path: mcpConfigPathInput.value.trim() || null,
+          mcp_init_timeout_sec: Number(mcpInitTimeoutSecInput.value || "60"),
+          system_prompt: systemPromptInput.value,
+          tool_policy: toolPolicyInput.value,
+        },
+        timeout_sec: Number(timeoutInput.value || "600"),
+      };
+
+      const response = await fetch("/jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Submit failed (${response.status}): ${text}`);
+      }
+
+      const payload = await response.json();
+      currentJobId = payload.job_id;
+      jobIdEl.textContent = currentJobId;
+      setStatus(payload.status, "Job accepted");
+      await fetchLogs(currentJobId);
+
+      pollingHandle = window.setInterval(async () => {
+        try {
+          await pollStatus(currentJobId);
+        } catch (error) {
+          stopPolling();
+          setStatus("failed", "Polling failed");
+          logsViewEl.textContent = String(error);
+        }
+      }, 1000);
+    }
+
+    submitBtn.addEventListener("click", async () => {
+      try {
+        await submitJob();
+      } catch (error) {
+        stopPolling();
+        setStatus("failed", "Submit failed");
+        logsViewEl.textContent = String(error);
+      }
+    });
+  </script>
+</body>
+</html>

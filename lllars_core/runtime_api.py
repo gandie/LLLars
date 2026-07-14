@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from threading import Lock, Thread
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from lllars_core.config import HarnessConfig
 from lllars_core.job_store import InMemoryJobStore, InvalidTransitionError
@@ -15,6 +18,9 @@ from lllars_core.runtime_models import (
     RunResult,
 )
 from lllars_core.runtime_runner import run_job
+
+
+RUNTIME_UI_DIR = Path(__file__).resolve().parent / "static" / "runtime"
 
 
 @dataclass
@@ -160,12 +166,47 @@ def _not_found(job_id: str) -> HTTPException:
     )
 
 
+def _mount_runtime_frontend(app: FastAPI) -> None:
+    def runtime_ui_unavailable() -> dict[str, str]:
+        return {"status": "ok", "ui": "unavailable"}
+
+    index_path = RUNTIME_UI_DIR / "index.html"
+    if not index_path.exists():
+        app.add_api_route(
+            "/",
+            runtime_ui_unavailable,
+            methods=["GET"],
+            include_in_schema=False,
+        )
+        return
+
+    try:
+        app.mount(
+            "/ui",
+            StaticFiles(directory=str(RUNTIME_UI_DIR)),
+            name="runtime-ui",
+        )
+    except Exception:
+        app.add_api_route(
+            "/",
+            runtime_ui_unavailable,
+            methods=["GET"],
+            include_in_schema=False,
+        )
+        return
+
+    @app.get("/", include_in_schema=False)
+    def runtime_ui_index() -> FileResponse:
+        return FileResponse(index_path)
+
+
 def create_runtime_app(cfg: HarnessConfig) -> FastAPI:
     app = FastAPI(
         title="LLLars Runtime API",
         version="0.1.0",
     )
     service = RuntimeService(cfg=cfg)
+    _mount_runtime_frontend(app)
 
     @app.get("/health")
     def health() -> dict[str, str]:

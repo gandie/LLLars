@@ -25,7 +25,10 @@ def _resolve_config_path(spec: JobSpec) -> Path:
     return Path(spec.config_path).resolve()
 
 
-def _apply_job_run_settings(cfg: HarnessConfig, spec: JobSpec) -> HarnessConfig:
+def _apply_job_run_settings(
+    cfg: HarnessConfig,
+    spec: JobSpec,
+) -> HarnessConfig:
     if not hasattr(cfg, "mount_work_root"):
         return cfg
 
@@ -37,7 +40,8 @@ def _apply_job_run_settings(cfg: HarnessConfig, spec: JobSpec) -> HarnessConfig:
             resolved_project_root.relative_to(mount_root)
         except ValueError as exc:
             raise ValueError(
-                f"Invalid project_root: {resolved_project_root} escapes mount_work_root"
+                "Invalid project_root: "
+                f"{resolved_project_root} escapes mount_work_root"
             ) from exc
     else:
         resolved_project_root = resolve_project_root(
@@ -57,16 +61,22 @@ def _apply_job_run_settings(cfg: HarnessConfig, spec: JobSpec) -> HarnessConfig:
             f"{command_profile!r}. Available profiles: {available}"
         )
 
+    run_commands = spec.run.commands or {}
+    test_raw = spec.run.test_command
+    if test_raw is None and isinstance(run_commands, dict):
+        test_raw = run_commands.get("test")
+    eval_raw = spec.run.eval_command
+    if eval_raw is None and isinstance(run_commands, dict):
+        eval_raw = run_commands.get("eval")
+
     test_command = (
-        spec.run.test_command.strip()
-        if isinstance(spec.run.test_command, str)
-        and spec.run.test_command.strip()
+        test_raw.strip()
+        if isinstance(test_raw, str) and test_raw.strip()
         else None
     )
     eval_command = (
-        spec.run.eval_command.strip()
-        if isinstance(spec.run.eval_command, str)
-        and spec.run.eval_command.strip()
+        eval_raw.strip()
+        if isinstance(eval_raw, str) and eval_raw.strip()
         else None
     )
 
@@ -90,10 +100,156 @@ def _apply_job_run_settings(cfg: HarnessConfig, spec: JobSpec) -> HarnessConfig:
         model=spec.run.model,
         provider_url=spec.run.provider_url,
         project_root=resolved_project_root,
+        commands={
+            key: value
+            for key, value in {
+                "test": test_command,
+                "eval": eval_command,
+            }.items()
+            if value is not None
+        },
         test_command=test_command,
         eval_command=eval_command,
         command_profile=command_profile,
+        eval_expect_json=(
+            cfg.eval_expect_json
+            if spec.run.eval_expect_json is None
+            else spec.run.eval_expect_json
+        ),
+        eval_success_pass_rate=(
+            cfg.eval_success_pass_rate
+            if spec.run.eval_success_pass_rate is None
+            else spec.run.eval_success_pass_rate
+        ),
+        system_prompt=(
+            cfg.system_prompt
+            if spec.run.system_prompt is None
+            else spec.run.system_prompt
+        ),
+        tool_policy=(
+            cfg.tool_policy
+            if spec.run.tool_policy is None
+            else spec.run.tool_policy
+        ),
+        usage_request_limit=(
+            cfg.usage_request_limit
+            if spec.run.usage_request_limit is None
+            else spec.run.usage_request_limit
+        ),
+        usage_tool_calls_limit=(
+            cfg.usage_tool_calls_limit
+            if spec.run.usage_tool_calls_limit is None
+            else spec.run.usage_tool_calls_limit
+        ),
+        usage_input_tokens_limit=(
+            cfg.usage_input_tokens_limit
+            if spec.run.usage_input_tokens_limit is None
+            else spec.run.usage_input_tokens_limit
+        ),
+        usage_output_tokens_limit=(
+            cfg.usage_output_tokens_limit
+            if spec.run.usage_output_tokens_limit is None
+            else spec.run.usage_output_tokens_limit
+        ),
+        usage_total_tokens_limit=(
+            cfg.usage_total_tokens_limit
+            if spec.run.usage_total_tokens_limit is None
+            else spec.run.usage_total_tokens_limit
+        ),
+        usage_count_tokens_before_request=(
+            cfg.usage_count_tokens_before_request
+            if spec.run.usage_count_tokens_before_request is None
+            else spec.run.usage_count_tokens_before_request
+        ),
+        agent_retries_tools=(
+            cfg.agent_retries_tools
+            if spec.run.agent_retries_tools is None
+            else spec.run.agent_retries_tools
+        ),
+        agent_retries_output=(
+            cfg.agent_retries_output
+            if spec.run.agent_retries_output is None
+            else spec.run.agent_retries_output
+        ),
+        tool_timeout_sec=(
+            cfg.tool_timeout_sec
+            if spec.run.tool_timeout_sec is None
+            else spec.run.tool_timeout_sec
+        ),
+        max_concurrency=(
+            cfg.max_concurrency
+            if spec.run.max_concurrency is None
+            else spec.run.max_concurrency
+        ),
+        instrumentation_enabled=(
+            cfg.instrumentation_enabled
+            if spec.run.instrumentation_enabled is None
+            else spec.run.instrumentation_enabled
+        ),
+        instrumentation_include_content=(
+            cfg.instrumentation_include_content
+            if spec.run.instrumentation_include_content is None
+            else spec.run.instrumentation_include_content
+        ),
+        skills_enabled=(
+            cfg.skills_enabled
+            if spec.run.skills_enabled is None
+            else spec.run.skills_enabled
+        ),
+        skills_glob=(
+            cfg.skills_glob
+            if spec.run.skills_glob is None
+            else spec.run.skills_glob
+        ),
+        skills_defer_loading=(
+            cfg.skills_defer_loading
+            if spec.run.skills_defer_loading is None
+            else spec.run.skills_defer_loading
+        ),
+        skills_require_description=(
+            cfg.skills_require_description
+            if spec.run.skills_require_description is None
+            else spec.run.skills_require_description
+        ),
+        mcp_enabled=(
+            cfg.mcp_enabled
+            if spec.run.mcp_enabled is None
+            else spec.run.mcp_enabled
+        ),
+        mcp_config_path=(
+            cfg.mcp_config_path
+            if spec.run.mcp_config_path is None
+            else spec.run.mcp_config_path
+        ),
+        mcp_init_timeout_sec=(
+            cfg.mcp_init_timeout_sec
+            if spec.run.mcp_init_timeout_sec is None
+            else spec.run.mcp_init_timeout_sec
+        ),
     )
+
+    run_mcp_config_path = run_cfg.mcp_config_path
+    if (
+        run_mcp_config_path is not None
+        and not run_mcp_config_path.is_absolute()
+    ):
+        run_mcp_config_path = (
+            cfg.mount_config_root / run_mcp_config_path
+        ).resolve()
+    if run_cfg.mcp_enabled and run_mcp_config_path is None:
+        raise ValueError(
+            "mcp_enabled is true but mcp_config_path is empty"
+        )
+    if run_cfg.mcp_enabled and run_mcp_config_path is not None:
+        if (
+            not run_mcp_config_path.exists()
+            or not run_mcp_config_path.is_file()
+        ):
+            raise ValueError(
+                f"Invalid mcp_config_path: {run_mcp_config_path}"
+            )
+    if run_cfg.skills_enabled and not (run_cfg.skills_glob or "").strip():
+        raise ValueError("skills_enabled is true but skills_glob is empty")
 
     if is_dataclass(cfg):
         return replace(
@@ -105,6 +261,33 @@ def _apply_job_run_settings(cfg: HarnessConfig, spec: JobSpec) -> HarnessConfig:
             eval_command=eval_command,
             command_profile=command_profile,
             allowed_shell_commands=tuple(allowed),
+            eval_expect_json=run_cfg.eval_expect_json,
+            eval_success_pass_rate=run_cfg.eval_success_pass_rate,
+            system_prompt=run_cfg.system_prompt,
+            tool_policy=run_cfg.tool_policy,
+            usage_request_limit=run_cfg.usage_request_limit,
+            usage_tool_calls_limit=run_cfg.usage_tool_calls_limit,
+            usage_input_tokens_limit=run_cfg.usage_input_tokens_limit,
+            usage_output_tokens_limit=run_cfg.usage_output_tokens_limit,
+            usage_total_tokens_limit=run_cfg.usage_total_tokens_limit,
+            usage_count_tokens_before_request=(
+                run_cfg.usage_count_tokens_before_request
+            ),
+            agent_retries_tools=run_cfg.agent_retries_tools,
+            agent_retries_output=run_cfg.agent_retries_output,
+            tool_timeout_sec=run_cfg.tool_timeout_sec,
+            max_concurrency=run_cfg.max_concurrency,
+            instrumentation_enabled=run_cfg.instrumentation_enabled,
+            instrumentation_include_content=(
+                run_cfg.instrumentation_include_content
+            ),
+            skills_enabled=run_cfg.skills_enabled,
+            skills_glob=(run_cfg.skills_glob or ""),
+            skills_defer_loading=run_cfg.skills_defer_loading,
+            skills_require_description=run_cfg.skills_require_description,
+            mcp_enabled=run_cfg.mcp_enabled,
+            mcp_config_path=run_mcp_config_path,
+            mcp_init_timeout_sec=run_cfg.mcp_init_timeout_sec,
             run=run_cfg,
         )
     return cfg

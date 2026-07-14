@@ -15,6 +15,20 @@ from lllars_core.runtime_api import RuntimeService, create_runtime_app
 
 
 class RuntimeApiTests(unittest.TestCase):
+    def test_runtime_frontend_root_serves_html(self) -> None:
+        cfg = SimpleNamespace(model="", provider_url="")
+        app = create_runtime_app(cfg)
+        client = TestClient(app)
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/html", response.headers.get("content-type", ""))
+        self.assertIn("LLLars Runtime Console", response.text)
+        self.assertIn("succeeded", response.text)
+        self.assertIn("failed", response.text)
+        self.assertIn("canceled", response.text)
+
     def test_submit_rejects_missing_run_fields_in_request(
         self,
     ) -> None:
@@ -28,6 +42,64 @@ class RuntimeApiTests(unittest.TestCase):
         )
 
         self.assertEqual(submit_resp.status_code, 422)
+
+    def test_submit_accepts_extended_run_fields_in_request(self) -> None:
+        cfg = SimpleNamespace(
+            model="test-model",
+            provider_url="http://localhost:11434",
+        )
+        app = create_runtime_app(cfg)
+        client = TestClient(app)
+
+        with patch(
+            "lllars_core.runtime_api.run_job",
+            return_value=RunResult(
+                success=True,
+                agent_returncode=0,
+                elapsed_sec=0.01,
+                agent_stdout="agent-out",
+                agent_stderr="",
+            ),
+        ):
+            submit_resp = client.post(
+                "/jobs",
+                json={
+                    "prompt": "hello",
+                    "run": {
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": "playground",
+                        "commands": {},
+                        "command_profile": "python-playground",
+                        "eval_expect_json": False,
+                        "eval_success_pass_rate": 100.0,
+                        "usage_request_limit": None,
+                        "usage_tool_calls_limit": 100,
+                        "usage_input_tokens_limit": None,
+                        "usage_output_tokens_limit": None,
+                        "usage_total_tokens_limit": None,
+                        "usage_count_tokens_before_request": False,
+                        "agent_retries_tools": 1,
+                        "agent_retries_output": 1,
+                        "tool_timeout_sec": 90,
+                        "max_concurrency": None,
+                        "instrumentation_enabled": False,
+                        "instrumentation_include_content": False,
+                        "skills_enabled": True,
+                        "skills_glob": "skills/*.md",
+                        "skills_defer_loading": False,
+                        "skills_require_description": True,
+                        "mcp_enabled": False,
+                        "mcp_config_path": None,
+                        "mcp_init_timeout_sec": 60,
+                        "system_prompt": "You are senior Python developer.",
+                        "tool_policy": "Tool policy",
+                    },
+                    "timeout_sec": 5,
+                },
+            )
+
+        self.assertEqual(submit_resp.status_code, 202)
 
     def test_submit_and_poll_until_terminal_state(self) -> None:
         cfg = SimpleNamespace(
@@ -195,6 +267,24 @@ class RuntimeApiTests(unittest.TestCase):
             summary = json.loads(summary_path.read_text(encoding="utf-8"))
             self.assertEqual(summary["status"], "failed")
             self.assertEqual(summary["error"]["code"], "run_exception")
+
+    def test_runtime_frontend_fallback_when_static_missing(self) -> None:
+        cfg = SimpleNamespace(model="", provider_url="")
+
+        with patch(
+            "lllars_core.runtime_api.RUNTIME_UI_DIR",
+            Path("missing-ui"),
+        ):
+            app = create_runtime_app(cfg)
+
+        client = TestClient(app)
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {"status": "ok", "ui": "unavailable"},
+        )
 
 
 if __name__ == "__main__":

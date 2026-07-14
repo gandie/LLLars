@@ -5,7 +5,6 @@ from pathlib import Path
 
 from lllars_core.config import (
     DEFAULT_CONFIG_PATH,
-    RunConfig,
     DEFAULT_TIMEOUT_SEC,
     VALID_QUEUE_BACKENDS,
     load_config,
@@ -119,30 +118,10 @@ def _run_oneshot(args: argparse.Namespace) -> None:
             f"{Color.YELLOW}[checks] {message}{Color.RESET}"
         )
 
-    project_root_rel = "."
-    try:
-        relative_root = cfg.project_root.resolve().relative_to(
-            cfg.mount_work_root.resolve()
-        )
-        project_root_rel = (
-            "."
-            if str(relative_root) in {"", "."}
-            else str(relative_root).replace("\\", "/")
-        )
-    except ValueError:
-        project_root_rel = "."
-
     run_result = run_job(
         JobSpec(
             prompt=prompt_text,
-            run=RunConfig(
-                model=cfg.model,
-                provider_url=cfg.provider_url,
-                project_root=cfg.mount_work_root / project_root_rel,
-                test_command=cfg.test_command,
-                eval_command=cfg.eval_command,
-                command_profile=cfg.command_profile,
-            ),
+            run=cfg.run,
             timeout_sec=args.timeout_sec,
             config_path=str(config_path),
         ),

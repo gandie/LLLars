@@ -132,13 +132,37 @@ Use the split example with:
 
 ### Runtime API endpoints (T6)
 
-Serve mode now exposes the minimal runtime API:
+Serve mode now exposes the runtime API plus a static operator UI:
 
+- `GET /` (static runtime frontend)
 - `GET /health`
 - `POST /jobs` (submit)
 - `GET /jobs/{job_id}` (status)
 - `GET /jobs/{job_id}/logs` (logs)
 - `POST /jobs/{job_id}/cancel` (cancel)
+
+### Static runtime frontend (T15)
+
+Serve mode now includes a minimal static page for manual runtime operation at `GET /`.
+
+Page capabilities:
+
+- Submit a job prompt with required run fields.
+- Poll status until terminal state.
+- Fetch logs and thought trace for the active job.
+- Terminal-state handling for `succeeded`, `failed`, and `canceled`.
+
+Manual browser smoke:
+
+1. Start service:
+
+```powershell
+lllars serve --config .\playground.example.json --host 127.0.0.1 --port 8000
+```
+
+2. Open `http://127.0.0.1:8000/` in a browser.
+3. Submit a prompt and verify status transitions to terminal.
+4. Confirm logs render in the page after completion.
 
 Example validation flow (PowerShell):
 
@@ -164,6 +188,7 @@ Notes:
 
 - Current implementation supports `queue_backend=inmemory` for serve mode.
 - `--workers` values other than `1` are accepted but currently run as single-worker.
+- If static UI assets are unavailable, API endpoints remain fully functional.
 
 ### Docker Compose runtime deployment (T11)
 

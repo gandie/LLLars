@@ -28,6 +28,10 @@ lllars = "lllars:main"
 
 [tool.setuptools]
 py-modules = ["lllars"]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["lllars_core*"]
+
+[tool.setuptools.package-data]
+lllars_core = ["static/runtime/*.html"]
