@@ -44,7 +44,7 @@ Use this contract for every task ticket.
 - Validation: unit tests for transition rules and cancellation race edge cases.
 - Done when: states cannot skip invalid transitions.
 
-### T5 Job Runner Adapter
+### T5 Job Runner Adapter (DONE 2026-07-14)
 - Goal: Wrap current agent run logic as reusable service primitive.
 - Files: lllars_core/runner.py, lllars_core/runtime_runner.py (new).
 - Adds: run_job(JobSpec) -> RunResult with existing telemetry passthrough.
@@ -224,4 +224,23 @@ Risks:
 - Store is in-memory only and process-local; durability/redis behavior is pending future queue backend work.
 Next handoff note:
 - Proceed with T5 Job Runner Adapter and route job execution updates through InMemoryJobStore.update/cancel.
+
+Task: T5 Job Runner Adapter
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_runner.py
+- lllars_core/cli.py
+- tests/test_runtime_runner.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added reusable runtime primitive `run_job(JobSpec) -> RunResult` in lllars_core/runtime_runner.py.
+- Preserved telemetry passthrough from existing runner (`run_agent_with_timeout`) into `RunResult.runtime_telemetry`.
+- Updated one-shot CLI path to call the shared runtime run unit.
+Risks:
+- Runtime API path is not implemented yet (planned in T6), so shared adapter is currently exercised by CLI and tests.
+Next handoff note:
+- Proceed with T6 Minimal Runtime API and invoke `run_job` from submit worker execution path.
 ```

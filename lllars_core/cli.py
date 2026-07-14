@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import time
 from pathlib import Path
 
 from lllars_core.config import (
@@ -13,8 +12,8 @@ from lllars_core.config import (
 )
 from lllars_core.console import Color, print_summary
 from lllars_core.mcp_preflight import run_mcp_preflight
-from lllars_core.runner import run_agent_with_timeout
-from lllars_core.shell import is_eval_success, run_eval, run_tests
+from lllars_core.runtime_models import JobSpec
+from lllars_core.runtime_runner import run_job
 from lllars_core.skills import configured_markdown_skill_ids
 
 
@@ -102,59 +101,31 @@ def _run_oneshot(args: argparse.Namespace) -> None:
     _print_runtime_startup(cfg)
     _run_mcp_preflight(cfg, args.skip_mcp_preflight)
 
-    start = time.time()
-    (
-        agent_stdout,
-        agent_stderr,
-        agent_rc,
-        telemetry,
-        thought_trace,
-    ) = run_agent_with_timeout(
+    def _emit_runtime_status(message: str) -> None:
+        if message == "running tests":
+            print(f"{Color.CYAN}[checks] running tests...{Color.RESET}")
+            return
+        if message == "running eval":
+            print(f"{Color.CYAN}[checks] running eval...{Color.RESET}")
+            return
+        print(
+            f"{Color.YELLOW}[checks] {message}{Color.RESET}"
+        )
+
+    run_result = run_job(
+        JobSpec(
+            prompt=prompt_text,
+            timeout_sec=args.timeout_sec,
+            config_path=str(config_path),
+        ),
         cfg=cfg,
-        prompt_text=prompt_text,
-        timeout_sec=args.timeout_sec,
         show_progress=True,
+        emit_status=_emit_runtime_status,
     )
-    elapsed = round(time.time() - start, 2)
-
-    if cfg.test_command:
-        print(f"{Color.CYAN}[checks] running tests...{Color.RESET}")
-    else:
-        print(
-            f"{Color.YELLOW}[checks] tests not configured (skipped)"
-            f"{Color.RESET}"
-        )
-    test_info = run_tests(cfg)
-    if cfg.eval_command:
-        print(f"{Color.CYAN}[checks] running eval...{Color.RESET}")
-    else:
-        print(
-            f"{Color.YELLOW}[checks] eval not configured (skipped)"
-            f"{Color.RESET}"
-        )
-    eval_json, eval_error = run_eval(cfg)
-
-    success = (
-        agent_rc == 0
-        and int(test_info.get("returncode", 1)) == 0
-        and is_eval_success(cfg, eval_json)
-    )
-
-    result = {
-        "success": success,
-        "agent_returncode": agent_rc,
-        "elapsed_sec": elapsed,
-        "agent_stdout": agent_stdout,
-        "agent_stderr": agent_stderr,
-        "thought_trace": thought_trace,
-        "test": test_info,
-        "eval": eval_json,
-        "eval_error": eval_error,
-        "runtime_telemetry": telemetry,
-    }
+    result = run_result.model_dump()
 
     print_summary(result, verbose=args.verbose)
-    raise SystemExit(0 if success else 1)
+    raise SystemExit(0 if run_result.success else 1)
 
 
 def _run_serve(args: argparse.Namespace) -> None:
