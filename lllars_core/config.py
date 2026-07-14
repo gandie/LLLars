@@ -4,6 +4,11 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from lllars_core.runtime_guard import (
+    resolve_mount_directory,
+    resolve_project_root,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = ROOT / "lllars.example.json"
 DEFAULT_TIMEOUT_SEC = 600
@@ -88,33 +93,20 @@ def _require_non_empty_str(
     return value
 
 
-def _resolve_project_root(cfg: dict) -> Path:
-    project_root_raw = _require_non_empty_str(
-        cfg,
-        "project_root",
-        "Config requires project_root",
-    )
-    project_root = (ROOT / project_root_raw).resolve()
-    if not project_root.exists() or not project_root.is_dir():
-        raise ValueError(f"Invalid project_root: {project_root}")
-    return project_root
-
-
 def _resolve_mount_root(
     cfg: dict,
     key: str,
     *,
+    config_root: Path,
     default_path: Path,
 ) -> Path:
     raw_value = str(cfg.get(key, "")).strip()
-    mount_root = (
-        default_path
-        if not raw_value
-        else (ROOT / raw_value).resolve()
+    return resolve_mount_directory(
+        raw_value,
+        config_root=config_root,
+        default_path=default_path,
+        field_name=key,
     )
-    if not mount_root.exists() or not mount_root.is_dir():
-        raise ValueError(f"Invalid {key}: {mount_root}")
-    return mount_root
 
 
 def _validate_choice(
@@ -199,6 +191,7 @@ def build_default_tool_policy(
 
 def load_config(config_path: Path) -> HarnessConfig:
     cfg = _load_config_object(config_path)
+    config_root = config_path.parent.resolve()
 
     model = _require_non_empty_str(
         cfg,
@@ -210,7 +203,11 @@ def load_config(config_path: Path) -> HarnessConfig:
         "provider-url",
         "Config requires model and provider-url",
     )
-    project_root = _resolve_project_root(cfg)
+    project_root_raw = _require_non_empty_str(
+        cfg,
+        "project_root",
+        "Config requires project_root",
+    )
     test_command, eval_command = _load_commands(cfg)
     allowed_shell_commands = _collect_allowed_shell_commands(
         cfg,
@@ -322,16 +319,24 @@ def load_config(config_path: Path) -> HarnessConfig:
     mount_work_root = _resolve_mount_root(
         cfg,
         "mount_work_root",
-        default_path=project_root,
+        config_root=config_root,
+        default_path=(config_root / project_root_raw).resolve(),
+    )
+    project_root = resolve_project_root(
+        project_root_raw,
+        config_root=config_root,
+        mount_work_root=mount_work_root,
     )
     mount_config_root = _resolve_mount_root(
         cfg,
         "mount_config_root",
+        config_root=config_root,
         default_path=config_path.parent.resolve(),
     )
     mount_artifacts_root = _resolve_mount_root(
         cfg,
         "mount_artifacts_root",
+        config_root=config_root,
         default_path=ROOT,
     )
 

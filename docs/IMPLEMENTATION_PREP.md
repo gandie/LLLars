@@ -58,7 +58,7 @@ Use this contract for every task ticket.
 - Validation: submit job then poll status until terminal state.
 - Done when: one full run can be managed via HTTP only.
 
-### T7 Filesystem Boundary Enforcement
+### T7 Filesystem Boundary Enforcement (DONE 2026-07-14)
 - Goal: Prevent jobs from escaping mounted work root.
 - Files: lllars_core/runtime_guard.py (new), lllars_core/config.py.
 - Adds: path canonicalization + allow/deny checks.
@@ -266,4 +266,23 @@ Risks:
 - Cancellation marks job state immediately, but in-flight agent subprocess work is not hard-stopped yet.
 Next handoff note:
 - Proceed with T7 Filesystem Boundary Enforcement to constrain runtime job roots before broader deployment.
+
+Task: T7 Filesystem Boundary Enforcement
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_guard.py
+- lllars_core/config.py
+- tests/test_config.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added filesystem boundary guard module with canonical path checks.
+- Enforced project_root confinement under mount_work_root during config load.
+- Added regression tests for parent traversal, absolute path, and symlink escape attempts.
+Risks:
+- Symlink denial test may be skipped in environments where directory symlink creation is unavailable.
+Next handoff note:
+- Proceed with T8 Command Profile Policy and keep profile resolution centralized in config loading.
 ```
