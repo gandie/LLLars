@@ -13,6 +13,7 @@ from lllars_core.config import (
 from lllars_core.console import Color, print_summary
 from lllars_core.mcp_preflight import run_mcp_preflight
 from lllars_core.runtime_models import JobSpec
+from lllars_core.runtime_api import create_runtime_app
 from lllars_core.runtime_runner import run_job
 from lllars_core.skills import configured_markdown_skill_ids
 
@@ -143,10 +144,27 @@ def _run_serve(args: argparse.Namespace) -> None:
         f"workers={args.workers}; "
         f"queue_backend={queue_backend}"
     )
-    print(
-        f"{Color.YELLOW}[serve] service runtime API wiring is not yet "
-        f"implemented (planned in T6).{Color.RESET}"
-    )
+
+    if queue_backend != "inmemory":
+        raise SystemExit(
+            "Serve mode currently supports only queue_backend=inmemory"
+        )
+
+    if args.workers != 1:
+        print(
+            f"{Color.YELLOW}[serve] workers={args.workers} requested; "
+            f"using 1 worker for in-process job store.{Color.RESET}"
+        )
+
+    try:
+        import uvicorn
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit(
+            "Missing dependency: uvicorn. Install project dependencies first."
+        ) from exc
+
+    app = create_runtime_app(cfg)
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 def main() -> None:

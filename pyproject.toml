@@ -12,7 +12,9 @@ authors = [{ name = "LLLars Contributors" }]
 dependencies = [
   "pydantic-ai>=0.0.20",
   "pydantic-ai-todo",
+  "fastapi>=0.110.0",
   "PyYAML>=6.0",
+  "uvicorn>=0.30.0",
 ]
 
 [project.optional-dependencies]

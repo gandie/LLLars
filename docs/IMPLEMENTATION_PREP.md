@@ -51,7 +51,7 @@ Use this contract for every task ticket.
 - Validation: existing runner behavior unchanged in one-shot mode.
 - Done when: API path and CLI path call same underlying run unit.
 
-### T6 Minimal Runtime API
+### T6 Minimal Runtime API (DONE 2026-07-14)
 - Goal: Expose operational endpoints.
 - Files: lllars_core/runtime_api.py (new), lllars_core/cli.py.
 - Adds: health, submit, status, logs, cancel.
@@ -243,4 +243,27 @@ Risks:
 - Runtime API path is not implemented yet (planned in T6), so shared adapter is currently exercised by CLI and tests.
 Next handoff note:
 - Proceed with T6 Minimal Runtime API and invoke `run_job` from submit worker execution path.
+
+Task: T6 Minimal Runtime API
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_api.py
+- lllars_core/cli.py
+- tests/test_runtime_api.py
+- pyproject.toml
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m pip install -e .
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added FastAPI runtime endpoints: health, submit, status, logs, cancel.
+- Wired `lllars serve` to launch uvicorn with runtime app.
+- Added HTTP lifecycle test: submit then poll status to terminal state, then fetch logs.
+Risks:
+- Queue backend support in serve mode is currently limited to `inmemory`; `redis` remains unimplemented for T6.
+- Cancellation marks job state immediately, but in-flight agent subprocess work is not hard-stopped yet.
+Next handoff note:
+- Proceed with T7 Filesystem Boundary Enforcement to constrain runtime job roots before broader deployment.
 ```

@@ -74,7 +74,42 @@ Serve arguments:
 - `--workers` (default `1`)
 - `--queue-backend` (`inmemory` or `redis`, default `inmemory`)
 
-Current status: this entrypoint is scaffolded for runtime API work planned in T6.
+Current status: runtime API is available in serve mode (T6).
+
+### Runtime API endpoints (T6)
+
+Serve mode now exposes the minimal runtime API:
+
+- `GET /health`
+- `POST /jobs` (submit)
+- `GET /jobs/{job_id}` (status)
+- `GET /jobs/{job_id}/logs` (logs)
+- `POST /jobs/{job_id}/cancel` (cancel)
+
+Example validation flow (PowerShell):
+
+```powershell
+# Start service in a separate terminal:
+lllars serve --config .\playground.example.json --host 127.0.0.1 --port 8000
+
+# Submit a job:
+$submit = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/jobs" -ContentType "application/json" -Body '{"prompt":"Describe this repository"}'
+$jobId = $submit.job_id
+
+# Poll status until terminal:
+do {
+	Start-Sleep -Milliseconds 300
+	$status = Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/jobs/$jobId"
+} while ($status.status -in @("queued", "running"))
+
+# Fetch logs:
+Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/jobs/$jobId/logs"
+```
+
+Notes:
+
+- Current implementation supports `queue_backend=inmemory` for serve mode.
+- `--workers` values other than `1` are accepted but currently run as single-worker.
 
 ### Runtime API payload contracts
 
