@@ -111,6 +111,50 @@ Notes:
 - Current implementation supports `queue_backend=inmemory` for serve mode.
 - `--workers` values other than `1` are accepted but currently run as single-worker.
 
+### Docker Compose runtime deployment (T11)
+
+Environment file support:
+
+```powershell
+# Defaults are committed in .env.runtime.
+# Optional: reset from template if needed.
+Copy-Item .\.env.runtime.example .\.env.runtime -Force
+```
+
+Run the runtime API with build + env-file support:
+
+```powershell
+docker compose -f .\docker-compose.runtime.yml up --build
+```
+
+This compose target wires the runtime mount boundaries explicitly:
+
+- `/work` -> named volume `lllars-work`
+- `/config` -> named volume `lllars-config`
+- `/artifacts` -> named volume `lllars-artifacts`
+
+Behavior details:
+
+- Image is built from `Dockerfile.runtime` and installs `lllars` during image build.
+- Runtime bootstraps `/config/runtime.json` from `/config/playground.example.json` using values from `.env.runtime`.
+- Service binds to `0.0.0.0:8000` in-container and publishes `localhost:${LLLARS_PORT}`.
+- On first start, defaults are seeded into volumes (`playground` into `/work`, example config into `/config`).
+
+Common environment knobs in `.env.runtime`:
+
+- `OLLAMA_BASE_URL`
+- `LLLARS_PORT`
+- `QUEUE_BACKEND`
+- `NETWORK_POLICY`
+- `MCP_ENABLED`
+- `SKIP_MCP_PREFLIGHT`
+
+Minimal submit check (service accepts job requests on documented port):
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/jobs" -ContentType "application/json" -Body '{"prompt":"runtime smoke"}'
+```
+
 ### Runtime API payload contracts
 
 Shared runtime payload contracts now live in `lllars_core/runtime_models.py`:

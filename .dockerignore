@@ -1,0 +1,10 @@
+venv/
+.git/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+runtime-artifacts/
+lllars.egg-info/

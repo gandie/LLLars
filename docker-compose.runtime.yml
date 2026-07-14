@@ -1,0 +1,22 @@
+services:
+  lllars-runtime:
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    image: lllars/runtime:local
+    env_file:
+      - .env.runtime
+    ports:
+      - "${LLLARS_PORT:-8000}:8000"
+    volumes:
+      - lllars-work:/work
+      - lllars-config:/config
+      - lllars-artifacts:/artifacts
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  lllars-work:
+  lllars-config:
+  lllars-artifacts:

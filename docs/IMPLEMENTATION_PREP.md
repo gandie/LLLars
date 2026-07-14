@@ -86,7 +86,7 @@ Use this contract for every task ticket.
 - Validation: failing preflight returns clear structured startup errors.
 - Done when: operator sees immediate actionable startup diagnostics.
 
-### T11 Deployment Assets
+### T11 Deployment Assets (DONE 2026-07-14)
 - Goal: Add runnable deployment examples.
 - Files: docker-compose.runtime.yml (new), README.md.
 - Adds: service wiring for /work, /config, /artifacts mounts.
@@ -347,4 +347,30 @@ Risks:
 - Model endpoint probe is currently Ollama-oriented (`/api/tags`) and would need extension for additional provider families.
 Next handoff note:
 - Proceed with T11 Deployment Assets and keep deployment examples aligned with runtime mount expectations.
+
+Task: T11 Deployment Assets
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- docker-compose.runtime.yml
+- Dockerfile.runtime
+- docker/runtime-entrypoint.sh
+- .env.runtime
+- .env.runtime.example
+- .dockerignore
+- README.md
+- playground/runtime_api_smoke_test.py
+Validation command(s):
+- docker compose -f .\docker-compose.runtime.yml up --build
+- .\venv\Scripts\python.exe -m py_compile .\playground\runtime_api_smoke_test.py
+- python .\runtime_api_smoke_test.py --prompt "Hello agent! Report status of your working directory! List files, run tests, report"
+Result:
+- PASS
+- Runtime starts via Compose build flow and serves API on documented port.
+- Submit/poll/log smoke flow is runnable via Python script.
+Risks:
+- Current deployment/config layering is clumsy and tightly coupled.
+- Config model needs rework to split runtime service config from agent run config.
+Next handoff note:
+- Proceed with T12 Hardening and Regression Sweep; include config-split design as a tracked follow-up.
 ```
