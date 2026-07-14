@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,6 +19,9 @@ DEFAULT_AGENT_RETRIES_OUTPUT = 1
 DEFAULT_TOOL_TIMEOUT_SEC = 90.0
 DEFAULT_MCP_INIT_TIMEOUT_SEC = 60.0
 DEFAULT_SERVICE_MODE = "oneshot"
+DEFAULT_SERVICE_HOST = "127.0.0.1"
+DEFAULT_SERVICE_PORT = 8000
+DEFAULT_SERVICE_WORKERS = 1
 DEFAULT_QUEUE_BACKEND = "inmemory"
 DEFAULT_NETWORK_POLICY = "inherit"
 DEFAULT_COMMAND_PROFILE = "none"
@@ -32,6 +36,135 @@ COMMAND_PROFILE_REGISTRY = {
         "python test.py",
     ),
 }
+
+
+LEGACY_SERVICE_KEYS = frozenset(
+    {
+        "service_mode",
+        "service_host",
+        "service_port",
+        "service_workers",
+        "mount_work_root",
+        "mount_config_root",
+        "mount_artifacts_root",
+        "queue_backend",
+        "network_policy",
+    }
+)
+
+LEGACY_RUN_KEYS = frozenset(
+    {
+        "model",
+        "provider-url",
+        "provider_url",
+        "project_root",
+        "commands",
+        "command_profile",
+        "system-prompt",
+        "tool-policy",
+        "eval_expect_json",
+        "eval_success_pass_rate",
+        "usage_request_limit",
+        "usage_tool_calls_limit",
+        "usage_input_tokens_limit",
+        "usage_output_tokens_limit",
+        "usage_total_tokens_limit",
+        "usage_count_tokens_before_request",
+        "agent_retries_tools",
+        "agent_retries_output",
+        "tool_timeout_sec",
+        "max_concurrency",
+        "instrumentation_enabled",
+        "instrumentation_include_content",
+        "skills_enabled",
+        "skills_glob",
+        "skills_defer_loading",
+        "skills_require_description",
+        "mcp_enabled",
+        "mcp_config_path",
+        "mcp_init_timeout_sec",
+    }
+)
+
+LEGACY_TOP_LEVEL_KEYS = LEGACY_SERVICE_KEYS | LEGACY_RUN_KEYS
+
+SERVICE_SPLIT_TO_LEGACY_KEY = {
+    "mode": "service_mode",
+    "host": "service_host",
+    "port": "service_port",
+    "workers": "service_workers",
+    "mount_work_root": "mount_work_root",
+    "mount_config_root": "mount_config_root",
+    "mount_artifacts_root": "mount_artifacts_root",
+    "queue_backend": "queue_backend",
+    "network_policy": "network_policy",
+}
+
+ENV_TO_CONFIG_KEY = {
+    "MODEL": "model",
+    "PROVIDER_URL": "provider-url",
+    "OLLAMA_BASE_URL": "provider-url",
+    "PROJECT_ROOT": "project_root",
+    "COMMAND_PROFILE": "command_profile",
+    "SYSTEM_PROMPT": "system-prompt",
+    "TOOL_POLICY": "tool-policy",
+    "EVAL_EXPECT_JSON": "eval_expect_json",
+    "EVAL_SUCCESS_PASS_RATE": "eval_success_pass_rate",
+    "USAGE_REQUEST_LIMIT": "usage_request_limit",
+    "USAGE_TOOL_CALLS_LIMIT": "usage_tool_calls_limit",
+    "USAGE_INPUT_TOKENS_LIMIT": "usage_input_tokens_limit",
+    "USAGE_OUTPUT_TOKENS_LIMIT": "usage_output_tokens_limit",
+    "USAGE_TOTAL_TOKENS_LIMIT": "usage_total_tokens_limit",
+    "USAGE_COUNT_TOKENS_BEFORE_REQUEST": "usage_count_tokens_before_request",
+    "AGENT_RETRIES_TOOLS": "agent_retries_tools",
+    "AGENT_RETRIES_OUTPUT": "agent_retries_output",
+    "TOOL_TIMEOUT_SEC": "tool_timeout_sec",
+    "MAX_CONCURRENCY": "max_concurrency",
+    "INSTRUMENTATION_ENABLED": "instrumentation_enabled",
+    "INSTRUMENTATION_INCLUDE_CONTENT": "instrumentation_include_content",
+    "SKILLS_ENABLED": "skills_enabled",
+    "SKILLS_GLOB": "skills_glob",
+    "SKILLS_DEFER_LOADING": "skills_defer_loading",
+    "SKILLS_REQUIRE_DESCRIPTION": "skills_require_description",
+    "MCP_ENABLED": "mcp_enabled",
+    "MCP_CONFIG_PATH": "mcp_config_path",
+    "MCP_INIT_TIMEOUT_SEC": "mcp_init_timeout_sec",
+    "SERVICE_MODE": "service_mode",
+    "LLLARS_HOST": "service_host",
+    "SERVICE_HOST": "service_host",
+    "LLLARS_PORT": "service_port",
+    "SERVICE_PORT": "service_port",
+    "LLLARS_WORKERS": "service_workers",
+    "SERVICE_WORKERS": "service_workers",
+    "QUEUE_BACKEND": "queue_backend",
+    "NETWORK_POLICY": "network_policy",
+    "MOUNT_WORK_ROOT": "mount_work_root",
+    "MOUNT_CONFIG_ROOT": "mount_config_root",
+    "MOUNT_ARTIFACTS_ROOT": "mount_artifacts_root",
+}
+
+
+@dataclass(frozen=True)
+class ServiceConfig:
+    mode: str
+    host: str
+    port: int
+    workers: int
+    mount_work_root: Path
+    mount_config_root: Path
+    mount_artifacts_root: Path
+    queue_backend: str
+    network_policy: str
+
+
+@dataclass(frozen=True)
+class RunConfig:
+    model: str
+    provider_url: str
+    project_root: Path
+    test_command: str | None
+    eval_command: str | None
+    command_profile: str
 
 
 @dataclass(frozen=True)
@@ -66,12 +199,17 @@ class HarnessConfig:
     mcp_config_path: Path | None
     mcp_init_timeout_sec: float
     service_mode: str
+    service_host: str
+    service_port: int
+    service_workers: int
     mount_work_root: Path
     mount_config_root: Path
     mount_artifacts_root: Path
     queue_backend: str
     network_policy: str
     command_profile: str
+    service: ServiceConfig
+    run: RunConfig
 
 
 def canonicalize_shell_command(command: str) -> str:
@@ -89,6 +227,121 @@ def _load_config_object(config_path: Path) -> dict:
     if not isinstance(cfg, dict):
         raise ValueError("Top-level config must be a JSON object")
     return cfg
+
+
+def _parse_env_file(path: Path) -> dict[str, str]:
+    if not path.exists() or not path.is_file():
+        raise ValueError(f"Invalid env_file path: {path}")
+
+    env: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        env[key.strip()] = value.strip().strip('"').strip("'")
+    return env
+
+
+def _build_env_layer(raw_env: dict[str, str]) -> dict[str, object]:
+    layer: dict[str, object] = {}
+    commands: dict[str, str] = {}
+
+    test_command = raw_env.get("TEST_COMMAND", "").strip()
+    eval_command = raw_env.get("EVAL_COMMAND", "").strip()
+    if test_command:
+        commands["test"] = test_command
+    if eval_command:
+        commands["eval"] = eval_command
+    if commands:
+        layer["commands"] = commands
+
+    for env_key, cfg_key in ENV_TO_CONFIG_KEY.items():
+        if env_key in raw_env:
+            layer[cfg_key] = raw_env[env_key]
+    return layer
+
+
+def _flatten_split_config(cfg: dict) -> dict:
+    has_service = "service" in cfg
+    has_run = "run" in cfg
+
+    if not has_service and not has_run:
+        legacy_present = [
+            key for key in cfg.keys() if key in LEGACY_TOP_LEVEL_KEYS
+        ]
+        if legacy_present:
+            warnings.warn(
+                "Legacy top-level config fields are deprecated. "
+                "Use split service/run objects.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        return dict(cfg)
+
+    if has_service != has_run:
+        raise ValueError(
+            "Split config requires both service and run objects"
+        )
+
+    service = cfg["service"]
+    run = cfg["run"]
+    if not isinstance(service, dict):
+        raise ValueError("Config service must be an object")
+    if not isinstance(run, dict):
+        raise ValueError("Config run must be an object")
+
+    mixed_legacy = [
+        key for key in cfg.keys() if key in LEGACY_TOP_LEVEL_KEYS
+    ]
+    if mixed_legacy:
+        mixed_text = ", ".join(sorted(mixed_legacy))
+        raise ValueError(
+            "Config cannot mix split and legacy fields: "
+            f"{mixed_text}"
+        )
+
+    flattened: dict[str, object] = {}
+    for split_key, legacy_key in SERVICE_SPLIT_TO_LEGACY_KEY.items():
+        if split_key in service:
+            flattened[legacy_key] = service[split_key]
+
+    flattened_run = dict(run)
+    if "provider_url" in flattened_run and "provider-url" not in flattened_run:
+        flattened_run["provider-url"] = flattened_run.pop("provider_url")
+    flattened.update(flattened_run)
+    return flattened
+
+
+def _merge_layers(
+    defaults: dict[str, object],
+    env_layer: dict[str, object],
+    json_layer: dict[str, object],
+    overrides: dict[str, object] | None,
+) -> dict[str, object]:
+    merged = dict(defaults)
+    merged.update(env_layer)
+    merged.update(json_layer)
+    if overrides:
+        merged.update(overrides)
+    return merged
+
+
+def _as_bool(raw: object, default: bool) -> bool:
+    if isinstance(raw, bool):
+        return raw
+    if raw is None:
+        return default
+    value = str(raw).strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    return default
 
 
 def _require_non_empty_str(
@@ -207,9 +460,33 @@ def build_default_tool_policy(
     return "\n".join(lines)
 
 
-def load_config(config_path: Path) -> HarnessConfig:
-    cfg = _load_config_object(config_path)
+def load_config(
+    config_path: Path,
+    *,
+    overrides: dict[str, object] | None = None,
+) -> HarnessConfig:
+    json_cfg = _load_config_object(config_path)
     config_root = config_path.parent.resolve()
+
+    env_layer: dict[str, object] = {}
+    env_file_raw = str(json_cfg.get("env_file", "")).strip()
+    if env_file_raw:
+        env_file_path = Path(env_file_raw)
+        if not env_file_path.is_absolute():
+            env_file_path = (config_root / env_file_path).resolve()
+        env_layer = _build_env_layer(_parse_env_file(env_file_path))
+
+    json_layer = _flatten_split_config(json_cfg)
+    defaults: dict[str, object] = {
+        "service_mode": DEFAULT_SERVICE_MODE,
+        "service_host": DEFAULT_SERVICE_HOST,
+        "service_port": DEFAULT_SERVICE_PORT,
+        "service_workers": DEFAULT_SERVICE_WORKERS,
+        "queue_backend": DEFAULT_QUEUE_BACKEND,
+        "network_policy": DEFAULT_NETWORK_POLICY,
+        "command_profile": DEFAULT_COMMAND_PROFILE,
+    }
+    cfg = _merge_layers(defaults, env_layer, json_layer, overrides)
 
     model = _require_non_empty_str(
         cfg,
@@ -278,11 +555,15 @@ def load_config(config_path: Path) -> HarnessConfig:
             return default
         return max(0, value)
 
-    skills_enabled = bool(cfg.get("skills_enabled", False))
+    skills_enabled = _as_bool(cfg.get("skills_enabled", False), False)
     skills_glob = str(cfg.get("skills_glob", "")).strip()
-    skills_defer_loading = bool(cfg.get("skills_defer_loading", True))
-    skills_require_description = bool(
-        cfg.get("skills_require_description", True)
+    skills_defer_loading = _as_bool(
+        cfg.get("skills_defer_loading", True),
+        True,
+    )
+    skills_require_description = _as_bool(
+        cfg.get("skills_require_description", True),
+        True,
     )
 
     if skills_enabled and not skills_glob:
@@ -290,7 +571,7 @@ def load_config(config_path: Path) -> HarnessConfig:
             "skills_enabled is true but skills_glob is empty"
         )
 
-    mcp_enabled = bool(cfg.get("mcp_enabled", False))
+    mcp_enabled = _as_bool(cfg.get("mcp_enabled", False), False)
     mcp_config_raw = str(cfg.get("mcp_config_path", "")).strip()
     mcp_config_path: Path | None = None
     if mcp_config_raw:
@@ -335,6 +616,25 @@ def load_config(config_path: Path) -> HarnessConfig:
         valid_values=VALID_NETWORK_POLICIES,
     )
 
+    service_host = str(
+        cfg.get("service_host", DEFAULT_SERVICE_HOST)
+    ).strip() or DEFAULT_SERVICE_HOST
+
+    def _positive_int(key: str, default: int) -> int:
+        raw = cfg.get(key, default)
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return default
+        if value <= 0:
+            return default
+        return value
+
+    service_port = _positive_int("service_port", DEFAULT_SERVICE_PORT)
+    service_workers = _positive_int(
+        "service_workers", DEFAULT_SERVICE_WORKERS
+    )
+
     mount_work_root = _resolve_mount_root(
         cfg,
         "mount_work_root",
@@ -365,7 +665,7 @@ def load_config(config_path: Path) -> HarnessConfig:
         project_root=project_root,
         test_command=test_command,
         eval_command=eval_command,
-        eval_expect_json=bool(cfg.get("eval_expect_json", True)),
+        eval_expect_json=_as_bool(cfg.get("eval_expect_json", True), True),
         eval_success_pass_rate=float(cfg.get("eval_success_pass_rate", 100.0)),
         allowed_shell_commands=allowed_shell_commands,
         system_prompt=system_prompt,
@@ -384,8 +684,9 @@ def load_config(config_path: Path) -> HarnessConfig:
         usage_total_tokens_limit=_optional_int(
             "usage_total_tokens_limit", None
         ),
-        usage_count_tokens_before_request=bool(
-            cfg.get("usage_count_tokens_before_request", False)
+        usage_count_tokens_before_request=_as_bool(
+            cfg.get("usage_count_tokens_before_request", False),
+            False,
         ),
         agent_retries_tools=_non_negative_int(
             "agent_retries_tools", DEFAULT_AGENT_RETRIES_TOOLS
@@ -397,11 +698,13 @@ def load_config(config_path: Path) -> HarnessConfig:
             "tool_timeout_sec", DEFAULT_TOOL_TIMEOUT_SEC
         ),
         max_concurrency=_optional_int("max_concurrency", None),
-        instrumentation_enabled=bool(
-            cfg.get("instrumentation_enabled", False)
+        instrumentation_enabled=_as_bool(
+            cfg.get("instrumentation_enabled", False),
+            False,
         ),
-        instrumentation_include_content=bool(
-            cfg.get("instrumentation_include_content", False)
+        instrumentation_include_content=_as_bool(
+            cfg.get("instrumentation_include_content", False),
+            False,
         ),
         skills_enabled=skills_enabled,
         skills_glob=skills_glob,
@@ -411,10 +714,32 @@ def load_config(config_path: Path) -> HarnessConfig:
         mcp_config_path=mcp_config_path,
         mcp_init_timeout_sec=mcp_init_timeout_sec,
         service_mode=service_mode,
+        service_host=service_host,
+        service_port=service_port,
+        service_workers=service_workers,
         mount_work_root=mount_work_root,
         mount_config_root=mount_config_root,
         mount_artifacts_root=mount_artifacts_root,
         queue_backend=queue_backend,
         network_policy=network_policy,
         command_profile=command_profile,
+        service=ServiceConfig(
+            mode=service_mode,
+            host=service_host,
+            port=service_port,
+            workers=service_workers,
+            mount_work_root=mount_work_root,
+            mount_config_root=mount_config_root,
+            mount_artifacts_root=mount_artifacts_root,
+            queue_backend=queue_backend,
+            network_policy=network_policy,
+        ),
+        run=RunConfig(
+            model=model,
+            provider_url=provider_url,
+            project_root=project_root,
+            test_command=test_command,
+            eval_command=eval_command,
+            command_profile=command_profile,
+        ),
     )

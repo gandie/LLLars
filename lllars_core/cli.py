@@ -5,7 +5,6 @@ from pathlib import Path
 
 from lllars_core.config import (
     DEFAULT_CONFIG_PATH,
-    DEFAULT_QUEUE_BACKEND,
     DEFAULT_TIMEOUT_SEC,
     VALID_QUEUE_BACKENDS,
     load_config,
@@ -67,6 +66,9 @@ def _print_runtime_startup(cfg: object) -> None:
     print(
         f"{Color.CYAN}[runtime]{Color.RESET} "
         f"service_mode={cfg.service_mode}; "
+        f"service_host={cfg.service_host}; "
+        f"service_port={cfg.service_port}; "
+        f"service_workers={cfg.service_workers}; "
         f"mount_work_root={cfg.mount_work_root}; "
         f"mount_config_root={cfg.mount_config_root}; "
         f"mount_artifacts_root={cfg.mount_artifacts_root}; "
@@ -134,28 +136,37 @@ def _run_oneshot(args: argparse.Namespace) -> None:
 
 def _run_serve(args: argparse.Namespace) -> None:
     config_path = Path(args.config).resolve()
-    cfg = load_config(config_path)
+    overrides: dict[str, object] = {}
+    if args.host is not None:
+        overrides["service_host"] = args.host
+    if args.port is not None:
+        overrides["service_port"] = args.port
+    if args.workers is not None:
+        overrides["service_workers"] = args.workers
+    if args.queue_backend is not None:
+        overrides["queue_backend"] = args.queue_backend
+
+    cfg = load_config(config_path, overrides=overrides)
 
     _print_runtime_startup(cfg)
     _run_startup_preflight(cfg, args.skip_mcp_preflight)
 
-    queue_backend = args.queue_backend or cfg.queue_backend
     print(
         f"{Color.CYAN}[serve]{Color.RESET} "
-        f"host={args.host}; "
-        f"port={args.port}; "
-        f"workers={args.workers}; "
-        f"queue_backend={queue_backend}"
+        f"host={cfg.service_host}; "
+        f"port={cfg.service_port}; "
+        f"workers={cfg.service_workers}; "
+        f"queue_backend={cfg.queue_backend}"
     )
 
-    if queue_backend != "inmemory":
+    if cfg.queue_backend != "inmemory":
         raise SystemExit(
             "Serve mode currently supports only queue_backend=inmemory"
         )
 
-    if args.workers != 1:
+    if cfg.service_workers != 1:
         print(
-            f"{Color.YELLOW}[serve] workers={args.workers} requested; "
+            f"{Color.YELLOW}[serve] workers={cfg.service_workers} requested; "
             f"using 1 worker for in-process job store.{Color.RESET}"
         )
 
@@ -167,7 +178,12 @@ def _run_serve(args: argparse.Namespace) -> None:
         ) from exc
 
     app = create_runtime_app(cfg)
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    uvicorn.run(
+        app,
+        host=cfg.service_host,
+        port=cfg.service_port,
+        log_level="info",
+    )
 
 
 def main() -> None:
@@ -195,13 +211,13 @@ def main() -> None:
         help="Skip MCP connectivity preflight check",
     )
     serve_ap.add_argument("--verbose", "-v", action="store_true")
-    serve_ap.add_argument("--host", default="127.0.0.1")
-    serve_ap.add_argument("--port", type=int, default=8000)
-    serve_ap.add_argument("--workers", type=int, default=1)
+    serve_ap.add_argument("--host", default=None)
+    serve_ap.add_argument("--port", type=int, default=None)
+    serve_ap.add_argument("--workers", type=int, default=None)
     serve_ap.add_argument(
         "--queue-backend",
         choices=sorted(VALID_QUEUE_BACKENDS),
-        default=DEFAULT_QUEUE_BACKEND,
+        default=None,
     )
 
     args = ap.parse_args()

@@ -396,21 +396,43 @@ Risks:
 - Serve smoke verification is still an operator-run two-terminal flow; not fully automated in unittest.
 Next handoff note:
 - Release checklist can now treat one-shot and serve smoke checks as baseline regression gates.
+
+Task: T13 Runtime Config Split + Native Env File Support
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/config.py
+- lllars_core/cli.py
+- tests/test_config.py
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"
+- .\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "config env-file smoke"
+Result:
+- PASS
+- Added explicit split config objects (`service`, `run`) while preserving legacy top-level compatibility.
+- Added native `env_file` support with deterministic merge precedence: defaults < env_file < JSON config < CLI overrides.
+- Added mixed-shape validation that rejects split+legacy fields in the same JSON config.
+- Added serve-side config fields (`service_host`, `service_port`, `service_workers`) and CLI override merge behavior.
+- Added tests covering split parsing, mixed-shape rejection, and precedence behavior.
+Risks:
+- Running the one-shot smoke command can mutate files under playground depending on prompt execution path.
+Next handoff note:
+- Proceed with T14 Docker Runtime Setup Simplification using the new split + env-file config contract.
 ```
 
 ## Post-T12 Increment Backlog (Residual-Driven)
 
 ### Priority Sequence (Updated)
-1. T13 Runtime Config Split + Native Env File Support
-2. T14 Docker Runtime Setup Simplification
-3. T15 Static Runtime Frontend via FastAPI
-4. T16 Runtime Cancellation Hard-Stop
-5. T17 Fully Automated Serve Smoke Test
-6. T18 Command Profile Externalization
-7. T19 Provider-Aware Startup Preflight (deferred)
-8. T20 Queue Backend: Redis Minimum (deferred)
+1. T14 Docker Runtime Setup Simplification
+2. T15 Static Runtime Frontend via FastAPI
+3. T16 Runtime Cancellation Hard-Stop
+4. T17 Fully Automated Serve Smoke Test
+5. T18 Command Profile Externalization
+6. T19 Provider-Aware Startup Preflight (deferred)
+7. T20 Queue Backend: Redis Minimum (deferred)
 
-### T13 Runtime Config Split + Native Env File Support
+### T13 Runtime Config Split + Native Env File Support (DONE 2026-07-14)
 - Goal: Decouple runtime service configuration from per-job run configuration and support env files natively.
 - Files: lllars_core/config.py, lllars_core/cli.py, tests/test_config.py, README.md.
 - Adds:

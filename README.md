@@ -69,12 +69,66 @@ lllars serve --help
 
 Serve arguments:
 
-- `--host` (default `127.0.0.1`)
-- `--port` (default `8000`)
-- `--workers` (default `1`)
-- `--queue-backend` (`inmemory` or `redis`, default `inmemory`)
+- `--host` (overrides `service.host` when provided)
+- `--port` (overrides `service.port` when provided)
+- `--workers` (overrides `service.workers` when provided)
+- `--queue-backend` (`inmemory` or `redis`, overrides service config when provided)
 
 Current status: runtime API is available in serve mode (T6).
+
+### Runtime config split + env file (T13)
+
+Runtime configuration now supports an explicit split shape:
+
+- `service`: runtime service host/port/worker/mount/network/queue fields
+- `run`: model/tools/retries/limits/commands fields
+
+You can also provide `env_file` in the JSON config. Merge precedence is deterministic:
+
+1. defaults
+2. values from `env_file`
+3. values from JSON config
+4. CLI flags
+
+Example:
+
+```json
+{
+	"env_file": "runtime.env",
+	"service": {
+		"mode": "serve",
+		"host": "127.0.0.1",
+		"port": 8000,
+		"workers": 1,
+		"mount_work_root": "playground",
+		"mount_config_root": ".",
+		"mount_artifacts_root": ".",
+		"queue_backend": "inmemory",
+		"network_policy": "inherit"
+	},
+	"run": {
+		"model": "ollama:rafw007/qwen35-claude-coder:9b",
+		"provider_url": "http://localhost:11434",
+		"project_root": "playground",
+		"commands": {},
+		"command_profile": "python-playground"
+	}
+}
+```
+
+Legacy top-level config fields remain supported, but are deprecated. Mixing legacy
+top-level fields with split `service`/`run` in the same config is rejected.
+
+Playground examples for direct comparison:
+
+- Legacy top-level shape: `playground.example.json`
+- New split shape: `playground.split.example.json`
+
+Use the split example with:
+
+```powershell
+.\venv\Scripts\python.exe .\lllars.py --config .\playground.split.example.json --prompt "Describe this repository"
+```
 
 ### Runtime API endpoints (T6)
 
@@ -225,6 +279,9 @@ Supported config knobs:
 - `skills_defer_loading`
 - `skills_require_description`
 - `service_mode`
+- `service_host`
+- `service_port`
+- `service_workers`
 - `mount_work_root`
 - `mount_config_root`
 - `mount_artifacts_root`

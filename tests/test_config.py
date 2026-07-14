@@ -27,6 +27,124 @@ def _base_config(
 
 
 class ConfigFilesystemBoundaryTests(unittest.TestCase):
+    def test_split_service_and_run_config_is_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            config = {
+                "service": {
+                    "mode": "serve",
+                    "host": "0.0.0.0",
+                    "port": 9000,
+                    "workers": 2,
+                    "mount_work_root": "workspace",
+                    "mount_config_root": ".",
+                    "mount_artifacts_root": ".",
+                    "queue_backend": "inmemory",
+                    "network_policy": "inherit",
+                },
+                "run": {
+                    "model": "test-model",
+                    "provider_url": "http://localhost:11434",
+                    "project_root": "workspace/project",
+                    "commands": {},
+                    "command_profile": "python-playground",
+                },
+            }
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            cfg = load_config(config_path)
+
+            self.assertEqual(cfg.service_mode, "serve")
+            self.assertEqual(cfg.service_host, "0.0.0.0")
+            self.assertEqual(cfg.service_port, 9000)
+            self.assertEqual(cfg.service_workers, 2)
+            self.assertEqual(cfg.run.model, "test-model")
+            self.assertEqual(cfg.run.command_profile, "python-playground")
+            self.assertEqual(
+                cfg.allowed_shell_commands,
+                ("python main.py", "python test.py"),
+            )
+
+    def test_split_and_legacy_mix_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            config = {
+                "service": {
+                    "mount_work_root": "workspace",
+                },
+                "run": {
+                    "model": "test-model",
+                    "provider-url": "http://localhost:11434",
+                    "project_root": "workspace/project",
+                    "commands": {},
+                    "command_profile": "none",
+                },
+                "queue_backend": "inmemory",
+            }
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "cannot mix split and legacy fields",
+            ):
+                load_config(config_path)
+
+    def test_precedence_defaults_env_json_cli(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            env_file = root / "runtime.env"
+            env_file.write_text(
+                "\n".join(
+                    [
+                        "SERVICE_PORT=9001",
+                        "QUEUE_BACKEND=redis",
+                        "TEST_COMMAND=python env-test.py",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            config = {
+                "env_file": "runtime.env",
+                "service": {
+                    "mount_work_root": "workspace",
+                    "port": 9010,
+                    "queue_backend": "inmemory",
+                },
+                "run": {
+                    "model": "test-model",
+                    "provider-url": "http://localhost:11434",
+                    "project_root": "workspace/project",
+                    "commands": {},
+                    "command_profile": "none",
+                },
+            }
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            cfg = load_config(
+                config_path,
+                overrides={
+                    "service_port": 9020,
+                    "queue_backend": "inmemory",
+                },
+            )
+
+            self.assertEqual(cfg.service_port, 9020)
+            self.assertEqual(cfg.queue_backend, "inmemory")
+            self.assertIsNone(cfg.test_command)
+
     def test_unknown_command_profile_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
