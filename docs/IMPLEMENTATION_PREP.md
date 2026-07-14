@@ -93,7 +93,7 @@ Use this contract for every task ticket.
 - Validation: runtime starts and accepts submit requests on documented port.
 - Done when: target user can run with one documented command.
 
-### T12 Hardening and Regression Sweep
+### T12 Hardening and Regression Sweep (DONE 2026-07-14)
 - Goal: Prove no regression to current single-shot behavior.
 - Files: tests/ runtime tests as needed (new/updated), README.md.
 - Adds: baseline CLI regression checks + runtime path smoke tests.
@@ -373,4 +373,27 @@ Risks:
 - Config model needs rework to split runtime service config from agent run config.
 Next handoff note:
 - Proceed with T12 Hardening and Regression Sweep; include config-split design as a tracked follow-up.
+
+Task: T12 Hardening and Regression Sweep
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- tests/test_cli_regression.py
+- tests/test_runtime_api_smoke_test.py
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_cli_regression.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api_smoke_test.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+- .\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "T12 one-shot smoke"
+- python .\runtime_api_smoke_test.py --prompt "Hello agent! Report status of your working directory! List files, run tests, report"
+Result:
+- PASS
+- Added baseline CLI regression checks for one-shot and serve dispatch paths.
+- Added runtime smoke test script contract checks for succeeded/failed terminal flows.
+- Added README hardening checklist documenting one-shot and serve smoke validations.
+Risks:
+- Serve smoke verification is still an operator-run two-terminal flow; not fully automated in unittest.
+Next handoff note:
+- Release checklist can now treat one-shot and serve smoke checks as baseline regression gates.
 ```

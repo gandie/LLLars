@@ -155,6 +155,36 @@ Minimal submit check (service accepts job requests on documented port):
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/jobs" -ContentType "application/json" -Body '{"prompt":"runtime smoke"}'
 ```
 
+### T12 hardening regression sweep
+
+Baseline regression checks now include dedicated CLI dispatch tests and runtime
+smoke path checks.
+
+Run CLI + runtime regression unit tests:
+
+```powershell
+.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+```
+
+One-shot smoke check (must complete without changing existing CLI behavior):
+
+```powershell
+.\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "T12 one-shot smoke"
+```
+
+Serve smoke check (start service in one terminal, then run smoke script in another):
+
+```powershell
+# terminal 1
+docker compose -f .\docker-compose.runtime.yml up --build
+
+# terminal 2
+.\venv\Scripts\python.exe .\runtime_api_smoke_test.py --prompt "T12 serve smoke"
+```
+
+Expected result: one-shot exits successfully and the runtime smoke script reaches
+`status=succeeded`.
+
 ### Runtime API payload contracts
 
 Shared runtime payload contracts now live in `lllars_core/runtime_models.py`:
