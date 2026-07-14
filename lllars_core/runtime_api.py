@@ -7,7 +7,13 @@ from fastapi import FastAPI, HTTPException, status
 
 from lllars_core.config import HarnessConfig
 from lllars_core.job_store import InMemoryJobStore, InvalidTransitionError
-from lllars_core.runtime_models import ErrorEnvelope, JobSpec, JobStatus
+from lllars_core.runtime_artifacts import persist_job_artifacts
+from lllars_core.runtime_models import (
+    ErrorEnvelope,
+    JobSpec,
+    JobStatus,
+    RunResult,
+)
 from lllars_core.runtime_runner import run_job
 
 
@@ -77,29 +83,67 @@ class RuntimeService:
                     details={"agent_returncode": result.agent_returncode},
                 )
             )
+            artifacts = self._persist_artifacts(
+                job_id=job_id,
+                status=final_state,
+                result=result,
+                error=failure_error,
+            )
             self.store.update(
                 job_id,
                 status=final_state,
                 result=result,
                 error=failure_error,
+                artifacts=artifacts,
             )
         except InvalidTransitionError:
             pass
         except Exception as exc:
+            failure_error = ErrorEnvelope(
+                code="run_exception",
+                message="Job execution raised an exception",
+                details={"error": str(exc)},
+            )
+            artifacts = self._persist_artifacts(
+                job_id=job_id,
+                status="failed",
+                result=None,
+                error=failure_error,
+            )
             try:
                 self.store.update(
                     job_id,
                     status="failed",
-                    error=ErrorEnvelope(
-                        code="run_exception",
-                        message="Job execution raised an exception",
-                        details={"error": str(exc)},
-                    ),
+                    error=failure_error,
+                    artifacts=artifacts,
                 )
             except InvalidTransitionError:
                 pass
         finally:
             self._cleanup_thread(job_id)
+
+    def _persist_artifacts(
+        self,
+        *,
+        job_id: str,
+        status: str,
+        result: RunResult | None,
+        error: ErrorEnvelope | None,
+    ) -> dict[str, str]:
+        artifacts_root = getattr(self.cfg, "mount_artifacts_root", None)
+        if artifacts_root is None:
+            return {}
+
+        try:
+            return persist_job_artifacts(
+                artifacts_root=artifacts_root,
+                job_id=job_id,
+                status=status,
+                result=result,
+                error=error,
+            )
+        except Exception:
+            return {}
 
     def _cleanup_thread(self, job_id: str) -> None:
         with self._threads_lock:

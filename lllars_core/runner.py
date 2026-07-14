@@ -118,8 +118,10 @@ def run_single_agent(
 ) -> dict[str, Any]:
     configure_windows_event_loop_policy()
 
-    runtime_telemetry: dict[str, Any] = {}
+    runtime_telemetry: dict[str, Any] = {"timeline": []}
     live_trace: list[str] = []
+    telemetry_timeline: list[dict[str, Any]] = []
+    event_start = time.time()
     configured_skill_ids = configured_markdown_skill_ids(cfg)
     used_skill_ids: list[str] = []
     used_skill_id_set: set[str] = set()
@@ -147,6 +149,15 @@ def run_single_agent(
             if summary:
                 _emit(summary)
                 append_trace(live_trace, summary)
+                telemetry_timeline.append(
+                    {
+                        "event": summary,
+                        "offset_sec": round(
+                            time.time() - event_start,
+                            3,
+                        ),
+                    }
+                )
 
     try:
         agent = build_agent(
@@ -207,6 +218,7 @@ def run_single_agent(
             "skills_loaded_count": len(configured_skill_ids),
             "skills_used_ids": list(used_skill_ids),
             "skills_used_count": len(used_skill_ids),
+            "timeline": telemetry_timeline,
         }
 
         return {

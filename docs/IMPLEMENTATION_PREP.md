@@ -72,7 +72,7 @@ Use this contract for every task ticket.
 - Validation: unknown profile rejected; known profile exposes expected commands.
 - Done when: operator chooses profile name, not raw command list, in normal mode.
 
-### T9 Observability Artifacts
+### T9 Observability Artifacts (DONE 2026-07-14)
 - Goal: Persist per-job logs and telemetry timeline.
 - Files: lllars_core/runtime_artifacts.py (new), lllars_core/runner.py.
 - Adds: /artifacts/<job-id>/summary.json, stdout.txt, stderr.txt, telemetry.json.
@@ -306,4 +306,25 @@ Risks:
 - Profiles are currently code-defined in registry; adding new profiles requires code changes.
 Next handoff note:
 - Proceed with T9 Observability Artifacts and keep artifact persistence isolated from runtime API contracts.
+
+Task: T9 Observability Artifacts
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_artifacts.py
+- lllars_core/runtime_api.py
+- lllars_core/runner.py
+- tests/test_runtime_api.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_*.py"
+Result:
+- PASS
+- Added per-job artifact persistence for summary, stdout, stderr, and telemetry.
+- Persisted artifacts for success, failed run, and exception execution paths.
+- Added runtime telemetry timeline and saved it to telemetry artifacts.
+- Added runtime API tests that verify artifact files are created for success and failure paths.
+Risks:
+- Exception-path artifacts intentionally contain minimal runtime details because no RunResult exists.
+Next handoff note:
+- Proceed with T10 Startup Preflight Summary and keep startup diagnostics explicit and structured.
 ```
