@@ -397,3 +397,161 @@ Risks:
 Next handoff note:
 - Release checklist can now treat one-shot and serve smoke checks as baseline regression gates.
 ```
+
+## Post-T12 Increment Backlog (Residual-Driven)
+
+### Priority Sequence (Updated)
+1. T13 Runtime Config Split + Native Env File Support
+2. T14 Docker Runtime Setup Simplification
+3. T15 Static Runtime Frontend via FastAPI
+4. T16 Runtime Cancellation Hard-Stop
+5. T17 Fully Automated Serve Smoke Test
+6. T18 Command Profile Externalization
+7. T19 Provider-Aware Startup Preflight (deferred)
+8. T20 Queue Backend: Redis Minimum (deferred)
+
+### T13 Runtime Config Split + Native Env File Support
+- Goal: Decouple runtime service configuration from per-job run configuration and support env files natively.
+- Files: lllars_core/config.py, lllars_core/cli.py, tests/test_config.py, README.md.
+- Adds:
+  - Explicit service config shape (host/port/worker/mount/network/queue fields).
+  - Explicit run config shape (model/tools/retries/limits/commands fields).
+  - Native `env_file` loading in config path with deterministic precedence:
+    1) defaults, 2) env file, 3) JSON config, 4) CLI flags.
+  - Backward-compatible parsing with clear deprecation warnings for legacy mixed fields.
+- Validation:
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"`
+  - `.\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "config env-file smoke"`
+- Non-goals:
+  - No redis backend implementation.
+  - No provider-specific preflight expansion.
+- Rollback strategy:
+  - Keep legacy single-object parser available behind compatibility branch.
+- Completion artifact:
+  - Diff + tests proving env-file merge precedence and service/run split behavior.
+
+### T14 Docker Runtime Setup Simplification
+- Goal: Unlock simpler runtime deployment by aligning Docker/Compose with T13 config model.
+- Files: docker-compose.runtime.yml, Dockerfile.runtime, docker/runtime-entrypoint.sh, .env.runtime.example, README.md.
+- Adds:
+  - Single runtime env-file contract used by compose and service startup.
+  - Reduced config duplication between container args and mounted JSON.
+  - Clear documented startup path where env file drives runtime service defaults.
+- Validation:
+  - `docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime up --build`
+  - `python .\runtime_api_smoke_test.py --prompt "docker runtime setup smoke"`
+- Non-goals:
+  - No orchestration beyond local compose example.
+  - No image hardening/security profile redesign.
+- Rollback strategy:
+  - Preserve previous compose/env examples and keep legacy path documented as fallback.
+- Completion artifact:
+  - Updated compose/env examples and successful smoke output using env-file-first setup.
+
+### T15 Static Runtime Frontend via FastAPI
+- Goal: Provide a simple static UI served by FastAPI for manual runtime testing and operator visibility.
+- Files: lllars_core/runtime_api.py, lllars_core/runtime_models.py (if UI response shape helpers are needed), tests/test_runtime_api.py, README.md.
+- Adds:
+  - Static frontend route (for example `/`) served by FastAPI static files.
+  - Minimal page to submit prompt, poll status, and view logs for a job.
+  - Client-side handling for terminal states (`succeeded`, `failed`, `canceled`).
+- Validation:
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"`
+  - Manual browser smoke against serve mode: submit -> poll -> logs end-to-end.
+- Non-goals:
+  - No SPA framework introduction.
+  - No auth/identity workflow.
+- Rollback strategy:
+  - Keep API-only mode fully functional if static asset route fails.
+- Completion artifact:
+  - Static page files + runtime API test coverage and documented test steps.
+
+### T16 Runtime Cancellation Hard-Stop
+- Goal: Ensure cancel transitions terminate active agent execution, not only mark job state.
+- Files: lllars_core/runtime_api.py, lllars_core/runtime_runner.py, tests/test_runtime_api.py, tests/test_runtime_runner.py.
+- Adds:
+  - Cancel handle propagation from runtime service into active run process.
+  - Runner-level termination path returning a canceled terminal outcome.
+  - Race-safe finalization for cancel vs success/failure completion.
+- Validation:
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"`
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"`
+- Non-goals:
+  - No distributed cross-host cancellation control.
+  - No external queue dependency required.
+- Rollback strategy:
+  - Preserve state-only cancel behavior as compatibility fallback path.
+- Completion artifact:
+  - Test evidence that in-flight jobs can be force-terminated to `canceled`.
+
+### T17 Fully Automated Serve Smoke Test
+- Goal: Remove manual two-terminal operator flow from serve smoke verification.
+- Files: tests/test_runtime_api_smoke_test.py, runtime_api_smoke_test.py, tests/test_cli_regression.py.
+- Adds:
+  - In-process serve harness on ephemeral port for smoke execution.
+  - Deterministic timeout and teardown behavior for CI stability.
+  - Terminal-state coverage for `succeeded`, `failed`, and `canceled`.
+- Validation:
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api_smoke_test.py"`
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_cli_regression.py"`
+- Non-goals:
+  - No docker compose dependency in unit tests.
+  - No performance/load benchmark coverage.
+- Rollback strategy:
+  - Keep current contract-style smoke tests while adding isolated automated harness tests.
+- Completion artifact:
+  - CI-friendly unittest output proving serve smoke is fully automated.
+
+### T18 Command Profile Externalization
+- Goal: Make command profiles extensible without code edits.
+- Files: lllars_core/config.py, playground.example.json, README.md, tests/test_config.py.
+- Adds:
+  - Optional external profile source (JSON/YAML) merged with built-in profiles.
+  - Duplicate/override conflict validation rules.
+  - Explicit diagnostics for missing requested profile.
+- Validation:
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"`
+  - `.\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "profile externalization smoke"`
+- Non-goals:
+  - No role-based policy engine.
+  - No remote profile fetching.
+- Rollback strategy:
+  - Fall back to built-in registry when external profile loading fails.
+- Completion artifact:
+  - Example external profile file and passing config tests.
+
+### T19 Provider-Aware Startup Preflight (Deferred)
+- Goal: Expand model endpoint probing beyond Ollama-only assumptions.
+- Files: lllars_core/mcp_preflight.py, lllars_core/config.py, tests/test_config.py, README.md.
+- Adds:
+  - Provider family inference (Ollama vs OpenAI-compatible style endpoints).
+  - Probe strategy per provider family (`/api/tags` vs `/models`).
+  - Structured warning mode when model listing is unsupported but connectivity is healthy.
+- Validation:
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"`
+  - `.\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "provider preflight smoke"`
+- Non-goals:
+  - No provider SDK integration.
+  - No authentication redesign.
+- Rollback strategy:
+  - Keep existing Ollama probe as default fallback.
+- Completion artifact:
+  - Updated preflight docs with multi-provider examples.
+
+### T20 Queue Backend: Redis Minimum (Deferred)
+- Goal: Implement redis queue backend baseline for submit/status/cancel lifecycle.
+- Files: lllars_core/job_store.py, lllars_core/runtime_api.py, pyproject.toml, tests/test_runtime_api.py.
+- Adds:
+  - Redis-backed job state persistence with same transition rules as in-memory store.
+  - Serve-mode dispatch path for `queue_backend=redis`.
+  - Explicit startup diagnostics for unreachable/misconfigured redis.
+- Validation:
+  - `.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"`
+  - `python .\lllars.py serve --config .\playground.example.json --queue-backend redis` (expected: starts or fails with clear redis diagnostics)
+- Non-goals:
+  - No distributed scheduling layer.
+  - No dead-letter/retry policy framework.
+- Rollback strategy:
+  - Keep in-memory backend as default and gate redis path behind explicit selection.
+- Completion artifact:
+  - Diff + tests showing both in-memory and redis backend selection behavior.
