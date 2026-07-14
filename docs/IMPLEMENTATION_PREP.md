@@ -23,7 +23,7 @@ Use this contract for every task ticket.
 - Validation: config load succeeds with omitted optional fields and fails on invalid roots/policies.
 - Done when: CLI can parse config and print normalized runtime config at startup.
 
-### T2 CLI Serve Entrypoint
+### T2 CLI Serve Entrypoint (DONE 2026-07-14)
 - Goal: Add serve path while preserving existing one-shot path.
 - Files: lllars_core/cli.py, README.md.
 - Adds: serve subcommand args (host, port, workers, queue backend).
@@ -165,4 +165,27 @@ Validation command(s):
 Result:
 Risks:
 Next handoff note:
+```
+
+## Decision Log Entries
+
+```text
+Task: T2 CLI Serve Entrypoint
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/cli.py
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe .\lllars.py serve --help
+- .\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json
+- python .\lllars.py serve --config .\playground.example.json
+Result:
+- PASS
+- Serve subcommand is available with host/port/workers/queue-backend args.
+- Default one-shot dispatch remains unchanged (prompt is still required).
+Risks:
+- Serve mode is currently an entrypoint scaffold and does not host runtime API endpoints yet (planned in T6).
+Next handoff note:
+- Proceed with T3 Job Models and keep API payload contracts centralized in lllars_core/runtime_models.py.
 ```
