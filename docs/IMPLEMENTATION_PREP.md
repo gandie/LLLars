@@ -65,7 +65,7 @@ Use this contract for every task ticket.
 - Validation: escape attempts using .., symlinks, absolute paths are denied.
 - Done when: all project roots resolve under configured /work equivalent.
 
-### T8 Command Profile Policy
+### T8 Command Profile Policy (DONE 2026-07-14)
 - Goal: Replace ad-hoc allowlist text with named command profiles.
 - Files: lllars_core/config.py, lllars_core/agent_builder.py, playground.example.json.
 - Adds: profile registry and profile resolution.
@@ -285,4 +285,25 @@ Risks:
 - Symlink denial test may be skipped in environments where directory symlink creation is unavailable.
 Next handoff note:
 - Proceed with T8 Command Profile Policy and keep profile resolution centralized in config loading.
+
+Task: T8 Command Profile Policy
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/config.py
+- lllars_core/agent_builder.py
+- playground.example.json
+- tests/test_config.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added named command profile registry + resolution in config load flow.
+- Unknown profile names now fail fast during config validation.
+- Known profile (`python-playground`) resolves expected shell commands.
+- Example config now selects `command_profile` instead of raw `allowed_shell_commands`.
+Risks:
+- Profiles are currently code-defined in registry; adding new profiles requires code changes.
+Next handoff note:
+- Proceed with T9 Observability Artifacts and keep artifact persistence isolated from runtime API contracts.
 ```

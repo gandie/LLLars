@@ -7,13 +7,10 @@
   "commands": {   
   },
 
+  "command_profile": "python-playground",
+
   "eval_expect_json": false,
   "eval_success_pass_rate": 100.0,
-
-  "allowed_shell_commands": [
-    "python main.py",
-    "python test.py"
-  ],
 
   "usage_request_limit": null,
   "usage_tool_calls_limit": 100,

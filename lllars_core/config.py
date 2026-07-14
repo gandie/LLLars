@@ -20,10 +20,18 @@ DEFAULT_MCP_INIT_TIMEOUT_SEC = 60.0
 DEFAULT_SERVICE_MODE = "oneshot"
 DEFAULT_QUEUE_BACKEND = "inmemory"
 DEFAULT_NETWORK_POLICY = "inherit"
+DEFAULT_COMMAND_PROFILE = "none"
 
 VALID_SERVICE_MODES = frozenset({"oneshot", "serve"})
 VALID_QUEUE_BACKENDS = frozenset({"inmemory", "redis"})
 VALID_NETWORK_POLICIES = frozenset({"inherit", "offline"})
+COMMAND_PROFILE_REGISTRY = {
+    "none": (),
+    "python-playground": (
+        "python main.py",
+        "python test.py",
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -63,6 +71,7 @@ class HarnessConfig:
     mount_artifacts_root: Path
     queue_backend: str
     network_policy: str
+    command_profile: str
 
 
 def canonicalize_shell_command(command: str) -> str:
@@ -139,9 +148,9 @@ def _load_commands(cfg: dict) -> tuple[str | None, str | None]:
 
 
 def _collect_allowed_shell_commands(
-    cfg: dict,
     test_command: str | None,
     eval_command: str | None,
+    profile_commands: tuple[str, ...],
 ) -> tuple[str, ...]:
     allowed_shell_commands_list: list[str] = []
     seen_allowed_commands: set[str] = set()
@@ -157,14 +166,23 @@ def _collect_allowed_shell_commands(
     if eval_command:
         _append_allowed(eval_command)
 
-    extra = cfg.get("allowed_shell_commands", [])
-    if isinstance(extra, list):
-        for item in extra:
-            text = str(item).strip()
-            if text:
-                _append_allowed(text)
+    for command in profile_commands:
+        _append_allowed(command)
 
     return tuple(allowed_shell_commands_list)
+
+
+def _resolve_command_profile(cfg: dict) -> tuple[str, tuple[str, ...]]:
+    profile_name = str(
+        cfg.get("command_profile", DEFAULT_COMMAND_PROFILE)
+    ).strip().lower()
+    if profile_name not in COMMAND_PROFILE_REGISTRY:
+        available = ", ".join(sorted(COMMAND_PROFILE_REGISTRY))
+        raise ValueError(
+            "Unknown command_profile "
+            f"{profile_name!r}. Available profiles: {available}"
+        )
+    return profile_name, COMMAND_PROFILE_REGISTRY[profile_name]
 
 
 def build_default_tool_policy(
@@ -209,10 +227,11 @@ def load_config(config_path: Path) -> HarnessConfig:
         "Config requires project_root",
     )
     test_command, eval_command = _load_commands(cfg)
+    command_profile, profile_commands = _resolve_command_profile(cfg)
     allowed_shell_commands = _collect_allowed_shell_commands(
-        cfg,
         test_command,
         eval_command,
+        profile_commands,
     )
 
     system_prompt = str(cfg.get("system-prompt", "")).strip()
@@ -397,4 +416,5 @@ def load_config(config_path: Path) -> HarnessConfig:
         mount_artifacts_root=mount_artifacts_root,
         queue_backend=queue_backend,
         network_policy=network_policy,
+        command_profile=command_profile,
     )

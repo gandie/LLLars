@@ -19,6 +19,7 @@ def _base_config(
         "provider-url": "http://localhost:11434",
         "project_root": project_root,
         "commands": {},
+        "command_profile": "none",
     }
     if mount_work_root is not None:
         config["mount_work_root"] = mount_work_root
@@ -26,6 +27,44 @@ def _base_config(
 
 
 class ConfigFilesystemBoundaryTests(unittest.TestCase):
+    def test_unknown_command_profile_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            config = _base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            config["command_profile"] = "does-not-exist"
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Unknown command_profile"):
+                load_config(config_path)
+
+    def test_known_command_profile_exposes_expected_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            config = _base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            config["command_profile"] = "python-playground"
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            cfg = load_config(config_path)
+            self.assertEqual(cfg.command_profile, "python-playground")
+            self.assertEqual(
+                cfg.allowed_shell_commands,
+                ("python main.py", "python test.py"),
+            )
+
     def test_project_root_must_resolve_under_mount_work_root(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

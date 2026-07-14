@@ -29,6 +29,7 @@ class AgentDeps:
     project_root: str
     os_name: str
     shell_name: str
+    command_profile: str
     allowed_shell_commands: tuple[str, ...]
     has_test_command: bool
     has_eval_command: bool
@@ -39,6 +40,7 @@ def make_agent_deps(cfg: HarnessConfig) -> AgentDeps:
         project_root=str(cfg.project_root),
         os_name=platform.system() or "unknown",
         shell_name="PowerShell",
+        command_profile=cfg.command_profile,
         allowed_shell_commands=cfg.allowed_shell_commands,
         has_test_command=cfg.test_command is not None,
         has_eval_command=cfg.eval_command is not None,
@@ -131,6 +133,7 @@ def _runtime_tooling_instructions(
         f"- OS: {deps.os_name}",
         f"- Shell: {deps.shell_name}",
         f"- Project root: {deps.project_root}",
+        f"- Command profile: {deps.command_profile}",
         "",
         "Operational rules:",
         "- Use only registered tools.",
