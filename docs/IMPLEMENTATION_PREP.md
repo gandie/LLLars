@@ -37,7 +37,7 @@ Use this contract for every task ticket.
 - Validation: schema serialization/deserialization roundtrip passes.
 - Done when: all runtime endpoints use shared models only.
 
-### T4 In-Memory Job Store
+### T4 In-Memory Job Store (DONE 2026-07-14)
 - Goal: Track lifecycle and artifacts for submitted jobs.
 - Files: lllars_core/job_store.py (new).
 - Adds: create/get/list/update/cancel primitives with thread-safe state transitions.
@@ -206,4 +206,22 @@ Risks:
 - Runtime endpoints are not implemented yet (planned in T6), so endpoint-level adoption of shared models is pending.
 Next handoff note:
 - Proceed with T4 In-Memory Job Store and keep lifecycle status values aligned with JobStatus.status in runtime_models.
+
+Task: T4 In-Memory Job Store
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/job_store.py
+- tests/test_job_store.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added thread-safe in-memory job store primitives: create/get/list/update/cancel.
+- Enforced lifecycle transitions: queued -> running -> terminal (or canceled), no skip transitions.
+- Added cancellation race coverage proving atomic terminal-state resolution.
+Risks:
+- Store is in-memory only and process-local; durability/redis behavior is pending future queue backend work.
+Next handoff note:
+- Proceed with T5 Job Runner Adapter and route job execution updates through InMemoryJobStore.update/cancel.
 ```
