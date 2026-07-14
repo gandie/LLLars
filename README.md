@@ -76,6 +76,22 @@ Serve arguments:
 
 Current status: this entrypoint is scaffolded for runtime API work planned in T6.
 
+### Runtime API payload contracts
+
+Shared runtime payload contracts now live in `lllars_core/runtime_models.py`:
+
+- `JobSpec`: submit payload for a runtime job.
+- `RunResult`: normalized run outcome payload.
+- `JobStatus`: lifecycle payload for queued/running/terminal jobs.
+- `ErrorEnvelope`: stable error payload shape for API responses.
+
+These models are intended to be the single contract source for runtime endpoints.
+Validation roundtrip example:
+
+```powershell
+python -c "from lllars_core.runtime_models import ErrorEnvelope, JobSpec, JobStatus, RunResult; spec = JobSpec(prompt='ping'); spec = JobSpec.model_validate(spec.model_dump()); result = RunResult(success=True, agent_returncode=0, elapsed_sec=0.1, agent_stdout='ok', agent_stderr=''); result = RunResult.model_validate(result.model_dump()); status = JobStatus(job_id='job-1', status='succeeded', result=result); status = JobStatus.model_validate(status.model_dump()); err = ErrorEnvelope(code='bad_request', message='invalid input'); err = ErrorEnvelope.model_validate(err.model_dump()); print('roundtrip-ok')"
+```
+
 ### Native runtime controls
 
 The harness now uses native PydanticAI runtime controls instead of custom

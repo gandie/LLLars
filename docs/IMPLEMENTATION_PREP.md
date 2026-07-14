@@ -30,7 +30,7 @@ Use this contract for every task ticket.
 - Validation: lllars serve --help works; default one-shot execution still works unchanged.
 - Done when: command dispatch clearly separates run-once and serve mode.
 
-### T3 Job Models
+### T3 Job Models (DONE 2026-07-14)
 - Goal: Create stable API payload contracts.
 - Files: lllars_core/runtime_models.py (new), README.md.
 - Adds: JobSpec, RunResult, JobStatus, ErrorEnvelope.
@@ -188,4 +188,22 @@ Risks:
 - Serve mode is currently an entrypoint scaffold and does not host runtime API endpoints yet (planned in T6).
 Next handoff note:
 - Proceed with T3 Job Models and keep API payload contracts centralized in lllars_core/runtime_models.py.
+
+Task: T3 Job Models
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_models.py
+- README.md
+Validation command(s):
+- Python schema roundtrip check using workspace interpreter:
+  JobSpec/RunResult/JobStatus/ErrorEnvelope model_dump -> model_validate
+Result:
+- PASS
+- Added shared runtime payload contracts in lllars_core/runtime_models.py.
+- Added README documentation section for runtime API payload contracts and roundtrip example.
+Risks:
+- Runtime endpoints are not implemented yet (planned in T6), so endpoint-level adoption of shared models is pending.
+Next handoff note:
+- Proceed with T4 In-Memory Job Store and keep lifecycle status values aligned with JobStatus.status in runtime_models.
 ```
