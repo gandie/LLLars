@@ -181,3 +181,15 @@ This creates a repeatable transfer loop:
 4. Tighten thresholds as architecture improves.
 
 The result is durable progress: better defaults, lower variance, and less dependence on memory or prompt wording.
+
+Pony Farm backlog (later thoughts and possible implementation order):
+- Import boundary eval: enforce allowed layer dependency directions.
+- Public API drift eval: detect accidental export contract changes.
+- Forbidden pattern eval: block risky shortcuts (for example broad except, debug leftovers in runtime paths).
+- Error-message quality eval: require actionable diagnostics for known failure modes.
+- Config schema stability eval: detect breaking key changes without compatibility bridge.
+- CLI contract eval: verify command/flag behavior and exit-code expectations.
+- Documentation freshness eval: smoke-check command snippets used in docs.
+- Waiver hygiene eval: require reason plus removal linkage and prevent waiver sprawl.
+- Eval runtime budget eval: keep eval suite fast enough to run every cycle.
+- Decision-log completeness eval: ensure task outcomes include validation and risk notes.

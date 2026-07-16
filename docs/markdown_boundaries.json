@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "defaults": {
+    "max_file_lines": 260,
+    "max_section_lines": 60
+  },
+  "include": [
+    "docs/*.md",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "exclude": [],
+  "waivers": {
+    "files": {
+      "README.md": {
+        "max_file_lines": 520,
+        "reason": "README split roadmap pending"
+      },
+      "docs/IMPLEMENTATION_PREP.md": {
+        "max_file_lines": 700,
+        "reason": "Backlog consolidation pending"
+      },
+      "docs/IMPLEMENTATION_CHANGELOG.md": {
+        "max_file_lines": 800,
+        "max_section_lines": 450,
+        "reason": "Archive partitioning pending"
+      }
+    },
+    "sections": {
+      "README.md::Native runtime controls": {
+        "max_section_lines": 90,
+        "reason": "README split roadmap pending"
+      },
+      "docs/IMPLEMENTATION_CHANGELOG.md::Decision Log Archive": {
+        "max_section_lines": 450,
+        "reason": "Archive partitioning pending"
+      }
+    }
+  }
+}

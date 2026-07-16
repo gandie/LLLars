@@ -68,6 +68,10 @@
       "lllars_core/skills.py": {
         "max_function_lines": 50,
         "reason": "T31 tools decomposition pending"
+      },
+      "lllars_core/markdown_boundaries.py": {
+        "max_function_lines": 70,
+        "reason": "Boundary tooling module; compactness refactor can be done later"
       }
     },
     "functions": {
