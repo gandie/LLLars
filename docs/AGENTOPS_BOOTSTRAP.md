@@ -21,7 +21,11 @@ It typically includes:
 - A primary custom implementation agent with invocation rules.
 - Skill packs that encode domain-specific behavior and doc-first constraints.
 - A task protocol for one-pass implementation loops.
+- Agent evals that make quality and policy checks machine-readable.
 - Consolidated planning docs that align scope, phases, and acceptance criteria.
+
+Agent evals in this context are repeatable checks that verify both outcomes and execution behavior.
+They convert expectations (scope, tool use, boundaries, safety) into deterministic pass/fail signals.
 
 ## 3. Design Principles
 ### 3.1 Human Sovereignty
@@ -57,6 +61,20 @@ AgentOps Bootstrap separates control from execution.
 - Tooling selection under explicit policy.
 - Validation commands and outcomes.
 - Artifacted outputs and handoff notes.
+- Eval runs that continuously test quality, process compliance, and regressions.
+
+### 4.3 Evaluation Plane (Agent Evals)
+The evaluation plane operationalizes quality and governance as executable checks.
+
+Core eval facets:
+- Outcome evals: did the task complete correctly?
+- Process evals: did the agent follow required steps and constraints?
+- Policy evals: were architectural boundaries and safety rules respected?
+- Regression evals: did behavior remain stable after prompt/tool/code changes?
+- Stress evals: does behavior remain acceptable under ambiguity and partial failure?
+
+In practice, these evals should be repository-native (tests/scripts/config), versioned,
+and required in the same run loop as functional tests.
 
 ## 5. Bootstrap Sequence
 A practical sequence for new repositories:
@@ -64,8 +82,9 @@ A practical sequence for new repositories:
 2. Define a reusable implementation agent.
 3. Add domain skills (framework, API, language discipline).
 4. Define one-pass task protocol.
-5. Consolidate planning docs.
-6. Start task execution with strict validation and handoff logging.
+5. Install baseline agent evals (outcome/process/policy/regression).
+6. Consolidate planning docs.
+7. Start task execution with strict validation, eval gating, and handoff logging.
 
 ## 6. Role of Friday in This Pattern
 In this repository, Friday functions as the primary implementation operator under explicit constraints:
@@ -103,6 +122,14 @@ Mitigation: treat agent and skill files as maintained code, reviewed during road
 ### Risk: False confidence from policy
 Mitigation: enforce validation commands and report residual risks explicitly.
 
+### Risk: Evals become brittle or noisy
+Mitigation: start with a small stable eval set, add waivers with expiry/removal tickets,
+and keep thresholds explicit and machine-readable.
+
+### Risk: Goodhart pressure on a single metric
+Mitigation: balance eval facets (outcome + process + policy + regression + stress)
+instead of optimizing only one score.
+
 ## 9. Evaluation Metrics
 A lightweight scorecard for whether the bootstrap is working:
 - Scope adherence: percent of runs without out-of-scope edits.
@@ -110,6 +137,13 @@ A lightweight scorecard for whether the bootstrap is working:
 - Rework rate: follow-up fixes needed per task.
 - Clarification quality: blockers caught before edits.
 - Onboarding speed: time to productive first task in a new repo.
+
+Add eval-specific indicators:
+- Eval pass rate by facet (outcome/process/policy/regression/stress).
+- Eval drift rate: how often thresholds/waivers expand without planned removal.
+- Regression catch rate: percent of failures caught by evals before merge.
+- Boundary compliance trend: file/routine complexity violations over time.
+- Mean time to restore green eval suite after refactor changes.
 
 ## 10. Standardization Pattern
 For cross-repo adoption, keep a small reusable package:
@@ -121,5 +155,29 @@ For cross-repo adoption, keep a small reusable package:
 
 This enables a repeatable standard move: install AgentOps Bootstrap first, implement second.
 
+Standardization should include a minimal eval starter pack:
+- Machine-readable boundary config.
+- At least one policy eval and one regression eval.
+- Clear command contract to run evals locally and in CI.
+- Waiver protocol with explicit rationale and removal task linkage.
+
 ## Conclusion
-AgentOps Bootstrap reframes AI coding from assistant usage to operational engineering. By installing governance, role design, and execution protocol directly in the repository, teams gain a durable system that improves reliability, safety, and delivery velocity without sacrificing operator control.
+AgentOps Bootstrap reframes AI coding from assistant usage to operational engineering. By installing governance, role design, execution protocol, and eval planes directly in the repository, teams gain a durable system that improves reliability, safety, and delivery velocity without sacrificing operator control.
+
+## Pony Farm
+The "pony farm" pattern is how learning compounds across repos: each hard-won lesson becomes a portable, runnable artifact instead of a remembered preference.
+
+One practical pony to raise first is an AgentOps eval starter for Python repositories:
+- A machine-readable boundary policy file.
+- A small boundary checker module.
+- A gating test wired into the normal test run.
+- A waiver protocol with explicit reason and removal ticket linkage.
+- A short operator note with run command and target values.
+
+This creates a repeatable transfer loop:
+1. Learn from one repo.
+2. Encode the lesson as policy plus checks.
+3. Reuse the bundle in the next repo.
+4. Tighten thresholds as architecture improves.
+
+The result is durable progress: better defaults, lower variance, and less dependence on memory or prompt wording.
