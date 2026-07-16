@@ -72,7 +72,7 @@ Use this sequence at the start of each implementation run.
 Completed in this pass:
 - T21 Shell Runtime Foundation (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 
-### T21 Shell Runtime Foundation
+### T21 Shell Runtime Foundation (DONE 2026-07-16)
 - Goal: Replace PowerShell-only command assumption with automatic shell environment detection and normalized shell execution contract.
 - Files: lllars_core/shell.py, lllars_core/config.py, tests/test_config.py, tests/test_cli_regression.py.
 - Adds:
