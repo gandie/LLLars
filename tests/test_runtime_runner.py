@@ -90,6 +90,7 @@ class RuntimeRunnerTests(unittest.TestCase):
             prompt_text="hello",
             timeout_sec=42,
             show_progress=True,
+            cancel_requested=None,
         )
         self.assertEqual(status_messages, ["running tests", "running eval"])
         self.assertTrue(result.success)
@@ -279,6 +280,59 @@ class RuntimeRunnerTests(unittest.TestCase):
                 )
 
         run_agent.assert_not_called()
+
+    def test_run_job_returns_canceled_before_tests_and_eval(self) -> None:
+        cfg = SimpleNamespace(test_command="pytest", eval_command="eval")
+
+        with (
+            patch(
+                "lllars_core.runtime_runner.run_agent_with_timeout",
+                return_value=(
+                    "",
+                    "[lllars] agent canceled",
+                    130,
+                    {"requests": 1},
+                    [],
+                ),
+            ) as run_agent,
+            patch(
+                "lllars_core.runtime_runner.detect_shell",
+                return_value=ShellSelection(
+                    name="powershell",
+                    executable="powershell",
+                    command_prefix=(
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command",
+                    ),
+                ),
+            ),
+            patch("lllars_core.runtime_runner.run_shell") as run_shell,
+            patch("lllars_core.runtime_runner.is_eval_success") as is_eval,
+        ):
+            result = run_job(
+                JobSpec(
+                    prompt="hello",
+                    run={
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
+                    timeout_sec=42,
+                ),
+                cfg=cfg,
+                cancel_requested=lambda: True,
+            )
+
+        run_agent.assert_called_once()
+        run_shell.assert_not_called()
+        is_eval.assert_not_called()
+        self.assertFalse(result.success)
+        self.assertEqual(result.agent_returncode, 130)
+        self.assertEqual(result.eval_error, "canceled")
+        self.assertEqual(result.test, {})
 
 
 if __name__ == "__main__":

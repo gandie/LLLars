@@ -266,6 +266,7 @@ def run_agent_with_timeout(
     prompt_text: str,
     timeout_sec: int,
     show_progress: bool,
+    cancel_requested: Callable[[], bool] | None = None,
 ) -> tuple[str, str, int, dict[str, Any], list[str]]:
     ctx = mp.get_context("spawn")
     event_queue = ctx.Queue()
@@ -289,6 +290,23 @@ def run_agent_with_timeout(
             latest_thought,
             payload,
         )
+        if cancel_requested is not None and cancel_requested():
+            _terminate_worker_process(proc)
+            if show_progress:
+                print(
+                    (
+                        f"\r{Color.YELLOW}[agent] canceled by "
+                        f"operator{Color.RESET}"
+                    )
+                    + " " * 20
+                )
+            return (
+                "",
+                "[lllars] agent canceled",
+                130,
+                latest_telemetry,
+                [],
+            )
         elapsed = int(time.time() - start_time)
         if elapsed > timeout_sec:
             _terminate_worker_process(proc)

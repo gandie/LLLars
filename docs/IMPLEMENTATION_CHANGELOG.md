@@ -77,6 +77,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Ensure dockerized runtime can execute allowlisted console commands by providing and detecting supported shells in container runtime.
 - Outcome: Runtime image now guarantees POSIX shell availability, container startup emits detected-shell diagnostics, docker smoke checks assert allowlisted command execution through runtime shell telemetry, and allowlisted tool execution now routes through cross-platform shell selection instead of PowerShell-only invocation.
 
+### T16 Runtime Cancellation Hard-Stop (DONE 2026-07-16)
+- Goal: Ensure cancel transitions terminate active agent execution, not only mark job state.
+- Outcome: Added cancel handle propagation from runtime service into active worker execution, introduced runner-level cancellation termination path, and finalized jobs race-safely so cancel wins over late success/failure completion.
+
 ## Decision Log Archive
 
 ```text
@@ -474,4 +478,26 @@ Risks:
 - Full `docker compose up --build` execution remains operator-run in this environment.
 Next handoff note:
 - Proceed with T16 Runtime Cancellation Hard-Stop.
+
+Task: T16 Runtime Cancellation Hard-Stop
+Date: 2026-07-16
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runner.py
+- lllars_core/runtime_runner.py
+- lllars_core/runtime_api.py
+- tests/test_runtime_runner.py
+- tests/test_runtime_api.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+Result:
+- PASS
+- Cancel requests now propagate into active execution and trigger worker termination.
+- Runtime runner emits canceled terminal path without continuing tests/eval when canceled.
+- Runtime API finalization keeps canceled state stable under cancel-vs-complete races.
+Risks:
+- Cancellation remains cooperative at runner poll cadence; kill signal is immediate once cancellation is observed.
+Next handoff note:
+- Proceed with T17 Fully Automated Serve Smoke Test.
 ```

@@ -144,6 +144,28 @@
       background: var(--accent-strong);
     }
 
+    button.secondary {
+      background: #f3f4f6;
+      color: #1f2430;
+      border: 1px solid var(--border);
+    }
+
+    button.secondary:hover {
+      background: #e7e9ee;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
     .status {
       font-weight: 700;
     }
@@ -333,7 +355,10 @@
           </div>
         </details>
 
-        <button id="submitBtn" type="button">Submit Job</button>
+        <div class="actions">
+          <button id="submitBtn" type="button">Submit Job</button>
+          <button id="cancelBtn" type="button" class="secondary" disabled>Cancel Job</button>
+        </div>
         <div class="hint">Terminal states handled: succeeded, failed, canceled.</div>
       </section>
 
@@ -385,6 +410,7 @@
     const systemPromptInput = document.getElementById("systemPrompt");
     const toolPolicyInput = document.getElementById("toolPolicy");
     const submitBtn = document.getElementById("submitBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
     const jobIdEl = document.getElementById("jobId");
     const jobStatusEl = document.getElementById("jobStatus");
     const statusNoteEl = document.getElementById("statusNote");
@@ -392,6 +418,12 @@
 
     let pollingHandle = null;
     let currentJobId = null;
+
+    function setCancelAvailability(jobStatus) {
+      const hasJob = Boolean(currentJobId);
+      const canCancel = hasJob && (jobStatus === "queued" || jobStatus === "running");
+      cancelBtn.disabled = !canCancel;
+    }
 
     function parseNullableInt(value) {
       const raw = String(value || "").trim();
@@ -413,6 +445,7 @@
       jobStatusEl.textContent = status;
       jobStatusEl.className = "status " + status;
       statusNoteEl.textContent = note || "";
+      setCancelAvailability(status);
     }
 
     function stopPolling() {
@@ -461,6 +494,7 @@
     async function submitJob() {
       stopPolling();
       logsViewEl.textContent = "Submitting job...";
+      setCancelAvailability("idle");
       setStatus("queued", "Submitting request");
 
       const body = {
@@ -531,12 +565,47 @@
       }, 1000);
     }
 
+    async function cancelJob() {
+      if (!currentJobId) {
+        return;
+      }
+
+      cancelBtn.disabled = true;
+      const response = await fetch(`/jobs/${currentJobId}/cancel`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Cancel failed (${response.status}): ${text}`);
+      }
+
+      const payload = await response.json();
+      setStatus(payload.status, "Cancellation requested");
+
+      if (payload.status === "canceled") {
+        stopPolling();
+        await fetchLogs(currentJobId);
+        return;
+      }
+
+      await pollStatus(currentJobId);
+    }
+
     submitBtn.addEventListener("click", async () => {
       try {
         await submitJob();
       } catch (error) {
         stopPolling();
         setStatus("failed", "Submit failed");
+        logsViewEl.textContent = String(error);
+      }
+    });
+
+    cancelBtn.addEventListener("click", async () => {
+      try {
+        await cancelJob();
+      } catch (error) {
+        setStatus("failed", "Cancel failed");
         logsViewEl.textContent = String(error);
       }
     });

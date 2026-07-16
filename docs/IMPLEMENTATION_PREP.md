@@ -61,13 +61,13 @@ Use this sequence at the start of each implementation run.
 ## Active Ticket Backlog (Agent-Ready)
 
 ### Priority Sequence (Updated 2026-07-16)
-1. T16 Runtime Cancellation Hard-Stop
-2. T17 Fully Automated Serve Smoke Test
-3. T18 Command Profile Externalization
-4. T19 Provider-Aware Startup Preflight (deferred)
-5. T20 Queue Backend: Redis Minimum (deferred)
+1. T17 Fully Automated Serve Smoke Test
+2. T18 Command Profile Externalization
+3. T19 Provider-Aware Startup Preflight (deferred)
+4. T20 Queue Backend: Redis Minimum (deferred)
 
 Completed in this pass:
+- T16 Runtime Cancellation Hard-Stop (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 - T23 Docker Runtime Shell Enablement (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 - T22 Shell Adapter Integration in Runner/API (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 - T21 Shell Runtime Foundation (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
@@ -128,7 +128,7 @@ Completed in this pass:
 - Completion artifact:
   - Docker smoke output showing console command success in runtime container.
 
-### T16 Runtime Cancellation Hard-Stop
+### T16 Runtime Cancellation Hard-Stop (DONE 2026-07-16)
 - Goal: Ensure cancel transitions terminate active agent execution, not only mark job state.
 - Files: lllars_core/runtime_api.py, lllars_core/runtime_runner.py, tests/test_runtime_api.py, tests/test_runtime_runner.py.
 - Adds:
@@ -145,6 +145,8 @@ Completed in this pass:
   - Preserve state-only cancel behavior as compatibility fallback path.
 - Completion artifact:
   - Test evidence that in-flight jobs can be force-terminated to `canceled`.
+- Archive:
+  - docs/IMPLEMENTATION_CHANGELOG.md
 
 ### T17 Fully Automated Serve Smoke Test
 - Goal: Remove manual two-terminal operator flow from serve smoke verification.

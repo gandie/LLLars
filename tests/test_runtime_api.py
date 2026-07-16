@@ -5,6 +5,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from threading import Event
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -158,6 +159,80 @@ class RuntimeApiTests(unittest.TestCase):
             logs_payload = logs_resp.json()
             self.assertEqual(logs_payload["agent_stdout"], "agent-out")
             self.assertEqual(logs_payload["thought_trace"], ["trace-1"])
+
+    def test_cancel_force_terminates_inflight_job(self) -> None:
+        cfg = SimpleNamespace(
+            model="test-model",
+            provider_url="http://localhost:11434",
+        )
+        app = create_runtime_app(cfg)
+        client = TestClient(app)
+        started = Event()
+
+        def blocking_run_job(*args, **kwargs):
+            _ = args
+            cancel_requested = kwargs.get("cancel_requested")
+            started.set()
+            for _ in range(200):
+                if cancel_requested is not None and cancel_requested():
+                    return RunResult(
+                        success=False,
+                        agent_returncode=130,
+                        elapsed_sec=0.01,
+                        agent_stdout="",
+                        agent_stderr="[lllars] agent canceled",
+                    )
+                time.sleep(0.01)
+            return RunResult(
+                success=True,
+                agent_returncode=0,
+                elapsed_sec=0.01,
+                agent_stdout="late-success",
+                agent_stderr="",
+            )
+
+        with patch(
+            "lllars_core.runtime_api.run_job",
+            side_effect=blocking_run_job,
+        ):
+            submit_resp = client.post(
+                "/jobs",
+                json={
+                    "prompt": "hello",
+                    "run": {
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
+                    "timeout_sec": 5,
+                },
+            )
+
+            self.assertEqual(submit_resp.status_code, 202)
+            job_id = submit_resp.json()["job_id"]
+            self.assertTrue(started.wait(timeout=1.0))
+
+            cancel_resp = client.post(f"/jobs/{job_id}/cancel")
+            self.assertEqual(cancel_resp.status_code, 200)
+            self.assertEqual(cancel_resp.json()["status"], "canceled")
+
+            status_payload: dict[str, object] = {}
+            for _ in range(60):
+                status_resp = client.get(f"/jobs/{job_id}")
+                self.assertEqual(status_resp.status_code, 200)
+                status_payload = status_resp.json()
+                if status_payload["status"] in {
+                    "succeeded",
+                    "failed",
+                    "canceled",
+                }:
+                    break
+                time.sleep(0.05)
+
+            self.assertEqual(status_payload["status"], "canceled")
+            self.assertIsNone(status_payload["result"])
+            self.assertEqual(status_payload["error"]["code"], "canceled")
 
     def test_unknown_job_returns_not_found(self) -> None:
         cfg = SimpleNamespace()

@@ -435,6 +435,7 @@ def run_job(
     cfg: HarnessConfig | None = None,
     show_progress: bool = False,
     emit_status: Callable[[str], None] | None = None,
+    cancel_requested: Callable[[], bool] | None = None,
 ) -> RunResult:
     effective_cfg = cfg
     if effective_cfg is None:
@@ -455,7 +456,29 @@ def run_job(
         prompt_text=spec.prompt,
         timeout_sec=spec.timeout_sec,
         show_progress=show_progress,
+        cancel_requested=cancel_requested,
     )
+
+    if cancel_requested is not None and cancel_requested():
+        runtime_telemetry = dict(telemetry)
+        runtime_telemetry["shell"] = {
+            "selected": selection.name,
+            "shell_mode": shell_mode,
+            "shell_override": shell_override,
+            "invocation_mode": _shell_invocation_mode(shell_mode),
+        }
+        return RunResult(
+            success=False,
+            agent_returncode=agent_rc,
+            elapsed_sec=round(time.time() - start, 2),
+            agent_stdout=agent_stdout,
+            agent_stderr=agent_stderr,
+            thought_trace=thought_trace,
+            test={},
+            eval=None,
+            eval_error="canceled",
+            runtime_telemetry=runtime_telemetry,
+        )
 
     if ENABLE_LEGACY_SHELL_EXECUTION_PATH:
         if emit_status is not None:

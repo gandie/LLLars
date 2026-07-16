@@ -32,9 +32,12 @@ class RuntimeService:
     store: InMemoryJobStore = field(default_factory=InMemoryJobStore)
     _threads: dict[str, Thread] = field(default_factory=dict)
     _threads_lock: Lock = field(default_factory=Lock)
+    _cancel_requests: set[str] = field(default_factory=set)
+    _cancel_lock: Lock = field(default_factory=Lock)
 
     def submit(self, spec: JobSpec) -> JobStatus:
         record = self.store.create(spec)
+        self._clear_cancel_request(record.job_id)
 
         thread = Thread(
             target=self._run_job,
@@ -57,6 +60,7 @@ class RuntimeService:
         record = self.store.get(job_id)
         if record is None:
             raise _not_found(job_id)
+        self._mark_cancel_requested(job_id)
         return self.store.cancel(job_id).as_status()
 
     def logs(self, job_id: str) -> dict[str, object]:
@@ -81,8 +85,21 @@ class RuntimeService:
             return
 
         try:
-            result = run_job(spec, cfg=self.cfg, show_progress=False)
-            final_state = "succeeded" if result.success else "failed"
+            result = run_job(
+                spec,
+                cfg=self.cfg,
+                show_progress=False,
+                cancel_requested=lambda: self._is_cancel_requested(job_id),
+            )
+            record = self.store.get(job_id)
+            is_canceled = (
+                record is not None and record.status == "canceled"
+            ) or self._is_cancel_requested(job_id)
+            final_state = (
+                "canceled"
+                if is_canceled
+                else ("succeeded" if result.success else "failed")
+            )
             shell_details = result.runtime_telemetry.get("shell")
             details: dict[str, object] = {
                 "agent_returncode": result.agent_returncode
@@ -93,13 +110,15 @@ class RuntimeService:
                 details["eval_error"] = result.eval_error
             failure_error = (
                 None
-                if result.success
+                if final_state != "failed"
                 else ErrorEnvelope(
                     code="run_failed",
                     message="Job execution failed",
                     details=details,
                 )
             )
+            if final_state == "canceled" and record is not None:
+                failure_error = record.error
             artifacts = self._persist_artifacts(
                 job_id=job_id,
                 status=final_state,
@@ -109,13 +128,31 @@ class RuntimeService:
             self.store.update(
                 job_id,
                 status=final_state,
-                result=result,
+                result=None if final_state == "canceled" else result,
                 error=failure_error,
                 artifacts=artifacts,
             )
         except InvalidTransitionError:
             pass
         except ShellAdapterUnavailableError as exc:
+            record = self.store.get(job_id)
+            if record is not None and record.status == "canceled":
+                artifacts = self._persist_artifacts(
+                    job_id=job_id,
+                    status="canceled",
+                    result=None,
+                    error=record.error,
+                )
+                try:
+                    self.store.update(
+                        job_id,
+                        status="canceled",
+                        error=record.error,
+                        artifacts=artifacts,
+                    )
+                except InvalidTransitionError:
+                    pass
+                return
             failure_error = ErrorEnvelope(
                 code="shell_unavailable",
                 message="No supported shell executable found",
@@ -140,6 +177,24 @@ class RuntimeService:
             except InvalidTransitionError:
                 pass
         except Exception as exc:
+            record = self.store.get(job_id)
+            if record is not None and record.status == "canceled":
+                artifacts = self._persist_artifacts(
+                    job_id=job_id,
+                    status="canceled",
+                    result=None,
+                    error=record.error,
+                )
+                try:
+                    self.store.update(
+                        job_id,
+                        status="canceled",
+                        error=record.error,
+                        artifacts=artifacts,
+                    )
+                except InvalidTransitionError:
+                    pass
+                return
             failure_error = ErrorEnvelope(
                 code="run_exception",
                 message="Job execution raised an exception",
@@ -162,6 +217,19 @@ class RuntimeService:
                 pass
         finally:
             self._cleanup_thread(job_id)
+            self._clear_cancel_request(job_id)
+
+    def _mark_cancel_requested(self, job_id: str) -> None:
+        with self._cancel_lock:
+            self._cancel_requests.add(job_id)
+
+    def _is_cancel_requested(self, job_id: str) -> bool:
+        with self._cancel_lock:
+            return job_id in self._cancel_requests
+
+    def _clear_cancel_request(self, job_id: str) -> None:
+        with self._cancel_lock:
+            self._cancel_requests.discard(job_id)
 
     def _persist_artifacts(
         self,
