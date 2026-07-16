@@ -9,7 +9,11 @@ from unittest.mock import patch
 
 from lllars_core.config import load_config
 from lllars_core.runtime_models import JobSpec
-from lllars_core.runtime_runner import run_job
+from lllars_core.runtime_runner import (
+    ShellAdapterUnavailableError,
+    run_job,
+)
+from lllars_core.shell import ShellSelection
 
 
 class RuntimeRunnerTests(unittest.TestCase):
@@ -31,12 +35,34 @@ class RuntimeRunnerTests(unittest.TestCase):
                 ),
             ) as run_agent,
             patch(
-                "lllars_core.runtime_runner.run_tests",
-                return_value={"returncode": 0, "stdout": "ok", "stderr": ""},
+                "lllars_core.runtime_runner.detect_shell",
+                return_value=ShellSelection(
+                    name="powershell",
+                    executable="powershell",
+                    command_prefix=(
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command",
+                    ),
+                ),
             ),
             patch(
-                "lllars_core.runtime_runner.run_eval",
-                return_value=({"summary": {"pass_rate": 100.0}}, None),
+                "lllars_core.runtime_runner.run_shell",
+                side_effect=[
+                    {
+                        "returncode": 0,
+                        "stdout": "ok",
+                        "stderr": "",
+                        "shell": "powershell",
+                    },
+                    {
+                        "returncode": 0,
+                        "stdout": '{"summary":{"pass_rate":100.0}}',
+                        "stderr": "",
+                        "shell": "powershell",
+                    },
+                ],
             ),
             patch(
                 "lllars_core.runtime_runner.is_eval_success",
@@ -71,7 +97,16 @@ class RuntimeRunnerTests(unittest.TestCase):
         self.assertEqual(result.agent_stdout, "agent-out")
         self.assertEqual(
             result.runtime_telemetry,
-            {"requests": 2, "tool_calls": 1},
+            {
+                "requests": 2,
+                "tool_calls": 1,
+                "shell": {
+                    "selected": "powershell",
+                    "shell_mode": "auto",
+                    "shell_override": None,
+                    "invocation_mode": "auto_detect",
+                },
+            },
         )
         self.assertEqual(result.thought_trace, ["trace-1"])
 
@@ -86,21 +121,21 @@ class RuntimeRunnerTests(unittest.TestCase):
                 return_value=cfg,
             ) as load_cfg,
             patch(
+                "lllars_core.runtime_runner.detect_shell",
+                return_value=ShellSelection(
+                    name="powershell",
+                    executable="powershell",
+                    command_prefix=(
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command",
+                    ),
+                ),
+            ),
+            patch(
                 "lllars_core.runtime_runner.run_agent_with_timeout",
                 return_value=("", "", 0, {}, []),
-            ),
-            patch(
-                "lllars_core.runtime_runner.run_tests",
-                return_value={
-                    "returncode": 0,
-                    "stdout": "",
-                    "stderr": "",
-                    "skipped": True,
-                },
-            ),
-            patch(
-                "lllars_core.runtime_runner.run_eval",
-                return_value=(None, None),
             ),
             patch(
                 "lllars_core.runtime_runner.is_eval_success",
@@ -168,17 +203,22 @@ class RuntimeRunnerTests(unittest.TestCase):
 
             with (
                 patch(
+                    "lllars_core.runtime_runner.detect_shell",
+                    return_value=ShellSelection(
+                        name="powershell",
+                        executable="powershell",
+                        command_prefix=(
+                            "-NoProfile",
+                            "-ExecutionPolicy",
+                            "Bypass",
+                            "-Command",
+                        ),
+                    ),
+                ),
+                patch(
                     "lllars_core.runtime_runner.run_agent_with_timeout",
                     return_value=("", "", 0, {}, []),
                 ) as run_agent,
-                patch(
-                    "lllars_core.runtime_runner.run_tests",
-                    return_value={"returncode": 0, "stdout": "", "stderr": ""},
-                ),
-                patch(
-                    "lllars_core.runtime_runner.run_eval",
-                    return_value=(None, None),
-                ),
                 patch(
                     "lllars_core.runtime_runner.is_eval_success",
                     return_value=True,
@@ -203,6 +243,42 @@ class RuntimeRunnerTests(unittest.TestCase):
             effective_cfg = run_agent.call_args.kwargs["cfg"]
             self.assertEqual(effective_cfg.project_root, proj_b.resolve())
             self.assertFalse(effective_cfg.skills_enabled)
+
+    def test_run_job_raises_when_no_supported_shell_is_available(self) -> None:
+        cfg = SimpleNamespace(
+            test_command="python -V",
+            eval_command=None,
+            project_root=Path.cwd(),
+            eval_expect_json=False,
+            shell_mode="auto",
+            shell_override=None,
+        )
+
+        with (
+            patch(
+                "lllars_core.runtime_runner.detect_shell",
+                return_value=None,
+            ),
+            patch(
+                "lllars_core.runtime_runner.run_agent_with_timeout"
+            ) as run_agent,
+        ):
+            with self.assertRaises(ShellAdapterUnavailableError):
+                run_job(
+                    JobSpec(
+                        prompt="hello",
+                        run={
+                            "model": "test-model",
+                            "provider_url": "http://localhost:11434",
+                            "project_root": ".",
+                            "command_profile": "none",
+                        },
+                        timeout_sec=5,
+                    ),
+                    cfg=cfg,
+                )
+
+        run_agent.assert_not_called()
 
 
 if __name__ == "__main__":

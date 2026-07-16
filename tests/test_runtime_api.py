@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from lllars_core.runtime_models import JobSpec, RunResult
 from lllars_core.runtime_api import RuntimeService, create_runtime_app
+from lllars_core.runtime_runner import ShellAdapterUnavailableError
 
 
 class RuntimeApiTests(unittest.TestCase):
@@ -171,6 +172,126 @@ class RuntimeApiTests(unittest.TestCase):
 
         logs_resp = client.get("/jobs/missing-job/logs")
         self.assertEqual(logs_resp.status_code, 404)
+
+    def test_submit_surfaces_shell_unavailable_envelope(self) -> None:
+        cfg = SimpleNamespace(
+            model="test-model",
+            provider_url="http://localhost:11434",
+        )
+        app = create_runtime_app(cfg)
+        client = TestClient(app)
+
+        with patch(
+            "lllars_core.runtime_api.run_job",
+            side_effect=ShellAdapterUnavailableError(
+                shell_mode="auto",
+                shell_override=None,
+            ),
+        ):
+            submit_resp = client.post(
+                "/jobs",
+                json={
+                    "prompt": "hello",
+                    "run": {
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
+                    "timeout_sec": 5,
+                },
+            )
+
+            self.assertEqual(submit_resp.status_code, 202)
+            job_id = submit_resp.json()["job_id"]
+
+            status_payload: dict[str, object] = {}
+            for _ in range(60):
+                status_resp = client.get(f"/jobs/{job_id}")
+                self.assertEqual(status_resp.status_code, 200)
+                status_payload = status_resp.json()
+                if status_payload["status"] in {
+                    "succeeded",
+                    "failed",
+                    "canceled",
+                }:
+                    break
+                time.sleep(0.05)
+
+            self.assertEqual(status_payload["status"], "failed")
+            error_payload = status_payload["error"]
+            self.assertEqual(error_payload["code"], "shell_unavailable")
+            self.assertEqual(
+                error_payload["details"],
+                {"shell_mode": "auto", "shell_override": None},
+            )
+
+    def test_run_failed_error_includes_shell_metadata(self) -> None:
+        cfg = SimpleNamespace(
+            model="test-model",
+            provider_url="http://localhost:11434",
+        )
+        app = create_runtime_app(cfg)
+        client = TestClient(app)
+
+        with patch(
+            "lllars_core.runtime_api.run_job",
+            return_value=RunResult(
+                success=False,
+                agent_returncode=1,
+                elapsed_sec=0.01,
+                agent_stdout="",
+                agent_stderr="boom",
+                runtime_telemetry={
+                    "shell": {
+                        "selected": "powershell",
+                        "shell_mode": "auto",
+                        "shell_override": None,
+                        "invocation_mode": "auto_detect",
+                    }
+                },
+                eval_error="eval failed",
+            ),
+        ):
+            submit_resp = client.post(
+                "/jobs",
+                json={
+                    "prompt": "hello",
+                    "run": {
+                        "model": "test-model",
+                        "provider_url": "http://localhost:11434",
+                        "project_root": ".",
+                        "command_profile": "none",
+                    },
+                    "timeout_sec": 5,
+                },
+            )
+
+            self.assertEqual(submit_resp.status_code, 202)
+            job_id = submit_resp.json()["job_id"]
+
+            status_payload: dict[str, object] = {}
+            for _ in range(60):
+                status_resp = client.get(f"/jobs/{job_id}")
+                self.assertEqual(status_resp.status_code, 200)
+                status_payload = status_resp.json()
+                if status_payload["status"] in {
+                    "succeeded",
+                    "failed",
+                    "canceled",
+                }:
+                    break
+                time.sleep(0.05)
+
+            self.assertEqual(status_payload["status"], "failed")
+            error_payload = status_payload["error"]
+            self.assertEqual(error_payload["code"], "run_failed")
+            self.assertEqual(error_payload["details"]["agent_returncode"], 1)
+            self.assertEqual(
+                error_payload["details"]["eval_error"],
+                "eval failed",
+            )
+            self.assertIn("shell", error_payload["details"])
 
     def test_runtime_service_persists_artifacts_on_success(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

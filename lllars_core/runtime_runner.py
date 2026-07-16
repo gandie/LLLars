@@ -16,7 +16,131 @@ from lllars_core.config import (
 from lllars_core.runtime_guard import resolve_project_root
 from lllars_core.runner import run_agent_with_timeout
 from lllars_core.runtime_models import JobSpec, RunResult
-from lllars_core.shell import is_eval_success, run_eval, run_tests
+from lllars_core.shell import (
+    ShellSelection,
+    detect_shell,
+    is_eval_success,
+    run_eval,
+    run_shell,
+    run_tests,
+)
+
+
+ENABLE_LEGACY_SHELL_EXECUTION_PATH = False
+
+
+class ShellAdapterUnavailableError(RuntimeError):
+    def __init__(
+        self,
+        *,
+        shell_mode: str,
+        shell_override: str | None,
+    ) -> None:
+        self.shell_mode = shell_mode
+        self.shell_override = shell_override
+        super().__init__(
+            "No supported shell executable found for "
+            f"shell_mode={shell_mode!r}, "
+            f"shell_override={shell_override!r}"
+        )
+
+
+def _command_cwd(cfg: HarnessConfig) -> Path:
+    project_root = getattr(cfg, "project_root", None)
+    if isinstance(project_root, Path):
+        return project_root
+    return Path.cwd()
+
+
+def _resolve_shell_policy(cfg: HarnessConfig) -> tuple[str, str | None]:
+    shell_mode_raw = getattr(cfg, "shell_mode", "auto")
+    shell_mode = str(shell_mode_raw).strip().lower() or "auto"
+    shell_override_raw = getattr(cfg, "shell_override", None)
+    shell_override = (
+        str(shell_override_raw).strip().lower()
+        if isinstance(shell_override_raw, str)
+        and shell_override_raw.strip()
+        else None
+    )
+    return shell_mode, shell_override
+
+
+def _resolve_shell_selection(cfg: HarnessConfig) -> ShellSelection:
+    shell_mode, shell_override = _resolve_shell_policy(cfg)
+    selection = detect_shell(
+        shell_mode=shell_mode,
+        shell_override=shell_override,
+    )
+    if selection is None:
+        raise ShellAdapterUnavailableError(
+            shell_mode=shell_mode,
+            shell_override=shell_override,
+        )
+    return selection
+
+
+def _shell_invocation_mode(shell_mode: str) -> str:
+    return "explicit_override" if shell_mode == "override" else "auto_detect"
+
+
+def _run_tests_with_selection(
+    cfg: HarnessConfig,
+    selection: ShellSelection,
+) -> dict[str, object]:
+    if cfg.test_command is None:
+        return {
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "tests not configured",
+            "skipped": True,
+            "shell": selection.name,
+        }
+    payload = run_shell(
+        command=cfg.test_command,
+        cwd=_command_cwd(cfg),
+        timeout_sec=120,
+        shell_mode="override",
+        shell_override=selection.name,
+    )
+    return payload
+
+
+def _run_eval_with_selection(
+    cfg: HarnessConfig,
+    selection: ShellSelection,
+) -> tuple[dict[str, object] | None, str | None]:
+    if cfg.eval_command is None:
+        return None, None
+
+    payload = run_shell(
+        command=cfg.eval_command,
+        cwd=_command_cwd(cfg),
+        timeout_sec=120,
+        shell_mode="override",
+        shell_override=selection.name,
+    )
+    if int(payload.get("returncode", 1)) != 0:
+        return None, str(payload.get("stderr", ""))
+
+    if not bool(getattr(cfg, "eval_expect_json", True)):
+        return {
+            "raw_stdout": str(payload.get("stdout", "")),
+            "raw_stderr": str(payload.get("stderr", "")),
+            "returncode": int(payload.get("returncode", 0)),
+            "shell": selection.name,
+        }, None
+
+    import json
+
+    try:
+        parsed = json.loads(str(payload.get("stdout", "")))
+    except Exception as exc:
+        return None, str(exc)
+
+    if not isinstance(parsed, dict):
+        return None, None
+    parsed.setdefault("shell", selection.name)
+    return parsed, None
 
 
 def _resolve_config_path(spec: JobSpec) -> Path:
@@ -226,6 +350,16 @@ def _apply_job_run_settings(
             if spec.run.mcp_init_timeout_sec is None
             else spec.run.mcp_init_timeout_sec
         ),
+        shell_mode=(
+            cfg.shell_mode
+            if spec.run.shell_mode is None
+            else spec.run.shell_mode
+        ),
+        shell_override=(
+            cfg.shell_override
+            if spec.run.shell_override is None
+            else spec.run.shell_override
+        ),
     )
 
     run_mcp_config_path = run_cfg.mcp_config_path
@@ -288,6 +422,8 @@ def _apply_job_run_settings(
             mcp_enabled=run_cfg.mcp_enabled,
             mcp_config_path=run_mcp_config_path,
             mcp_init_timeout_sec=run_cfg.mcp_init_timeout_sec,
+            shell_mode=run_cfg.shell_mode,
+            shell_override=run_cfg.shell_override,
             run=run_cfg,
         )
     return cfg
@@ -304,6 +440,8 @@ def run_job(
     if effective_cfg is None:
         effective_cfg = load_config(_resolve_config_path(spec))
     effective_cfg = _apply_job_run_settings(effective_cfg, spec)
+    shell_mode, shell_override = _resolve_shell_policy(effective_cfg)
+    selection = _resolve_shell_selection(effective_cfg)
 
     start = time.time()
     (
@@ -319,19 +457,45 @@ def run_job(
         show_progress=show_progress,
     )
 
-    if emit_status is not None:
-        if effective_cfg.test_command:
-            emit_status("running tests")
-        else:
-            emit_status("tests not configured (skipped)")
-    test_info = run_tests(effective_cfg)
+    if ENABLE_LEGACY_SHELL_EXECUTION_PATH:
+        if emit_status is not None:
+            if effective_cfg.test_command:
+                emit_status("running tests")
+            else:
+                emit_status("tests not configured (skipped)")
+        test_info = run_tests(effective_cfg)
 
-    if emit_status is not None:
-        if effective_cfg.eval_command:
-            emit_status("running eval")
-        else:
-            emit_status("eval not configured (skipped)")
-    eval_json, eval_error = run_eval(effective_cfg)
+        if emit_status is not None:
+            if effective_cfg.eval_command:
+                emit_status("running eval")
+            else:
+                emit_status("eval not configured (skipped)")
+        eval_json, eval_error = run_eval(effective_cfg)
+    else:
+        if emit_status is not None:
+            if effective_cfg.test_command:
+                emit_status("running tests")
+            else:
+                emit_status("tests not configured (skipped)")
+        test_info = _run_tests_with_selection(effective_cfg, selection)
+
+        if emit_status is not None:
+            if effective_cfg.eval_command:
+                emit_status("running eval")
+            else:
+                emit_status("eval not configured (skipped)")
+        eval_json, eval_error = _run_eval_with_selection(
+            effective_cfg,
+            selection,
+        )
+
+    runtime_telemetry = dict(telemetry)
+    runtime_telemetry["shell"] = {
+        "selected": selection.name,
+        "shell_mode": shell_mode,
+        "shell_override": shell_override,
+        "invocation_mode": _shell_invocation_mode(shell_mode),
+    }
 
     success = (
         agent_rc == 0
@@ -349,5 +513,5 @@ def run_job(
         test=test_info,
         eval=eval_json,
         eval_error=eval_error,
-        runtime_telemetry=telemetry,
+        runtime_telemetry=runtime_telemetry,
     )

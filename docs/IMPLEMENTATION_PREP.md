@@ -61,15 +61,15 @@ Use this sequence at the start of each implementation run.
 ## Active Ticket Backlog (Agent-Ready)
 
 ### Priority Sequence (Updated 2026-07-16)
-1. T22 Shell Adapter Integration in Runner/API (NEW)
-2. T23 Docker Runtime Shell Enablement (NEW)
-3. T16 Runtime Cancellation Hard-Stop
-4. T17 Fully Automated Serve Smoke Test
-5. T18 Command Profile Externalization
-6. T19 Provider-Aware Startup Preflight (deferred)
-7. T20 Queue Backend: Redis Minimum (deferred)
+1. T23 Docker Runtime Shell Enablement (NEW)
+2. T16 Runtime Cancellation Hard-Stop
+3. T17 Fully Automated Serve Smoke Test
+4. T18 Command Profile Externalization
+5. T19 Provider-Aware Startup Preflight (deferred)
+6. T20 Queue Backend: Redis Minimum (deferred)
 
 Completed in this pass:
+- T22 Shell Adapter Integration in Runner/API (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 - T21 Shell Runtime Foundation (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)
@@ -92,7 +92,7 @@ Completed in this pass:
 - Completion artifact:
   - Diff + tests proving `auto` detection picks an available shell and preserves explicit override behavior.
 
-### T22 Shell Adapter Integration in Runner/API
+### T22 Shell Adapter Integration in Runner/API (DONE 2026-07-16)
 - Goal: Thread shell selection through runner and runtime API so allowlisted console commands run with detected shell instead of PowerShell-only assumptions.
 - Files: lllars_core/runner.py, lllars_core/runtime_runner.py, lllars_core/runtime_api.py, tests/test_runtime_runner.py, tests/test_runtime_api.py.
 - Adds:

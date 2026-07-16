@@ -17,7 +17,10 @@ from lllars_core.runtime_models import (
     JobStatus,
     RunResult,
 )
-from lllars_core.runtime_runner import run_job
+from lllars_core.runtime_runner import (
+    ShellAdapterUnavailableError,
+    run_job,
+)
 
 
 RUNTIME_UI_DIR = Path(__file__).resolve().parent / "static" / "runtime"
@@ -80,13 +83,21 @@ class RuntimeService:
         try:
             result = run_job(spec, cfg=self.cfg, show_progress=False)
             final_state = "succeeded" if result.success else "failed"
+            shell_details = result.runtime_telemetry.get("shell")
+            details: dict[str, object] = {
+                "agent_returncode": result.agent_returncode
+            }
+            if isinstance(shell_details, dict):
+                details["shell"] = shell_details
+            if result.eval_error:
+                details["eval_error"] = result.eval_error
             failure_error = (
                 None
                 if result.success
                 else ErrorEnvelope(
                     code="run_failed",
                     message="Job execution failed",
-                    details={"agent_returncode": result.agent_returncode},
+                    details=details,
                 )
             )
             artifacts = self._persist_artifacts(
@@ -104,6 +115,30 @@ class RuntimeService:
             )
         except InvalidTransitionError:
             pass
+        except ShellAdapterUnavailableError as exc:
+            failure_error = ErrorEnvelope(
+                code="shell_unavailable",
+                message="No supported shell executable found",
+                details={
+                    "shell_mode": exc.shell_mode,
+                    "shell_override": exc.shell_override,
+                },
+            )
+            artifacts = self._persist_artifacts(
+                job_id=job_id,
+                status="failed",
+                result=None,
+                error=failure_error,
+            )
+            try:
+                self.store.update(
+                    job_id,
+                    status="failed",
+                    error=failure_error,
+                    artifacts=artifacts,
+                )
+            except InvalidTransitionError:
+                pass
         except Exception as exc:
             failure_error = ErrorEnvelope(
                 code="run_exception",

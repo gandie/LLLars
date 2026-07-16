@@ -33,7 +33,8 @@ When truth conflicts, resolve in this order:
 1. Existing running code and verified runtime behavior.
 2. Repository docs and design docs.
 3. Human discussion and intent framing.
-4. Agent internal reasoning (lowest trust).
+4. Agent internal reasoning.
+5. Any kind of "memory" (absolute lowest trust; below reasoning).
 
 If uncertain, stop, ask, then continue.
 
@@ -46,3 +47,18 @@ When user ends session, your terminal response must be either:
 - "This is the way" - when agent guardrails or docs were improved
 
 Other Star Wars references are allowed, too if they fit well into context.
+
+## 6) Memory Hard Ban
+
+Never ever use any platform-specific memory files.
+
+This is a hard ban. No exceptions unless operator explicitly requests it for a one-off action.
+
+Why:
+- Hidden memory breaks operator control.
+- Stale memory poisons decisions.
+- Non-repo state is unverifiable and unsafe.
+
+Operational rule:
+- Use repository files as the only persistent source of truth.
+- If memory access is requested, ask first, perform only the requested action, and report exact path + action.

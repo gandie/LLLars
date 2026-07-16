@@ -69,6 +69,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Replace PowerShell-only command assumption with automatic shell environment detection and normalized shell execution contract.
 - Outcome: Added shell auto-detection foundation with config-level shell policy (`auto` plus explicit override), platform-safe validation, and regression coverage proving detection order and override behavior.
 
+### T22 Shell Adapter Integration in Runner/API (DONE 2026-07-16)
+- Goal: Thread shell selection through runner and runtime API so allowlisted console commands run with detected shell instead of PowerShell-only assumptions.
+- Outcome: Unified runtime job execution on a shared shell adapter path with per-job shell metadata (`selected`, `shell_mode`, `shell_override`, `invocation_mode`) and explicit `shell_unavailable` runtime error envelopes.
+
 ## Decision Log Archive
 
 ```text
@@ -414,4 +418,25 @@ Risks:
 - Runtime job/API shell threading and metadata propagation are still pending follow-up integration in T22.
 Next handoff note:
 - Proceed with T22 Shell Adapter Integration in Runner/API to route one-shot and runtime execution paths through a shared shell adapter and expose selected shell metadata.
+
+Task: T22 Shell Adapter Integration in Runner/API
+Date: 2026-07-16
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_runner.py
+- lllars_core/runtime_api.py
+- tests/test_runtime_runner.py
+- tests/test_runtime_api.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+Result:
+- PASS
+- One-shot and runtime API execution both route through the same runtime shell adapter path.
+- Runtime telemetry now includes shell selection and invocation metadata.
+- Runtime API now emits explicit `shell_unavailable` failure envelopes when no supported shell can be resolved.
+Risks:
+- Compatibility branch toggle for legacy shell invocation remains in runtime runner and should be removed only after further rollout confidence.
+Next handoff note:
+- Proceed with T23 Docker Runtime Shell Enablement to guarantee and verify supported shell availability in container runtime.
 ```

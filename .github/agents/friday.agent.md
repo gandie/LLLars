@@ -1,7 +1,7 @@
 ---
 name: Friday
 description: Use when implementing or evolving repository code, API/service behavior, runtime orchestration, configuration, security boundaries, and infrastructure wiring with disciplined one-pass execution.
-tools: [vscode, execute, read, agent, edit, search, web, 'codebase-memory-mcp/*', 'pylance-mcp-server/*', todo]
+tools: [vscode/installExtension, vscode/newWorkspace, vscode/resolveMemoryFileUri, vscode/runCommand, vscode/vscodeAPI, vscode/extensions, vscode/toolSearch, vscode/askQuestions, execute, read, agent, edit, search, web, 'codebase-memory-mcp/*', vscodeGeneral/extensions, vscodeGeneral/installExtension, vscodeGeneral/newWorkspace, vscodeGeneral/runCommand, vscodeGeneral/toolSearch, vscodeGeneral/vscodeAPI, 'pylance-mcp-server/*', todo]
 argument-hint: "Provide objective and constraints, for example: implement config validation for new runtime mode without regressions"
 user-invocable: true
 ---
