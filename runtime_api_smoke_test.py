@@ -49,6 +49,9 @@ def run_smoke_test(
     model: str,
     provider_url: str,
     project_root: str,
+    command_profile: str,
+    test_command: str,
+    expected_shells: tuple[str, ...],
     poll_interval_sec: float,
     timeout_sec: float,
 ) -> int:
@@ -67,7 +70,8 @@ def run_smoke_test(
                 "model": model,
                 "provider_url": provider_url,
                 "project_root": project_root,
-                "command_profile": "none",
+                "command_profile": command_profile,
+                "test_command": test_command,
             },
         },
     )
@@ -104,7 +108,43 @@ def run_smoke_test(
     print("logs:")
     print(json.dumps(logs, indent=2))
 
-    return 0 if str(last_status.get("status", "")).lower() == "succeeded" else 1
+    if str(last_status.get("status", "")).lower() != "succeeded":
+        return 1
+
+    result = last_status.get("result")
+    if not isinstance(result, dict):
+        print("missing result payload in terminal status")
+        return 1
+
+    test_payload = result.get("test")
+    if not isinstance(test_payload, dict):
+        print("missing test payload in terminal status result")
+        return 1
+
+    test_returncode = int(test_payload.get("returncode", 1))
+    if test_returncode != 0:
+        print(f"test command failed with returncode={test_returncode}")
+        return 1
+
+    runtime_telemetry = result.get("runtime_telemetry")
+    if not isinstance(runtime_telemetry, dict):
+        print("missing runtime telemetry in terminal status result")
+        return 1
+
+    shell_details = runtime_telemetry.get("shell")
+    if not isinstance(shell_details, dict):
+        print("missing shell telemetry in terminal status result")
+        return 1
+
+    selected_shell = str(shell_details.get("selected", "")).strip().lower()
+    if selected_shell not in {item.lower() for item in expected_shells}:
+        print(
+            "unexpected selected shell "
+            f"{selected_shell!r}; expected one of {expected_shells}"
+        )
+        return 1
+
+    return 0
 
 
 def main() -> None:
@@ -122,9 +162,30 @@ def main() -> None:
         default="http://host.docker.internal:11434",
     )
     parser.add_argument("--project-root", default=".")
+    parser.add_argument(
+        "--command-profile",
+        default="python-playground",
+    )
+    parser.add_argument(
+        "--test-command",
+        default="python test.py",
+    )
+    parser.add_argument(
+        "--expected-shells",
+        default="bash,sh",
+        help="Comma-separated list of acceptable detected shell names",
+    )
     parser.add_argument("--poll-interval-sec", type=float, default=0.3)
     parser.add_argument("--timeout-sec", type=float, default=120.0)
     args = parser.parse_args()
+
+    expected_shells = tuple(
+        item.strip().lower()
+        for item in args.expected_shells.split(",")
+        if item.strip()
+    )
+    if not expected_shells:
+        raise SystemExit("--expected-shells must include at least one shell")
 
     raise SystemExit(
         run_smoke_test(
@@ -133,6 +194,9 @@ def main() -> None:
             model=args.model,
             provider_url=args.provider_url,
             project_root=args.project_root,
+            command_profile=args.command_profile,
+            test_command=args.test_command,
+            expected_shells=expected_shells,
             poll_interval_sec=args.poll_interval_sec,
             timeout_sec=args.timeout_sec,
         )

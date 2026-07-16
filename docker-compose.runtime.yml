@@ -6,6 +6,8 @@ services:
     image: lllars/runtime:local
     env_file:
       - .env.runtime
+    environment:
+      LLLARS_RUNTIME_STARTUP_DIAGNOSTICS: "${LLLARS_RUNTIME_STARTUP_DIAGNOSTICS:-true}"
     ports:
       - "${LLLARS_PORT:-8000}:${LLLARS_PORT:-8000}"
     volumes:

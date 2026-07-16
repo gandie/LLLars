@@ -73,6 +73,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Thread shell selection through runner and runtime API so allowlisted console commands run with detected shell instead of PowerShell-only assumptions.
 - Outcome: Unified runtime job execution on a shared shell adapter path with per-job shell metadata (`selected`, `shell_mode`, `shell_override`, `invocation_mode`) and explicit `shell_unavailable` runtime error envelopes.
 
+### T23 Docker Runtime Shell Enablement (DONE 2026-07-16)
+- Goal: Ensure dockerized runtime can execute allowlisted console commands by providing and detecting supported shells in container runtime.
+- Outcome: Runtime image now guarantees POSIX shell availability, container startup emits detected-shell diagnostics, docker smoke checks assert allowlisted command execution through runtime shell telemetry, and allowlisted tool execution now routes through cross-platform shell selection instead of PowerShell-only invocation.
+
 ## Decision Log Archive
 
 ```text
@@ -439,4 +443,35 @@ Risks:
 - Compatibility branch toggle for legacy shell invocation remains in runtime runner and should be removed only after further rollout confidence.
 Next handoff note:
 - Proceed with T23 Docker Runtime Shell Enablement to guarantee and verify supported shell availability in container runtime.
+
+Task: T23 Docker Runtime Shell Enablement
+Date: 2026-07-16
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- Dockerfile.runtime
+- docker/runtime-entrypoint.sh
+- docker-compose.runtime.yml
+- runtime_api_smoke_test.py
+- tests/test_runtime_api_smoke_test.py
+- lllars_core/agent_builder.py
+- tests/test_agent_builder.py
+- README.md
+- docs/IMPLEMENTATION_PREP.md
+- docs/IMPLEMENTATION_CHANGELOG.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api_smoke_test.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_agent_builder.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+- docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime config
+- Operator-verified docker runtime smoke output showing allowlisted command success
+Result:
+- PASS
+- Container runtime now guarantees at least one supported POSIX shell path and prints startup shell diagnostics.
+- Smoke flow now verifies submitted allowlisted command execution and validates returned shell telemetry.
+- Agent allowlisted shell tool path now uses shell adapter detection in container runtime, removing PowerShell-only mismatch.
+Risks:
+- Full `docker compose up --build` execution remains operator-run in this environment.
+Next handoff note:
+- Proceed with T16 Runtime Cancellation Hard-Stop.
 ```

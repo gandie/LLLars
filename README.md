@@ -222,6 +222,7 @@ Behavior details:
 - Service host/port/workers/queue defaults are resolved through `load_config(...)` from the same env file.
 - Service binds to `service.host:service.port` and publishes `localhost:${LLLARS_PORT}`.
 - On first start, defaults are seeded into volumes (`playground` into `/work`, runtime config template into `/config`).
+- Container startup prints detected shell diagnostics (expects `bash` or `sh`) and exits early if no supported shell is present.
 
 Common environment knobs in `.env.runtime`:
 
@@ -271,14 +272,18 @@ Serve smoke check (start service in one terminal, then run smoke script in anoth
 
 ```powershell
 # terminal 1
-docker compose -f .\docker-compose.runtime.yml up --build
+docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime up --build
 
 # terminal 2
-.\venv\Scripts\python.exe .\runtime_api_smoke_test.py --prompt "T12 serve smoke"
+.\venv\Scripts\python.exe .\runtime_api_smoke_test.py --prompt "T23 docker shell smoke" --command-profile "python-playground" --test-command "python test.py" --expected-shells "bash,sh"
 ```
 
-Expected result: one-shot exits successfully and the runtime smoke script reaches
-`status=succeeded`.
+Expected result:
+
+- One-shot exits successfully.
+- Runtime smoke reaches `status=succeeded`.
+- Returned runtime telemetry reports a selected shell in `bash`/`sh`.
+- Submitted allowlisted test command exits with return code `0`.
 
 ### Runtime API payload contracts
 

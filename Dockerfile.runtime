@@ -7,7 +7,11 @@ WORKDIR /opt/lllars
 
 COPY . .
 
-RUN pip install --no-cache-dir . \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends bash \
+    && rm -rf /var/lib/apt/lists/* \
+    && (command -v bash >/dev/null || command -v sh >/dev/null) \
+    && pip install --no-cache-dir . \
     && chmod +x /opt/lllars/docker/runtime-entrypoint.sh \
     && mkdir -p /config /work /artifacts /opt/lllars/defaults/config /opt/lllars/defaults/work \
     && cp /opt/lllars/docker/runtime.container.json /opt/lllars/defaults/config/ \

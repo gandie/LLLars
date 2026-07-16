@@ -61,14 +61,14 @@ Use this sequence at the start of each implementation run.
 ## Active Ticket Backlog (Agent-Ready)
 
 ### Priority Sequence (Updated 2026-07-16)
-1. T23 Docker Runtime Shell Enablement (NEW)
-2. T16 Runtime Cancellation Hard-Stop
-3. T17 Fully Automated Serve Smoke Test
-4. T18 Command Profile Externalization
-5. T19 Provider-Aware Startup Preflight (deferred)
-6. T20 Queue Backend: Redis Minimum (deferred)
+1. T16 Runtime Cancellation Hard-Stop
+2. T17 Fully Automated Serve Smoke Test
+3. T18 Command Profile Externalization
+4. T19 Provider-Aware Startup Preflight (deferred)
+5. T20 Queue Backend: Redis Minimum (deferred)
 
 Completed in this pass:
+- T23 Docker Runtime Shell Enablement (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 - T22 Shell Adapter Integration in Runner/API (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 - T21 Shell Runtime Foundation (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 
@@ -110,7 +110,7 @@ Completed in this pass:
 - Completion artifact:
   - Test evidence that one-shot and runtime API paths execute allowlisted commands through the same shell adapter.
 
-### T23 Docker Runtime Shell Enablement
+### T23 Docker Runtime Shell Enablement (DONE 2026-07-16)
 - Goal: Ensure dockerized runtime can execute allowlisted console commands by providing and detecting supported shells in container runtime.
 - Files: Dockerfile.runtime, docker/runtime-entrypoint.sh, docker-compose.runtime.yml, tests/test_runtime_api_smoke_test.py, README.md.
 - Adds:

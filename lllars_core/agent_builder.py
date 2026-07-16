@@ -20,7 +20,7 @@ from pydantic_ai_todo import TodoCapability
 
 from lllars_core.config import HarnessConfig, canonicalize_shell_command
 from lllars_core.mcp_loader import load_toolsets_from_mcp_config
-from lllars_core.shell import run_powershell
+from lllars_core.shell import detect_shell, run_shell
 from lllars_core.skills import load_markdown_skill_capabilities
 
 
@@ -36,10 +36,14 @@ class AgentDeps:
 
 
 def make_agent_deps(cfg: HarnessConfig) -> AgentDeps:
+    selection = detect_shell(
+        shell_mode=cfg.shell_mode,
+        shell_override=cfg.shell_override,
+    )
     return AgentDeps(
         project_root=str(cfg.project_root),
         os_name=platform.system() or "unknown",
-        shell_name="PowerShell",
+        shell_name=(selection.name if selection is not None else "unknown"),
         command_profile=cfg.command_profile,
         allowed_shell_commands=cfg.allowed_shell_commands,
         has_test_command=cfg.test_command is not None,
@@ -137,9 +141,11 @@ def _runtime_tooling_instructions(
         "",
         "Operational rules:",
         "- Use only registered tools.",
-        "- Do not create or execute bash/sh scripts.",
-        "- Use PowerShell-compatible commands only.",
     ]
+    if deps.os_name.lower() == "windows":
+        lines.append("- Use PowerShell-compatible commands only.")
+    else:
+        lines.append("- Use POSIX shell-compatible commands only.")
     if deps.allowed_shell_commands:
         lines.append(
             "- For shell execution, call "
@@ -170,10 +176,12 @@ def _make_allowed_shell_runner(
             }
             return json.dumps(payload)
         return json.dumps(
-            run_powershell(
+            run_shell(
                 command=command,
                 cwd=cfg.project_root,
                 timeout_sec=timeout_sec,
+                shell_mode=cfg.shell_mode,
+                shell_override=cfg.shell_override,
             )
         )
 
@@ -272,7 +280,7 @@ def _register_shell_tools(
 
         @agent.tool
         def list_allowed_shell_commands(ctx: RunContext[AgentDeps]) -> str:
-            """Return numeric IDs for each allowed PowerShell command."""
+            """Return numeric IDs for each allowed shell command."""
             _ = ctx
             return "\n".join(
                 f"{idx}: {cmd}"
@@ -285,7 +293,7 @@ def _register_shell_tools(
             command_id: int,
             timeout_sec: int = 90,
         ) -> str:
-            """Run one allowed PowerShell command by numeric ID.
+            """Run one allowed shell command by numeric ID.
 
             Always call list_allowed_shell_commands first and
             pass one of those IDs.
