@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "defaults": {
+    "max_file_lines": 220,
+    "max_function_lines": 35
+  },
+  "include": [
+    "lllars_core/*.py",
+    "lllars_core/*/*.py"
+  ],
+  "exclude": [
+    "lllars_core/__init__.py",
+    "lllars_core/refactor_boundaries.py"
+  ],
+  "waivers": {
+    "files": {
+      "lllars_core/cli.py": {
+        "max_file_lines": 260,
+        "max_function_lines": 60,
+        "reason": "T24-T28 decomposition pending"
+      },
+      "lllars_core/config.py": {
+        "max_file_lines": 1000,
+        "max_function_lines": 80,
+        "reason": "T29 config package split pending"
+      },
+      "lllars_core/runtime_runner.py": {
+        "max_file_lines": 700,
+        "max_function_lines": 120,
+        "reason": "T26 runtime extraction pending"
+      },
+      "lllars_core/mcp_preflight.py": {
+        "max_file_lines": 500,
+        "max_function_lines": 90,
+        "reason": "T30 mcp package split pending"
+      },
+      "lllars_core/agent_builder.py": {
+        "max_file_lines": 500,
+        "max_function_lines": 90,
+        "reason": "T31 tools package split pending"
+      },
+      "lllars_core/runner.py": {
+        "max_file_lines": 500,
+        "max_function_lines": 130,
+        "reason": "T28 runner split pending"
+      },
+      "lllars_core/runtime_api.py": {
+        "max_file_lines": 450,
+        "max_function_lines": 150,
+        "reason": "T27 runtime api split pending"
+      },
+      "lllars_core/console.py": {
+        "max_function_lines": 90,
+        "reason": "T28/T31 split pending"
+      },
+      "lllars_core/mcp_loader.py": {
+        "max_function_lines": 60,
+        "reason": "T30 mcp package split pending"
+      },
+      "lllars_core/runtime_artifacts.py": {
+        "max_function_lines": 80,
+        "reason": "T27 runtime artifacts split pending"
+      },
+      "lllars_core/shell.py": {
+        "max_function_lines": 50,
+        "reason": "T26 runtime extraction pending"
+      },
+      "lllars_core/skills.py": {
+        "max_function_lines": 50,
+        "reason": "T31 tools decomposition pending"
+      }
+    },
+    "functions": {
+      "lllars_core/config.py::load_config": {
+        "max_function_lines": 400,
+        "reason": "T29 config package split pending"
+      },
+      "lllars_core/runtime_runner.py::_apply_job_run_settings": {
+        "max_function_lines": 320,
+        "reason": "T26 runtime extraction pending"
+      },
+      "lllars_core/runtime_runner.py::run_job": {
+        "max_function_lines": 140,
+        "reason": "T26 runtime extraction pending"
+      },
+      "lllars_core/runtime_api.py::RuntimeService._run_job": {
+        "max_function_lines": 180,
+        "reason": "T27 runtime api split pending"
+      },
+      "lllars_core/runner.py::run_single_agent": {
+        "max_function_lines": 150,
+        "reason": "T28 runner split pending"
+      },
+      "lllars_core/runner.py::run_agent_with_timeout": {
+        "max_function_lines": 150,
+        "reason": "T28 runner split pending"
+      }
+    }
+  }
+}

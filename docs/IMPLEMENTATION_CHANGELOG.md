@@ -81,6 +81,82 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Ensure cancel transitions terminate active agent execution, not only mark job state.
 - Outcome: Added cancel handle propagation from runtime service into active worker execution, introduced runner-level cancellation termination path, and finalized jobs race-safely so cancel wins over late success/failure completion.
 
+## Archive Sweep Details (Moved From Prep 2026-07-16)
+
+### T21 Shell Runtime Foundation (DONE 2026-07-16)
+- Goal: Replace PowerShell-only command assumption with automatic shell environment detection and normalized shell execution contract.
+- Files: lllars_core/shell.py, lllars_core/config.py, tests/test_config.py, tests/test_cli_regression.py.
+- Adds:
+  - Shell detection order for common environments:
+    - Windows: PowerShell 7 (`pwsh`), Windows PowerShell (`powershell`), `cmd` fallback.
+    - Linux/macOS and containers: `bash`, `sh` fallback.
+  - Config-level shell policy fields with safe defaults (`auto` detect plus explicit override).
+  - Validation for unknown shell overrides and unsupported combinations.
+- Validation:
+  - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"
+  - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_cli_regression.py"
+- Non-goals:
+  - No runtime cancellation hard-stop changes.
+  - No redis queue backend work.
+- Rollback strategy:
+  - Keep existing PowerShell path as compatibility fallback behind feature flag/config default.
+- Completion artifact:
+  - Diff + tests proving `auto` detection picks an available shell and preserves explicit override behavior.
+
+### T22 Shell Adapter Integration in Runner/API (DONE 2026-07-16)
+- Goal: Thread shell selection through runner and runtime API so allowlisted console commands run with detected shell instead of PowerShell-only assumptions.
+- Files: lllars_core/runner.py, lllars_core/runtime_runner.py, lllars_core/runtime_api.py, tests/test_runtime_runner.py, tests/test_runtime_api.py.
+- Adds:
+  - Unified shell-execution adapter used by one-shot and runtime job execution paths.
+  - Job-level runtime metadata capturing selected shell and invocation mode.
+  - Clear failure envelopes when no supported shell is available.
+- Validation:
+  - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+  - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+- Non-goals:
+  - No static frontend redesign.
+  - No command profile externalization yet.
+- Rollback strategy:
+  - Preserve old shell invocation code path behind compatibility branch toggle while landing adapter tests.
+- Completion artifact:
+  - Test evidence that one-shot and runtime API paths execute allowlisted commands through the same shell adapter.
+
+### T23 Docker Runtime Shell Enablement (DONE 2026-07-16)
+- Goal: Ensure dockerized runtime can execute allowlisted console commands by providing and detecting supported shells in container runtime.
+- Files: Dockerfile.runtime, docker/runtime-entrypoint.sh, docker-compose.runtime.yml, tests/test_runtime_api_smoke_test.py, README.md.
+- Adds:
+  - Container image/runtime setup that guarantees at least one supported POSIX shell path.
+  - Startup diagnostics that show detected shell inside container context.
+  - Automated smoke assertion that submitted jobs can execute allowlisted console command in dockerized runtime.
+- Validation:
+  - docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime up --build
+  - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api_smoke_test.py"
+- Non-goals:
+  - No distributed queue integration.
+  - No provider preflight expansion.
+- Rollback strategy:
+  - Keep previous image/runtime docs path as fallback while introducing shell-enabled image variant.
+- Completion artifact:
+  - Docker smoke output showing console command success in runtime container.
+
+### T16 Runtime Cancellation Hard-Stop (DONE 2026-07-16)
+- Goal: Ensure cancel transitions terminate active agent execution, not only mark job state.
+- Files: lllars_core/runtime_api.py, lllars_core/runtime_runner.py, tests/test_runtime_api.py, tests/test_runtime_runner.py.
+- Adds:
+  - Cancel handle propagation from runtime service into active run process.
+  - Runner-level termination path returning a canceled terminal outcome.
+  - Race-safe finalization for cancel vs success/failure completion.
+- Validation:
+  - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+  - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+- Non-goals:
+  - No distributed cross-host cancellation control.
+  - No external queue dependency required.
+- Rollback strategy:
+  - Preserve state-only cancel behavior as compatibility fallback path.
+- Completion artifact:
+  - Test evidence that in-flight jobs can be force-terminated to `canceled`.
+
 ## Decision Log Archive
 
 ```text
