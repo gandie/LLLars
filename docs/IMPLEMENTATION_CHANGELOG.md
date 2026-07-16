@@ -1,0 +1,391 @@
+# LLLars Implementation Changelog (Archived Completed Tickets)
+
+## Purpose
+Archive completed implementation tickets and decision-log outcomes so the active planning document can stay concise.
+
+## Archived Completed Tickets
+
+### T1 Runtime Config Surface (DONE 2026-07-14)
+- Goal: Add runtime-mode config keys and validation defaults.
+- Outcome: Runtime config keys were added and validated, and CLI startup shows normalized runtime config.
+
+### T2 CLI Serve Entrypoint (DONE 2026-07-14)
+- Goal: Add serve path while preserving existing one-shot path.
+- Outcome: `lllars serve` was added with dedicated dispatch while one-shot behavior remained unchanged.
+
+### T3 Job Models (DONE 2026-07-14)
+- Goal: Create stable API payload contracts.
+- Outcome: Shared runtime payload models were introduced and documented.
+
+### T4 In-Memory Job Store (DONE 2026-07-14)
+- Goal: Track lifecycle and artifacts for submitted jobs.
+- Outcome: Thread-safe in-memory lifecycle store added with transition and cancel-race coverage.
+
+### T5 Job Runner Adapter (DONE 2026-07-14)
+- Goal: Wrap current agent run logic as reusable service primitive.
+- Outcome: Shared `run_job(JobSpec) -> RunResult` adapter introduced and used by one-shot path.
+
+### T6 Minimal Runtime API (DONE 2026-07-14)
+- Goal: Expose operational endpoints.
+- Outcome: Runtime API endpoints (health/submit/status/logs/cancel) added and tested.
+
+### T7 Filesystem Boundary Enforcement (DONE 2026-07-14)
+- Goal: Prevent jobs from escaping mounted work root.
+- Outcome: Canonical boundary guard and config enforcement added with regression tests.
+
+### T8 Command Profile Policy (DONE 2026-07-14)
+- Goal: Replace ad-hoc allowlist text with named command profiles.
+- Outcome: Named profile registry and strict profile validation added.
+
+### T9 Observability Artifacts (DONE 2026-07-14)
+- Goal: Persist per-job logs and telemetry timeline.
+- Outcome: Summary/stdout/stderr/telemetry artifacts persisted for success and failure paths.
+
+### T10 Startup Preflight Summary (DONE 2026-07-14)
+- Goal: Runtime startup should surface environment health.
+- Outcome: Structured startup preflight checks and fail-fast diagnostics added.
+
+### T11 Deployment Assets (DONE 2026-07-14)
+- Goal: Add runnable deployment examples.
+- Outcome: Runtime Docker/Compose assets and smoke path added.
+
+### T12 Hardening and Regression Sweep (DONE 2026-07-14)
+- Goal: Prove no regression to current single-shot behavior.
+- Outcome: One-shot and serve regression/smoke checks added and documented.
+
+### T13 Runtime Config Split + Native Env File Support (DONE 2026-07-14)
+- Goal: Decouple service config from run config and add env-file loading.
+- Outcome: Split `service`/`run` config and deterministic merge precedence implemented with tests.
+
+### T14 Docker Runtime Setup Simplification (DONE 2026-07-14)
+- Goal: Align Docker/Compose flow with split config model.
+- Outcome: Runtime startup contract simplified around env-file-driven service config.
+
+### T15 Static Runtime Frontend via FastAPI (DONE 2026-07-15)
+- Goal: Provide static runtime UI served by FastAPI.
+- Outcome: `/` UI route added for submit/poll/log operator flow with tests and docs.
+
+## Decision Log Archive
+
+```text
+Task: T2 CLI Serve Entrypoint
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/cli.py
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe .\lllars.py serve --help
+- .\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json
+- python .\lllars.py serve --config .\playground.example.json
+Result:
+- PASS
+- Serve subcommand is available with host/port/workers/queue-backend args.
+- Default one-shot dispatch remains unchanged (prompt is still required).
+Risks:
+- Serve mode is currently an entrypoint scaffold and does not host runtime API endpoints yet (planned in T6).
+Next handoff note:
+- Proceed with T3 Job Models and keep API payload contracts centralized in lllars_core/runtime_models.py.
+
+Task: T3 Job Models
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_models.py
+- README.md
+Validation command(s):
+- Python schema roundtrip check using workspace interpreter:
+  JobSpec/RunResult/JobStatus/ErrorEnvelope model_dump -> model_validate
+Result:
+- PASS
+- Added shared runtime payload contracts in lllars_core/runtime_models.py.
+- Added README documentation section for runtime API payload contracts and roundtrip example.
+Risks:
+- Runtime endpoints are not implemented yet (planned in T6), so endpoint-level adoption of shared models is pending.
+Next handoff note:
+- Proceed with T4 In-Memory Job Store and keep lifecycle status values aligned with JobStatus.status in runtime_models.
+
+Task: T4 In-Memory Job Store
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/job_store.py
+- tests/test_job_store.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added thread-safe in-memory job store primitives: create/get/list/update/cancel.
+- Enforced lifecycle transitions: queued -> running -> terminal (or canceled), no skip transitions.
+- Added cancellation race coverage proving atomic terminal-state resolution.
+Risks:
+- Store is in-memory only and process-local; durability/redis behavior is pending future queue backend work.
+Next handoff note:
+- Proceed with T5 Job Runner Adapter and route job execution updates through InMemoryJobStore.update/cancel.
+
+Task: T5 Job Runner Adapter
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_runner.py
+- lllars_core/cli.py
+- tests/test_runtime_runner.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added reusable runtime primitive `run_job(JobSpec) -> RunResult` in lllars_core/runtime_runner.py.
+- Preserved telemetry passthrough from existing runner (`run_agent_with_timeout`) into `RunResult.runtime_telemetry`.
+- Updated one-shot CLI path to call the shared runtime run unit.
+Risks:
+- Runtime API path is not implemented yet (planned in T6), so shared adapter is currently exercised by CLI and tests.
+Next handoff note:
+- Proceed with T6 Minimal Runtime API and invoke `run_job` from submit worker execution path.
+
+Task: T6 Minimal Runtime API
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_api.py
+- lllars_core/cli.py
+- tests/test_runtime_api.py
+- pyproject.toml
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m pip install -e .
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added FastAPI runtime endpoints: health, submit, status, logs, cancel.
+- Wired `lllars serve` to launch uvicorn with runtime app.
+- Added HTTP lifecycle test: submit then poll status to terminal state, then fetch logs.
+Risks:
+- Queue backend support in serve mode is currently limited to `inmemory`; `redis` remains unimplemented for T6.
+- Cancellation marks job state immediately, but in-flight agent subprocess work is not hard-stopped yet.
+Next handoff note:
+- Proceed with T7 Filesystem Boundary Enforcement to constrain runtime job roots before broader deployment.
+
+Task: T7 Filesystem Boundary Enforcement
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_guard.py
+- lllars_core/config.py
+- tests/test_config.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added filesystem boundary guard module with canonical path checks.
+- Enforced project_root confinement under mount_work_root during config load.
+- Added regression tests for parent traversal, absolute path, and symlink escape attempts.
+Risks:
+- Symlink denial test may be skipped in environments where directory symlink creation is unavailable.
+Next handoff note:
+- Proceed with T8 Command Profile Policy and keep profile resolution centralized in config loading.
+
+Task: T8 Command Profile Policy
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/config.py
+- lllars_core/agent_builder.py
+- playground.example.json
+- tests/test_config.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+Result:
+- PASS
+- Added named command profile registry + resolution in config load flow.
+- Unknown profile names now fail fast during config validation.
+- Known profile (`python-playground`) resolves expected shell commands.
+- Example config now selects `command_profile` instead of raw `allowed_shell_commands`.
+Risks:
+- Profiles are currently code-defined in registry; adding new profiles requires code changes.
+Next handoff note:
+- Proceed with T9 Observability Artifacts and keep artifact persistence isolated from runtime API contracts.
+
+Task: T9 Observability Artifacts
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_artifacts.py
+- lllars_core/runtime_api.py
+- lllars_core/runner.py
+- tests/test_runtime_api.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_*.py"
+Result:
+- PASS
+- Added per-job artifact persistence for summary, stdout, stderr, and telemetry.
+- Persisted artifacts for success, failed run, and exception execution paths.
+- Added runtime telemetry timeline and saved it to telemetry artifacts.
+- Added runtime API tests that verify artifact files are created for success and failure paths.
+Risks:
+- Exception-path artifacts intentionally contain minimal runtime details because no RunResult exists.
+Next handoff note:
+- Proceed with T10 Startup Preflight Summary and keep startup diagnostics explicit and structured.
+
+Task: T10 Startup Preflight Summary
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/cli.py
+- lllars_core/mcp_preflight.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_*.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+- .\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "startup preflight smoke"
+Result:
+- PASS
+- Added unified startup preflight flow for model endpoint health, mount writeability, and MCP readiness.
+- Startup now exits early with structured diagnostics when preflight fails.
+- Preserved successful startup flow for healthy environment.
+Risks:
+- Model endpoint probe is currently Ollama-oriented (`/api/tags`) and would need extension for additional provider families.
+Next handoff note:
+- Proceed with T11 Deployment Assets and keep deployment examples aligned with runtime mount expectations.
+
+Task: T11 Deployment Assets
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- docker-compose.runtime.yml
+- Dockerfile.runtime
+- docker/runtime-entrypoint.sh
+- .env.runtime
+- .env.runtime.example
+- .dockerignore
+- README.md
+- playground/runtime_api_smoke_test.py
+Validation command(s):
+- docker compose -f .\docker-compose.runtime.yml up --build
+- .\venv\Scripts\python.exe -m py_compile .\playground\runtime_api_smoke_test.py
+- python .\runtime_api_smoke_test.py --prompt "Hello agent! Report status of your working directory! List files, run tests, report"
+Result:
+- PASS
+- Runtime starts via Compose build flow and serves API on documented port.
+- Submit/poll/log smoke flow is runnable via Python script.
+Risks:
+- Current deployment/config layering is clumsy and tightly coupled.
+- Config model needs rework to split runtime service config from agent run config.
+Next handoff note:
+- Proceed with T12 Hardening and Regression Sweep; include config-split design as a tracked follow-up.
+
+Task: T12 Hardening and Regression Sweep
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- tests/test_cli_regression.py
+- tests/test_runtime_api_smoke_test.py
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_cli_regression.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api_smoke_test.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+- .\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "T12 one-shot smoke"
+- python .\runtime_api_smoke_test.py --prompt "Hello agent! Report status of your working directory! List files, run tests, report"
+Result:
+- PASS
+- Added baseline CLI regression checks for one-shot and serve dispatch paths.
+- Added runtime smoke test script contract checks for succeeded/failed terminal flows.
+- Added README hardening checklist documenting one-shot and serve smoke validations.
+Risks:
+- Serve smoke verification is still an operator-run two-terminal flow; not fully automated in unittest.
+Next handoff note:
+- Release checklist can now treat one-shot and serve smoke checks as baseline regression gates.
+
+Task: T13 Runtime Config Split + Native Env File Support
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/config.py
+- lllars_core/cli.py
+- tests/test_config.py
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"
+- .\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "config env-file smoke"
+Result:
+- PASS
+- Added explicit split config objects (`service`, `run`) while preserving legacy top-level compatibility.
+- Added native `env_file` support with deterministic merge precedence: defaults < env_file < JSON config < CLI overrides.
+- Added mixed-shape validation that rejects split+legacy fields in the same JSON config.
+- Added serve-side config fields (`service_host`, `service_port`, `service_workers`) and CLI override merge behavior.
+- Added tests covering split parsing, mixed-shape rejection, and precedence behavior.
+Risks:
+- Running the one-shot smoke command can mutate files under playground depending on prompt execution path.
+Next handoff note:
+- Proceed with T14 Docker Runtime Setup Simplification using the new split + env-file config contract.
+
+Task: T14 Docker Runtime Setup Simplification
+Date: 2026-07-14
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- docker-compose.runtime.yml
+- Dockerfile.runtime
+- docker/runtime-entrypoint.sh
+- docker/runtime.container.json
+- .env.runtime
+- .env.runtime.example
+- lllars_core/config.py
+- lllars_core/runtime_models.py
+- lllars_core/runtime_runner.py
+- lllars_core/cli.py
+- lllars_core/mcp_preflight.py
+- lllars_core/runtime_api.py
+- runtime_api_smoke_test.py
+- tests/test_config.py
+- tests/test_runtime_api.py
+- tests/test_runtime_runner.py
+- tests/test_job_store.py
+- tests/test_runtime_api_smoke_test.py
+- tests/test_cli_regression.py
+- README.md
+Validation command(s):
+- docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime config
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_job_store.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_cli_regression.py"
+Result:
+- PASS
+- Docker startup contract now uses a single env-file path with service-only bootstrap config.
+- Serve startup no longer requires run settings; run settings are carried by per-job `JobSpec.run`.
+- Run schema is reused from `RunConfig` (no duplicate run payload model).
+- Local runtime env examples simplified to service-focused variables.
+Risks:
+- Runtime smoke command still requires service process to be running before invocation.
+Next handoff note:
+- Proceed with T15 Static Runtime Frontend via FastAPI.
+
+Task: T15 Static Runtime Frontend via FastAPI
+Date: 2026-07-15
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_api.py
+- lllars_core/static/runtime/index.html
+- lllars_core/config.py
+- lllars_core/runtime_runner.py
+- lllars_core/cli.py
+- tests/test_runtime_api.py
+- tests/test_runtime_runner.py
+- pyproject.toml
+- README.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_api.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"
+- Manual browser smoke against serve mode: submit -> poll -> logs end-to-end
+Result:
+- PASS
+- Added static runtime frontend route at `/` with API-safe fallback behavior.
+- Added minimal operator UI with prompt submission, status polling, and logs view.
+- Added full run-config form support, including skills/MCP/tool-policy fields.
+- Added responsive layout update with collapsible advanced settings panel.
+Risks:
+- Browser smoke remains operator-run and is not automated in unittest.
+Next handoff note:
+- Proceed with T16 Runtime Cancellation Hard-Stop.
+```
