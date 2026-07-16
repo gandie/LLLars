@@ -61,14 +61,16 @@ Use this sequence at the start of each implementation run.
 ## Active Ticket Backlog (Agent-Ready)
 
 ### Priority Sequence (Updated 2026-07-16)
-1. T21 Shell Runtime Foundation (NEW)
-2. T22 Shell Adapter Integration in Runner/API (NEW)
-3. T23 Docker Runtime Shell Enablement (NEW)
-4. T16 Runtime Cancellation Hard-Stop
-5. T17 Fully Automated Serve Smoke Test
-6. T18 Command Profile Externalization
-7. T19 Provider-Aware Startup Preflight (deferred)
-8. T20 Queue Backend: Redis Minimum (deferred)
+1. T22 Shell Adapter Integration in Runner/API (NEW)
+2. T23 Docker Runtime Shell Enablement (NEW)
+3. T16 Runtime Cancellation Hard-Stop
+4. T17 Fully Automated Serve Smoke Test
+5. T18 Command Profile Externalization
+6. T19 Provider-Aware Startup Preflight (deferred)
+7. T20 Queue Backend: Redis Minimum (deferred)
+
+Completed in this pass:
+- T21 Shell Runtime Foundation (DONE 2026-07-16; archived in docs/IMPLEMENTATION_CHANGELOG.md)
 
 ### T21 Shell Runtime Foundation
 - Goal: Replace PowerShell-only command assumption with automatic shell environment detection and normalized shell execution contract.

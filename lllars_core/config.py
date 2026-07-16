@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import platform
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,10 +26,15 @@ DEFAULT_SERVICE_WORKERS = 1
 DEFAULT_QUEUE_BACKEND = "inmemory"
 DEFAULT_NETWORK_POLICY = "inherit"
 DEFAULT_COMMAND_PROFILE = "none"
+DEFAULT_SHELL_MODE = "auto"
 
 VALID_SERVICE_MODES = frozenset({"oneshot", "serve"})
 VALID_QUEUE_BACKENDS = frozenset({"inmemory", "redis"})
 VALID_NETWORK_POLICIES = frozenset({"inherit", "offline"})
+VALID_SHELL_MODES = frozenset({"auto", "override"})
+WINDOWS_SHELLS = ("pwsh", "powershell", "cmd")
+POSIX_SHELLS = ("bash", "sh")
+VALID_SHELL_OVERRIDES = frozenset(WINDOWS_SHELLS + POSIX_SHELLS)
 COMMAND_PROFILE_REGISTRY = {
     "none": (),
     "python-playground": (
@@ -83,6 +89,8 @@ LEGACY_RUN_KEYS = frozenset(
         "mcp_enabled",
         "mcp_config_path",
         "mcp_init_timeout_sec",
+        "shell_mode",
+        "shell_override",
     }
 )
 
@@ -189,6 +197,8 @@ class RunConfig:
     mcp_enabled: bool | None = None
     mcp_config_path: Path | None = None
     mcp_init_timeout_sec: float | None = None
+    shell_mode: str = DEFAULT_SHELL_MODE
+    shell_override: str | None = None
 
 
 @dataclass(frozen=True)
@@ -222,6 +232,8 @@ class HarnessConfig:
     mcp_enabled: bool
     mcp_config_path: Path | None
     mcp_init_timeout_sec: float
+    shell_mode: str
+    shell_override: str | None
     service_mode: str
     service_host: str
     service_port: int
@@ -459,6 +471,46 @@ def _resolve_command_profile(cfg: dict) -> tuple[str, tuple[str, ...]]:
     return profile_name, COMMAND_PROFILE_REGISTRY[profile_name]
 
 
+def _resolve_shell_policy(cfg: dict) -> tuple[str, str | None]:
+    shell_mode = _validate_choice(
+        cfg,
+        "shell_mode",
+        default=DEFAULT_SHELL_MODE,
+        valid_values=VALID_SHELL_MODES,
+    )
+
+    shell_override_raw = str(cfg.get("shell_override", "")).strip().lower()
+    shell_override = shell_override_raw or None
+    if (
+        shell_override is not None
+        and shell_override not in VALID_SHELL_OVERRIDES
+    ):
+        allowed = ", ".join(sorted(VALID_SHELL_OVERRIDES))
+        raise ValueError(
+            "Unknown shell_override "
+            f"{shell_override!r}. Allowed values: {allowed}"
+        )
+
+    if shell_mode == "override" and shell_override is None:
+        raise ValueError(
+            "shell_mode=override requires non-empty shell_override"
+        )
+
+    supported = (
+        WINDOWS_SHELLS
+        if platform.system() == "Windows"
+        else POSIX_SHELLS
+    )
+    if shell_override is not None and shell_override not in supported:
+        supported_text = ", ".join(supported)
+        raise ValueError(
+            f"Unsupported shell_override {shell_override!r} on this platform. "
+            f"Supported values: {supported_text}"
+        )
+
+    return shell_mode, shell_override
+
+
 def build_default_tool_policy(
     test_command: str | None,
     eval_command: str | None,
@@ -506,6 +558,8 @@ def load_config(
         "queue_backend": DEFAULT_QUEUE_BACKEND,
         "network_policy": DEFAULT_NETWORK_POLICY,
         "command_profile": DEFAULT_COMMAND_PROFILE,
+        "shell_mode": DEFAULT_SHELL_MODE,
+        "shell_override": "",
     }
     cfg = _merge_layers(defaults, env_layer, json_layer, overrides)
 
@@ -530,6 +584,7 @@ def load_config(
     provider_url = provider_url_raw
     test_command, eval_command = _load_commands(cfg)
     command_profile, profile_commands = _resolve_command_profile(cfg)
+    shell_mode, shell_override = _resolve_shell_policy(cfg)
     allowed_shell_commands = _collect_allowed_shell_commands(
         test_command,
         eval_command,
@@ -737,6 +792,8 @@ def load_config(
         mcp_enabled=mcp_enabled,
         mcp_config_path=mcp_config_path,
         mcp_init_timeout_sec=mcp_init_timeout_sec,
+        shell_mode=shell_mode,
+        shell_override=shell_override,
         service_mode=service_mode,
         service_host=service_host,
         service_port=service_port,
@@ -825,5 +882,7 @@ def load_config(
             mcp_enabled=mcp_enabled,
             mcp_config_path=mcp_config_path,
             mcp_init_timeout_sec=mcp_init_timeout_sec,
+            shell_mode=shell_mode,
+            shell_override=shell_override,
         ),
     )

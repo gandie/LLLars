@@ -65,6 +65,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Provide static runtime UI served by FastAPI.
 - Outcome: `/` UI route added for submit/poll/log operator flow with tests and docs.
 
+### T21 Shell Runtime Foundation (DONE 2026-07-16)
+- Goal: Replace PowerShell-only command assumption with automatic shell environment detection and normalized shell execution contract.
+- Outcome: Added shell auto-detection foundation with config-level shell policy (`auto` plus explicit override), platform-safe validation, and regression coverage proving detection order and override behavior.
+
 ## Decision Log Archive
 
 ```text
@@ -388,4 +392,26 @@ Risks:
 - Browser smoke remains operator-run and is not automated in unittest.
 Next handoff note:
 - Proceed with T16 Runtime Cancellation Hard-Stop.
+
+Task: T21 Shell Runtime Foundation
+Date: 2026-07-16
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/shell.py
+- lllars_core/config.py
+- tests/test_config.py
+- tests/test_cli_regression.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_config.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_cli_regression.py"
+- Manual operator verification (local): shell behavior checks passed
+Result:
+- PASS
+- Added shell detection order by platform: Windows (`pwsh` -> `powershell` -> `cmd`) and POSIX (`bash` -> `sh`).
+- Added config shell policy fields with defaults and validation for unknown/unsupported overrides.
+- Preserved compatibility path via existing PowerShell entrypoint routed through normalized shell adapter.
+Risks:
+- Runtime job/API shell threading and metadata propagation are still pending follow-up integration in T22.
+Next handoff note:
+- Proceed with T22 Shell Adapter Integration in Runner/API to route one-shot and runtime execution paths through a shared shell adapter and expose selected shell metadata.
 ```

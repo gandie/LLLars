@@ -5,6 +5,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from lllars_core.config import load_config
 
@@ -361,6 +362,87 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "escapes mount_work_root"):
                 load_config(config_path)
+
+    def test_shell_mode_defaults_to_auto(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            config_path = root / "config.json"
+            config_path.write_text(
+                json.dumps(
+                    _base_config(
+                        project_root="workspace/project",
+                        mount_work_root="workspace",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            cfg = load_config(config_path)
+            self.assertEqual(cfg.shell_mode, "auto")
+            self.assertIsNone(cfg.shell_override)
+
+    def test_unknown_shell_override_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            config = _base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            config["shell_override"] = "fish"
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Unknown shell_override"):
+                load_config(config_path)
+
+    def test_override_mode_requires_shell_override(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            config = _base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            config["shell_mode"] = "override"
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "shell_mode=override requires non-empty shell_override",
+            ):
+                load_config(config_path)
+
+    def test_shell_override_is_platform_validated(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "workspace" / "project").mkdir(parents=True)
+
+            config = _base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            config["shell_override"] = "cmd"
+
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            with patch(
+                "lllars_core.config.platform.system",
+                return_value="Linux",
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "Unsupported shell_override",
+                ):
+                    load_config(config_path)
 
 
 if __name__ == "__main__":

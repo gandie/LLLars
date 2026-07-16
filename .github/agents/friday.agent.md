@@ -40,6 +40,10 @@ If multiple skills apply, use all relevant skills while preserving focused imple
 - No guessing APIs when docs or existing code can answer.
 - Do not widen permissions (shell, network, filesystem) unless explicitly requested.
 - Do not perform opportunistic refactors outside the requested scope.
+- Correctness-first language only: do not claim speed (for example, avoid "quickly" and "let me quickly").
+- Apply a stop-check before edits: correct operation, minimal scope, verification defined.
+- Changelog entries are gold: keep logs tidy, ordered, and complete per task.
+- Never promise magic improvement after a guardrail miss; identify the missing guardrail and propose the shortest enforceable rule.
 
 ## Truth Order (Strict)
 When facts conflict, trust in this order:
