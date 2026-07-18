@@ -8,7 +8,11 @@ from unittest.mock import patch
 from lllars_core.runtime.job_runner import ShellAdapterUnavailableError
 from lllars_core.runtime.models import RunResult
 
-from runtime_api_test_support import make_runtime_client, submit_job, wait_for_terminal_status
+from runtime_api_test_support import (
+    make_runtime_client,
+    submit_job,
+    wait_for_terminal_status,
+)
 
 
 def _blocking_cancelable_run_job(*args, **kwargs) -> RunResult:
@@ -45,7 +49,10 @@ class RuntimeApiFailureTests(unittest.TestCase):
             kwargs["started"] = started
             return _blocking_cancelable_run_job(*args, **kwargs)
 
-        with patch("lllars_core.runtime.service.run_job", side_effect=side_effect):
+        with patch(
+            "lllars_core.runtime.service.run_job",
+            side_effect=side_effect,
+        ):
             job_id = submit_job(client)
             self.assertTrue(started.wait(timeout=1.0))
             cancel_resp = client.post(f"/jobs/{job_id}/cancel")
@@ -61,7 +68,10 @@ class RuntimeApiFailureTests(unittest.TestCase):
         client = make_runtime_client()
         with patch(
             "lllars_core.runtime.service.run_job",
-            side_effect=ShellAdapterUnavailableError(shell_mode="auto", shell_override=None),
+            side_effect=ShellAdapterUnavailableError(
+                shell_mode="auto",
+                shell_override=None,
+            ),
         ):
             job_id = submit_job(client)
             status_payload = wait_for_terminal_status(client, job_id)
@@ -69,7 +79,10 @@ class RuntimeApiFailureTests(unittest.TestCase):
         self.assertEqual(status_payload["status"], "failed")
         error_payload = status_payload["error"]
         self.assertEqual(error_payload["code"], "shell_unavailable")
-        self.assertEqual(error_payload["details"], {"shell_mode": "auto", "shell_override": None})
+        self.assertEqual(
+            error_payload["details"],
+            {"shell_mode": "auto", "shell_override": None},
+        )
 
     def test_run_failed_error_includes_shell_metadata(self) -> None:
         client = make_runtime_client()

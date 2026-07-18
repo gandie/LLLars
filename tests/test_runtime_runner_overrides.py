@@ -53,9 +53,18 @@ class RuntimeRunnerOverrideTests(unittest.TestCase):
             proj_b, _, cfg = _setup_override_fixture(root)
 
             with (
-                patch("lllars_core.runtime.job_runner.detect_shell", return_value=powershell_selection()),
-                patch("lllars_core.runtime.job_runner.run_agent_with_timeout", return_value=("", "", 0, {}, [])) as run_agent,
-                patch("lllars_core.runtime.job_runner.is_eval_success", return_value=True),
+                patch(
+                    "lllars_core.runtime.job_runner.detect_shell",
+                    return_value=powershell_selection(),
+                ),
+                patch(
+                    "lllars_core.runtime.job_runner.run_agent_with_timeout",
+                    return_value=("", "", 0, {}, []),
+                ) as run_agent,
+                patch(
+                    "lllars_core.runtime.job_runner.is_eval_success",
+                    return_value=True,
+                ),
             ):
                 run_job(
                     basic_spec(

@@ -11,27 +11,34 @@ def _run_smoke_with_responses(
     *,
     monotonic_values: list[float] | float,
 ) -> tuple[int, list[object]]:
-    monotonic_patch = patch(
-        "runtime_api_smoke_test.time.monotonic",
-        side_effect=monotonic_values,
-    ) if isinstance(monotonic_values, list) else patch(
-        "runtime_api_smoke_test.time.monotonic",
-        return_value=monotonic_values,
+    monotonic_patch = (
+        patch(
+            "runtime_api_smoke_test.time.monotonic",
+            side_effect=monotonic_values,
+        )
+        if isinstance(monotonic_values, list)
+        else patch(
+            "runtime_api_smoke_test.time.monotonic",
+            return_value=monotonic_values,
+        )
     )
-    with patch("runtime_api_smoke_test._request_json", side_effect=responses) as request_json:
+    with patch(
+        "runtime_api_smoke_test._request_json",
+        side_effect=responses,
+    ) as request_json:
         with monotonic_patch, patch("runtime_api_smoke_test.time.sleep"):
             rc = run_smoke_test(
-            base_url="http://127.0.0.1:8000",
-            prompt="hello",
-            model="test-model",
-            provider_url="http://localhost:11434",
-            project_root=".",
-            command_profile="python-playground",
-            test_command="python test.py",
-            expected_shells=("bash", "sh"),
-            poll_interval_sec=0.01,
-            timeout_sec=1.0,
-        )
+                base_url="http://127.0.0.1:8000",
+                prompt="hello",
+                model="test-model",
+                provider_url="http://localhost:11434",
+                project_root=".",
+                command_profile="python-playground",
+                test_command="python test.py",
+                expected_shells=("bash", "sh"),
+                poll_interval_sec=0.01,
+                timeout_sec=1.0,
+            )
     return rc, list(request_json.call_args_list)
 
 
@@ -47,9 +54,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
                 "status": "succeeded",
                 "result": {
                     "test": {"returncode": 0},
-                    "runtime_telemetry": {
-                        "shell": {"selected": "bash"}
-                    },
+                    "runtime_telemetry": {"shell": {"selected": "bash"}},
                 },
             },
             {"agent_stdout": "done"},

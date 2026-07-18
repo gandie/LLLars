@@ -5,8 +5,13 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from lllars_core.runtime import run_job as package_run_job
-from lllars_core.runtime import ShellAdapterUnavailableError as package_shell_error
-from lllars_core.runtime.job_runner import ShellAdapterUnavailableError, run_job
+from lllars_core.runtime import (
+    ShellAdapterUnavailableError as package_shell_error,
+)
+from lllars_core.runtime.job_runner import (
+    ShellAdapterUnavailableError,
+    run_job,
+)
 
 from runtime_runner_test_support import basic_spec
 
@@ -26,8 +31,13 @@ class RuntimeRunnerExportTests(unittest.TestCase):
             shell_override=None,
         )
         with (
-            patch("lllars_core.runtime.job_runner.detect_shell", return_value=None),
-            patch("lllars_core.runtime.job_runner.run_agent_with_timeout") as run_agent,
+            patch(
+                "lllars_core.runtime.job_runner.detect_shell",
+                return_value=None,
+            ),
+            patch(
+                "lllars_core.runtime.job_runner.run_agent_with_timeout"
+            ) as run_agent,
         ):
             with self.assertRaises(ShellAdapterUnavailableError):
                 run_job(basic_spec(), cfg=cfg)

@@ -8,7 +8,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from lllars_core.runtime import RuntimeService as PackageRuntimeService
-from lllars_core.runtime import create_runtime_app as package_create_runtime_app
+from lllars_core.runtime import (
+    create_runtime_app as package_create_runtime_app,
+)
 from lllars_core.runtime.api import create_runtime_app
 from lllars_core.runtime.service import RuntimeService
 
@@ -35,17 +37,26 @@ class RuntimeApiSurfaceTests(unittest.TestCase):
         app = create_runtime_app(cfg)
         client = TestClient(app)
         self.assertEqual(client.get("/jobs/missing-job").status_code, 404)
-        self.assertEqual(client.post("/jobs/missing-job/cancel").status_code, 404)
+        self.assertEqual(
+            client.post("/jobs/missing-job/cancel").status_code,
+            404,
+        )
         self.assertEqual(client.get("/jobs/missing-job/logs").status_code, 404)
 
     def test_runtime_frontend_fallback_when_static_missing(self) -> None:
         cfg = SimpleNamespace(model="", provider_url="")
-        with patch("lllars_core.runtime.web.RUNTIME_UI_DIR", Path("missing-ui")):
+        with patch(
+            "lllars_core.runtime.web.RUNTIME_UI_DIR",
+            Path("missing-ui"),
+        ):
             app = create_runtime_app(cfg)
         client = TestClient(app)
         response = client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"status": "ok", "ui": "unavailable"})
+        self.assertEqual(
+            response.json(),
+            {"status": "ok", "ui": "unavailable"},
+        )
 
 
 if __name__ == "__main__":

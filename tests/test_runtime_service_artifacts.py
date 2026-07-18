@@ -24,6 +24,27 @@ def _spec() -> JobSpec:
     )
 
 
+def _assert_success_artifacts(
+    test_case: unittest.TestCase,
+    *,
+    tmpdir: str,
+    record: object,
+) -> None:
+    summary_path = Path(tmpdir) / record.artifacts["summary"]
+    stdout_path = Path(tmpdir) / record.artifacts["stdout"]
+    telemetry_path = Path(tmpdir) / record.artifacts["telemetry"]
+    test_case.assertTrue(summary_path.exists())
+    test_case.assertTrue(stdout_path.exists())
+    test_case.assertTrue(telemetry_path.exists())
+    test_case.assertEqual(
+        stdout_path.read_text(encoding="utf-8"),
+        "agent-out",
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    test_case.assertEqual(summary["job_id"], "job-success")
+    test_case.assertEqual(summary["status"], "succeeded")
+
+
 class RuntimeServiceArtifactsTests(unittest.TestCase):
     def test_runtime_service_persists_artifacts_on_success(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -49,16 +70,11 @@ class RuntimeServiceArtifactsTests(unittest.TestCase):
             self.assertIsNotNone(record)
             assert record is not None
             self.assertEqual(record.status, "succeeded")
-            summary_path = Path(tmpdir) / record.artifacts["summary"]
-            stdout_path = Path(tmpdir) / record.artifacts["stdout"]
-            telemetry_path = Path(tmpdir) / record.artifacts["telemetry"]
-            self.assertTrue(summary_path.exists())
-            self.assertTrue(stdout_path.exists())
-            self.assertTrue(telemetry_path.exists())
-            self.assertEqual(stdout_path.read_text(encoding="utf-8"), "agent-out")
-            summary = json.loads(summary_path.read_text(encoding="utf-8"))
-            self.assertEqual(summary["job_id"], "job-success")
-            self.assertEqual(summary["status"], "succeeded")
+            _assert_success_artifacts(
+                self,
+                tmpdir=tmpdir,
+                record=record,
+            )
 
     def test_runtime_service_persists_artifacts_on_exception(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -66,7 +82,10 @@ class RuntimeServiceArtifactsTests(unittest.TestCase):
             service = RuntimeService(cfg=cfg)
             spec = service.store.create(_spec(), job_id="job-failure").spec
 
-            with patch("lllars_core.runtime.service.run_job", side_effect=RuntimeError("boom")):
+            with patch(
+                "lllars_core.runtime.service.run_job",
+                side_effect=RuntimeError("boom"),
+            ):
                 service._run_job("job-failure", spec)
 
             record = service.store.get("job-failure")

@@ -29,7 +29,10 @@ def _ok_result() -> RunResult:
     )
 
 
-def _run_cancel_success_race(store: InMemoryJobStore, job_id: str) -> list[Exception]:
+def _run_cancel_success_race(
+    store: InMemoryJobStore,
+    job_id: str,
+) -> list[Exception]:
     barrier = threading.Barrier(2)
     errors: list[Exception] = []
 

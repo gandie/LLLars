@@ -16,7 +16,10 @@ from runtime_api_test_support import (
 class RuntimeApiSubmissionTests(unittest.TestCase):
     def test_submit_rejects_missing_run_fields_in_request(self) -> None:
         client = make_runtime_client(model="", provider_url="")
-        submit_resp = client.post("/jobs", json={"prompt": "hello", "timeout_sec": 5})
+        submit_resp = client.post(
+            "/jobs",
+            json={"prompt": "hello", "timeout_sec": 5},
+        )
         self.assertEqual(submit_resp.status_code, 422)
 
     def test_submit_accepts_extended_run_fields_in_request(self) -> None:
@@ -33,7 +36,11 @@ class RuntimeApiSubmissionTests(unittest.TestCase):
         ):
             submit_resp = client.post(
                 "/jobs",
-                json={"prompt": "hello", "run": extended_run_payload(), "timeout_sec": 5},
+                json={
+                    "prompt": "hello",
+                    "run": extended_run_payload(),
+                    "timeout_sec": 5,
+                },
             )
         self.assertEqual(submit_resp.status_code, 202)
 

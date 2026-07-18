@@ -9,12 +9,20 @@ from fastapi.testclient import TestClient
 from lllars_core.runtime.api import create_runtime_app
 
 
-def make_runtime_client(*, model: str = "test-model", provider_url: str = "http://localhost:11434") -> TestClient:
+def make_runtime_client(
+    *,
+    model: str = "test-model",
+    provider_url: str = "http://localhost:11434",
+) -> TestClient:
     cfg = SimpleNamespace(model=model, provider_url=provider_url)
     return TestClient(create_runtime_app(cfg))
 
 
-def base_run_payload(*, project_root: str = ".", command_profile: str = "none") -> dict[str, Any]:
+def base_run_payload(
+    *,
+    project_root: str = ".",
+    command_profile: str = "none",
+) -> dict[str, Any]:
     return {
         "model": "test-model",
         "provider_url": "http://localhost:11434",
@@ -23,19 +31,34 @@ def base_run_payload(*, project_root: str = ".", command_profile: str = "none") 
     }
 
 
-def submit_job(client: TestClient, *, prompt: str = "hello", timeout_sec: int = 5, run_overrides: dict[str, Any] | None = None) -> str:
+def submit_job(
+    client: TestClient,
+    *,
+    prompt: str = "hello",
+    timeout_sec: int = 5,
+    run_overrides: dict[str, Any] | None = None,
+) -> str:
     run_payload = base_run_payload()
     if run_overrides:
         run_payload.update(run_overrides)
     submit_resp = client.post(
         "/jobs",
-        json={"prompt": prompt, "run": run_payload, "timeout_sec": timeout_sec},
+        json={
+            "prompt": prompt,
+            "run": run_payload,
+            "timeout_sec": timeout_sec,
+        },
     )
     assert submit_resp.status_code == 202
     return submit_resp.json()["job_id"]
 
 
-def wait_for_terminal_status(client: TestClient, job_id: str, *, attempts: int = 60) -> dict[str, Any]:
+def wait_for_terminal_status(
+    client: TestClient,
+    job_id: str,
+    *,
+    attempts: int = 60,
+) -> dict[str, Any]:
     for _ in range(attempts):
         status_resp = client.get(f"/jobs/{job_id}")
         assert status_resp.status_code == 200
