@@ -152,7 +152,7 @@ def _build_configs(
         service_mode,
         run_cfg,
     )
-    runtime = runtime_inputs(run_cfg)
+    runtime = runtime_inputs(run_cfg, config_root=config_root)
     service_cfg, project_root = service_config(
         service_cfg,
         service_mode=service_mode,

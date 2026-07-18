@@ -22,7 +22,6 @@ def resolve_config_path(spec: JobSpec) -> Path:
         return DEFAULT_CONFIG_PATH.resolve()
     return Path(spec.config_path).resolve()
 
-
 def apply_job_run_settings(cfg: HarnessConfig, spec: JobSpec) -> HarnessConfig:
     if not hasattr(cfg, "mount_work_root"):
         return cfg
@@ -44,7 +43,6 @@ def apply_job_run_settings(cfg: HarnessConfig, spec: JobSpec) -> HarnessConfig:
     )
     return replace(cfg, **updates)
 
-
 def _resolve_project_root(cfg: HarnessConfig, spec: JobSpec) -> Path:
     mount_root = cfg.mount_work_root.resolve()
     run_project_root = spec.run.project_root
@@ -63,7 +61,6 @@ def _resolve_project_root(cfg: HarnessConfig, spec: JobSpec) -> Path:
         config_root=mount_root,
         mount_work_root=mount_root,
     )
-
 
 def _resolve_run_commands(
     cfg: HarnessConfig,
@@ -85,41 +82,51 @@ def _resolve_run_commands(
         test_command=test_command,
         eval_command=eval_command,
         allowed_shell_commands=_allowed_commands(
+            cfg,
             command_profile,
             test_command,
             eval_command,
         ),
     )
 
-
 def _command_profile(cfg: HarnessConfig, spec: JobSpec) -> str:
     command_profile = (
         (spec.run.command_profile or "").strip().lower()
         or cfg.command_profile
     )
+    if command_profile == cfg.command_profile:
+        return command_profile
     if command_profile in COMMAND_PROFILE_REGISTRY:
         return command_profile
 
-    available = ", ".join(sorted(COMMAND_PROFILE_REGISTRY))
+    available = ", ".join(
+        sorted(set(COMMAND_PROFILE_REGISTRY) | {cfg.command_profile})
+    )
     raise ValueError(
         "Unknown command_profile "
         f"{command_profile!r}. Available profiles: {available}"
     )
 
-
 def _normalize_command(raw_value: object) -> str | None:
     return (raw_value.strip() or None) if isinstance(raw_value, str) else None
 
-
 def _allowed_commands(
-    command_profile: str, test_command: str | None, eval_command: str | None
+    cfg: HarnessConfig,
+    command_profile: str,
+    test_command: str | None,
+    eval_command: str | None,
 ) -> tuple[str, ...]:
     seen: set[str] = set()
     allowed: list[str] = []
+    profile_commands = (
+        cfg.allowed_shell_commands
+        if command_profile == cfg.command_profile
+        else COMMAND_PROFILE_REGISTRY[command_profile]
+    )
     raw_commands = [
         test_command,
         eval_command,
-        *COMMAND_PROFILE_REGISTRY[command_profile],
+        *profile_commands,
     ]
     for raw_command in raw_commands:
         canonical = canonicalize_shell_command(raw_command or "")
@@ -127,7 +134,6 @@ def _allowed_commands(
             seen.add(canonical)
             allowed.append(canonical)
     return tuple(allowed)
-
 
 def _build_run_config(
     cfg: HarnessConfig,
@@ -154,7 +160,6 @@ def _build_run_config(
         **_run_config_overrides(cfg, spec),
     )
 
-
 def _run_config_overrides(
     cfg: HarnessConfig,
     spec: JobSpec,
@@ -165,7 +170,6 @@ def _run_config_overrides(
         fallback = getattr(cfg, field_name)
         overrides[field_name] = fallback if override is None else override
     return overrides
-
 
 def _resolve_and_validate_mcp_config(
     cfg: HarnessConfig,
@@ -181,11 +185,9 @@ def _resolve_and_validate_mcp_config(
             raise ValueError(f"Invalid mcp_config_path: {mcp_config_path}")
     return mcp_config_path
 
-
 def _validate_skills_config(run_cfg: RunConfig) -> None:
     if run_cfg.skills_enabled and not (run_cfg.skills_glob or "").strip():
         raise ValueError("skills_enabled is true but skills_glob is empty")
-
 
 def _dataclass_updates(
     spec: JobSpec,
@@ -212,6 +214,5 @@ def _dataclass_updates(
         else:
             updates[field_name] = value
     return updates
-
 
 __all__ = ["apply_job_run_settings", "resolve_config_path"]

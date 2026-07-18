@@ -1,0 +1,4 @@
+profiles:
+  playground-python:
+    - python main.py
+    - python test.py

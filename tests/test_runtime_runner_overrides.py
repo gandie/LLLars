@@ -46,6 +46,55 @@ def _setup_override_fixture(root: Path) -> tuple[Path, Path, object]:
     return proj_b, config_path, load_config(config_path)
 
 
+def _setup_external_profile_fixture(root: Path) -> tuple[Path, object]:
+    workspace = root / "workspace"
+    (workspace / "proj").mkdir(parents=True)
+    (root / "profiles.yaml").write_text(
+        "profiles:\n  lint-only:\n    - python -m pytest -q\n",
+        encoding="utf-8",
+    )
+    config = {
+        "service": {
+            "mode": "serve",
+            "mount_work_root": "workspace",
+            "mount_config_root": ".",
+            "mount_artifacts_root": ".",
+            "queue_backend": "inmemory",
+            "network_policy": "inherit",
+        },
+        "run": {
+            "model": "test-model",
+            "provider_url": "http://localhost:11434",
+            "project_root": "workspace/proj",
+            "commands": {},
+            "command_profile": "lint-only",
+            "command_profiles_path": "profiles.yaml",
+        },
+    }
+    config_path = root / "config.json"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    return config_path, load_config(config_path)
+
+
+def _run_job_with_patched_agent(spec, cfg):
+    with (
+        patch(
+            "lllars_core.runtime.job_runner.detect_shell",
+            return_value=powershell_selection(),
+        ),
+        patch(
+            "lllars_core.runtime.job_runner.run_agent_with_timeout",
+            return_value=("", "", 0, {}, []),
+        ) as run_agent,
+        patch(
+            "lllars_core.runtime.job_runner.is_eval_success",
+            return_value=True,
+        ),
+    ):
+        run_job(spec, cfg=cfg)
+    return run_agent.call_args.kwargs["cfg"]
+
+
 class RuntimeRunnerOverrideTests(unittest.TestCase):
     def test_run_job_allows_job_level_skills_override(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -80,6 +129,27 @@ class RuntimeRunnerOverrideTests(unittest.TestCase):
             effective_cfg = run_agent.call_args.kwargs["cfg"]
             self.assertEqual(effective_cfg.project_root, proj_b.resolve())
             self.assertFalse(effective_cfg.skills_enabled)
+
+    def test_run_job_accepts_external_command_profile_from_loaded_config(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_path, cfg = _setup_external_profile_fixture(root)
+            spec = basic_spec(
+                config_path=str(config_path),
+                run_overrides={
+                    "project_root": "proj",
+                    "commands": {},
+                    "command_profile": "lint-only",
+                },
+            )
+            effective_cfg = _run_job_with_patched_agent(spec, cfg)
+            self.assertEqual(effective_cfg.command_profile, "lint-only")
+            self.assertEqual(
+                effective_cfg.allowed_shell_commands,
+                ("python -m pytest -q",),
+            )
 
 
 if __name__ == "__main__":

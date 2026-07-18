@@ -36,26 +36,25 @@ def resolve_run_inputs(service_mode: str, cfg: dict) -> tuple[str, str, str]:
     return model, provider_url, project_root
 
 
-def runtime_inputs(cfg: dict) -> RuntimeInputs:
-    (
-        test_command,
-        eval_command,
-        command_profile,
-        profile_commands,
-        shell_settings,
-    ) = _command_inputs(cfg)
+def runtime_inputs(
+    cfg: dict,
+    *,
+    config_root: Path | None = None,
+) -> RuntimeInputs:
+    test_command, eval_command, command_profile, profile_commands, shell_settings = _command_inputs(
+        cfg,
+        config_root=config_root,
+    )
     allowed_shell_commands = collect_allowed_shell_commands(
         test_command,
         eval_command,
         profile_commands,
     )
-    system_prompt, tool_policy, eval_expect_json, eval_success_pass_rate = (
-        runtime_text_fields(
-            cfg,
-            test_command,
-            eval_command,
-            allowed_shell_commands,
-        )
+    system_prompt, tool_policy, eval_expect_json, eval_success_pass_rate = runtime_text_fields(
+        cfg,
+        test_command,
+        eval_command,
+        allowed_shell_commands,
     )
     return RuntimeInputs(
         test_command=test_command,
@@ -72,6 +71,8 @@ def runtime_inputs(cfg: dict) -> RuntimeInputs:
 
 def _command_inputs(
     cfg: dict,
+    *,
+    config_root: Path | None = None,
 ) -> tuple[
     str | None,
     str | None,
@@ -80,7 +81,10 @@ def _command_inputs(
     tuple[str, str | None],
 ]:
     test_command, eval_command = load_commands(cfg)
-    command_profile, profile_commands = resolve_command_profile(cfg)
+    command_profile, profile_commands = resolve_command_profile(
+        cfg,
+        config_root=config_root,
+    )
     shell_settings = resolve_shell_policy(cfg)
     return (
         test_command,

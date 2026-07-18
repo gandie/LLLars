@@ -62,6 +62,26 @@ Start serve mode:
 lllars serve --config .\playground.split.example.json --host 127.0.0.1 --port 8000
 ```
 
+## External Command Profiles
+
+Command profiles can be extended from local JSON or YAML without code edits.
+Built-in profiles are always available, and `run.command_profiles_path` is merged
+on top with conflict validation.
+
+Example run config fields:
+
+```json
+{
+	"run": {
+		"command_profile": "playground-python",
+		"command_profiles_path": "playground.command-profiles.yaml"
+	}
+}
+```
+
+See `playground.example.json` and `playground.command-profiles.yaml` for a full
+working example.
+
 ## Documentation
 
 - Overview and navigation: `docs/README.md`
