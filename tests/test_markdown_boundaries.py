@@ -13,7 +13,12 @@ from boundary_checks.markdown_boundaries import (
 class MarkdownBoundaryTests(unittest.TestCase):
     def test_markdown_boundaries_are_respected(self) -> None:
         repo_root = Path(__file__).resolve().parent.parent
-        config_path = repo_root / "docs" / "markdown_boundaries.json"
+        config_path = (
+            repo_root
+            / "tests"
+            / "boundary_checks"
+            / "markdown_boundaries.json"
+        )
 
         config = load_boundaries(config_path)
         violations = evaluate_boundaries(repo_root, config)

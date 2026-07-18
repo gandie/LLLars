@@ -13,7 +13,12 @@ from boundary_checks.refactor_boundaries import (
 class RefactorBoundaryTests(unittest.TestCase):
     def test_refactor_boundaries_are_respected(self) -> None:
         repo_root = Path(__file__).resolve().parent.parent
-        config_path = repo_root / "docs" / "refactor_boundaries.json"
+        config_path = (
+            repo_root
+            / "tests"
+            / "boundary_checks"
+            / "refactor_boundaries.json"
+        )
 
         config = load_boundaries(config_path)
         self.assertIn(
