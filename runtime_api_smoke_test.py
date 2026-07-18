@@ -5,6 +5,7 @@ import json
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from typing import Any
 
 
@@ -31,16 +32,22 @@ def _request_json(
             text = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         text = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"HTTP {exc.code} for {method} {url}: {text}") from exc
+        raise RuntimeError(
+            f"HTTP {exc.code} for {method} {url}: {text}"
+        ) from exc
     except urllib.error.URLError as exc:
-        raise RuntimeError(f"Request failed for {method} {url}: {exc}") from exc
+        raise RuntimeError(
+            f"Request failed for {method} {url}: {exc}"
+        ) from exc
 
     if not text.strip():
         return {}
     try:
         return json.loads(text)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Expected JSON response from {url}, got: {text}") from exc
+        raise RuntimeError(
+            f"Expected JSON response from {url}, got: {text}"
+        ) from exc
 
 
 def run_smoke_test(
@@ -54,14 +61,21 @@ def run_smoke_test(
     expected_shells: tuple[str, ...],
     poll_interval_sec: float,
     timeout_sec: float,
+    *,
+    request_json: Callable[
+        [str, str, dict[str, Any] | None],
+        dict[str, Any],
+    ] = _request_json,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> int:
     base = base_url.rstrip("/")
 
-    health = _request_json("GET", f"{base}/health")
+    health = request_json("GET", f"{base}/health")
     print("health:")
     print(json.dumps(health, indent=2))
 
-    submit = _request_json(
+    submit = request_json(
         "POST",
         f"{base}/jobs",
         {
@@ -82,11 +96,11 @@ def run_smoke_test(
     print(f"submitted job_id={job_id}")
 
     terminal_states = {"succeeded", "failed", "canceled"}
-    start = time.monotonic()
+    start = monotonic()
     last_status: dict[str, Any] = {}
 
     while True:
-        status = _request_json("GET", f"{base}/jobs/{job_id}")
+        status = request_json("GET", f"{base}/jobs/{job_id}")
         state = str(status.get("status", "")).strip().lower()
         print(f"status={state}")
 
@@ -94,14 +108,17 @@ def run_smoke_test(
             last_status = status
             break
 
-        elapsed = time.monotonic() - start
+        elapsed = monotonic() - start
         if elapsed > timeout_sec:
             raise TimeoutError(
-                f"Timed out waiting for terminal status after {timeout_sec:.1f}s"
+                (
+                    "Timed out waiting for terminal status after "
+                    f"{timeout_sec:.1f}s"
+                )
             )
-        time.sleep(poll_interval_sec)
+        sleep(poll_interval_sec)
 
-    logs = _request_json("GET", f"{base}/jobs/{job_id}/logs")
+    logs = request_json("GET", f"{base}/jobs/{job_id}/logs")
 
     print("final status:")
     print(json.dumps(last_status, indent=2))
