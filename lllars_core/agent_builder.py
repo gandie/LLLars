@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import inspect
 from pathlib import Path
 import platform
 
@@ -10,8 +11,7 @@ from pydantic_ai import (
     ModelSettings,
     RunContext,
 )
-from pydantic_ai.models.ollama import OllamaModel
-from pydantic_ai.providers.ollama import OllamaProvider
+from pydantic_ai.models import infer_model, infer_provider_class
 
 from pydantic_ai_todo import TodoCapability
 
@@ -46,22 +46,51 @@ def make_agent_deps(cfg: HarnessConfig) -> AgentDeps:
     )
 
 
-def normalize_ollama_base_url(provider_url: str) -> str:
-    base_url = provider_url.strip().rstrip("/")
-    if not base_url:
-        raise ValueError("Config is missing non-empty provider-url")
-    if not base_url.endswith("/v1"):
-        base_url = f"{base_url}/v1"
-    return base_url
-
-
-def parse_ollama_model(model_value: str) -> str:
+def _resolve_model_spec(model_value: str) -> str:
     value = model_value.strip()
     if not value:
         raise ValueError("Config field model is empty")
-    if value.startswith("ollama:"):
-        return value.split(":", 1)[1]
-    return value
+
+    provider_name, sep, provider_model = value.partition(":")
+    if sep and provider_model.strip():
+        try:
+            infer_provider_class(provider_name.strip().lower())
+            return value
+        except Exception:
+            pass
+
+    # Backward compatibility for unprefixed/local model names.
+    return f"ollama:{value}"
+
+
+def _provider_supports_base_url(provider_cls: type[object]) -> bool:
+    return "base_url" in inspect.signature(provider_cls).parameters
+
+
+def _normalize_provider_base_url(
+    provider_name: str,
+    provider_url: str,
+) -> str:
+    base_url = provider_url.strip().rstrip("/")
+    if provider_name == "ollama" and base_url and not base_url.endswith("/v1"):
+        return f"{base_url}/v1"
+    return base_url
+
+
+def _infer_runtime_model(cfg: HarnessConfig) -> tuple[object, str]:
+    model_spec = _resolve_model_spec(cfg.model)
+    provider_url = cfg.provider_url.strip().rstrip("/")
+
+    def _provider_factory(provider_name: str):
+        provider_cls = infer_provider_class(provider_name)
+        base_url = _normalize_provider_base_url(provider_name, provider_url)
+        if base_url and _provider_supports_base_url(provider_cls):
+            return provider_cls(base_url=base_url)
+        return provider_cls()
+
+    model_obj = infer_model(model_spec, provider_factory=_provider_factory)
+    provider_name = model_spec.split(":", 1)[0]
+    return model_obj, provider_name
 
 
 def resolve_under(root: Path, user_path: str) -> Path:
@@ -84,12 +113,7 @@ def _load_mcp_toolsets(cfg: HarnessConfig) -> list[object]:
 
 
 def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
-    model_obj = OllamaModel(
-        parse_ollama_model(cfg.model),
-        provider=OllamaProvider(
-            base_url=normalize_ollama_base_url(cfg.provider_url)
-        ),
-    )
+    model_obj, provider_name = _infer_runtime_model(cfg)
 
     agent = Agent[AgentDeps, str](
         model_obj,
@@ -104,7 +128,7 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
         max_concurrency=cfg.max_concurrency,
         metadata={
             "harness": "lllars",
-            "provider": "ollama",
+            "provider": provider_name,
             "project_root": str(cfg.project_root),
         },
         capabilities=_build_capabilities(cfg),

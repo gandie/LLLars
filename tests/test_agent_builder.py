@@ -10,6 +10,8 @@ from pydantic_ai import Agent
 
 from lllars_core.agent_builder import (
     _make_allowed_shell_runner,
+    _normalize_provider_base_url,
+    _resolve_model_spec,
     make_agent_deps,
 )
 from lllars_core.shell import ShellSelection
@@ -98,6 +100,47 @@ class AgentBuilderToolRegistrationRegressionTests(unittest.TestCase):
             emit_thought=lambda _message: None,
             tool_error=lambda _tool, message, _hint: message,
             run_allowed_shell=lambda _cmd, _timeout: "{}",
+        )
+
+
+class AgentBuilderModelSpecResolutionTests(unittest.TestCase):
+    def test_explicit_provider_prefix_is_preserved(self) -> None:
+        self.assertEqual(
+            _resolve_model_spec("openai:gpt-4o-mini"),
+            "openai:gpt-4o-mini",
+        )
+
+    def test_unprefixed_model_defaults_to_ollama_prefix(self) -> None:
+        self.assertEqual(
+            _resolve_model_spec("qwen2.5-coder:7b"),
+            "ollama:qwen2.5-coder:7b",
+        )
+
+    def test_empty_model_raises(self) -> None:
+        with self.assertRaisesRegex(ValueError, "model is empty"):
+            _resolve_model_spec("   ")
+
+
+class AgentBuilderProviderUrlNormalizationTests(unittest.TestCase):
+    def test_ollama_url_appends_v1_when_missing(self) -> None:
+        self.assertEqual(
+            _normalize_provider_base_url("ollama", "http://localhost:11434"),
+            "http://localhost:11434/v1",
+        )
+
+    def test_ollama_url_preserves_existing_v1(self) -> None:
+        self.assertEqual(
+            _normalize_provider_base_url(
+                "ollama",
+                "http://localhost:11434/v1",
+            ),
+            "http://localhost:11434/v1",
+        )
+
+    def test_non_ollama_url_is_not_rewritten(self) -> None:
+        self.assertEqual(
+            _normalize_provider_base_url("openai", "https://api.openai.com"),
+            "https://api.openai.com",
         )
 
 
