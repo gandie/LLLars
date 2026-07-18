@@ -314,7 +314,7 @@ Boundary tool contract for code-touching tasks (T25+):
 - Completion artifact:
   - `config.py` reduced to facade with parity tests passing and boundary checks green.
 
-### T30 MCP Package Split + Diagnostics Boundary
+### T30 MCP Package Split + Diagnostics Boundary (DONE 2026-07-18)
 - Goal: Isolate MCP loading, probing, and diagnostics into focused package modules.
 - Files: lllars_core/mcp/__init__.py, lllars_core/mcp/loader.py, lllars_core/mcp/preflight.py, lllars_core/mcp/diagnostics.py, lllars_core/mcp/runtime.py, lllars_core/mcp_loader.py, lllars_core/mcp_preflight.py, tests/test_cli_regression.py.
 - Adds:

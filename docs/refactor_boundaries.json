@@ -18,10 +18,6 @@
         "max_file_lines": 260,
         "reason": "T24-T28 decomposition pending"
       },
-      "lllars_core/mcp_preflight.py": {
-        "max_file_lines": 500,
-        "reason": "T30 mcp package split pending"
-      },
       "lllars_core/agent_builder.py": {
         "max_file_lines": 500,
         "reason": "T31 tools package split pending"
@@ -67,22 +63,6 @@
       "lllars_core/markdown_boundaries.py::evaluate_boundaries": {
         "max_function_lines": 70,
         "reason": "Boundary tooling module; compactness refactor can be done later"
-      },
-      "lllars_core/mcp_loader.py::load_toolsets_from_mcp_config": {
-        "max_function_lines": 60,
-        "reason": "T30 mcp package split pending"
-      },
-      "lllars_core/mcp_preflight.py::_check_model_endpoint": {
-        "max_function_lines": 90,
-        "reason": "T30 mcp package split pending"
-      },
-      "lllars_core/mcp_preflight.py::_probe_stdio_startup_noise": {
-        "max_function_lines": 90,
-        "reason": "T30 mcp package split pending"
-      },
-      "lllars_core/mcp_preflight.py::run_mcp_preflight": {
-        "max_function_lines": 90,
-        "reason": "T30 mcp package split pending"
       },
       "lllars_core/runtime_runner.py::run_job": {
         "max_function_lines": 140,

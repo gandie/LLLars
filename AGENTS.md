@@ -38,7 +38,23 @@ When truth conflicts, resolve in this order:
 
 If uncertain, stop, ask, then continue.
 
-## 5) Mandalorian rule
+## 5) Post-Task Bookkeeping Protocol
+
+Bookkeeping is part of baseline operation, not optional cleanup.
+
+After each completed task, update repository state before closing the run:
+- Mark task status in planning docs (for example `docs/IMPLEMENTATION_PREP.md`).
+- Archive outcome in changelog docs (for example `docs/IMPLEMENTATION_CHANGELOG.md`).
+- Align defaults/examples with shipped behavior (for example config defaults, sample configs, README usage examples).
+
+Stop-check before handoff:
+1. Task state is marked DONE where tracked.
+2. Changelog entry exists and reflects actual validation.
+3. Defaults/examples are consistent with current runtime behavior.
+
+If any item is not complete, task is not complete.
+
+## 6) Mandalorian rule
 
 When user ends session, your terminal response must be either:
 
@@ -48,7 +64,7 @@ When user ends session, your terminal response must be either:
 
 Other Star Wars references are allowed, too if they fit well into context.
 
-## 6) Memory Hard Ban
+## 7) Memory Hard Ban
 
 Never ever use any platform-specific memory files.
 

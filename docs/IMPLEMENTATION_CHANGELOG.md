@@ -105,6 +105,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Break `config.py` monolith into package modules while preserving `load_config` API stability.
 - Outcome: Split config handling into focused package modules (`config/loader.py`, `config/models.py`, `config/env_layer.py`, `config/runtime_section.py`, `config/runtime_values.py`, `config/run_builder.py`, `config/harness_builder.py`) with a thin `config.py` facade preserved. Config loading now enforces strict split-root shape (`service`/`run` with optional `env_file`), and `env_file` precedence is applied to service settings.
 
+### T30 MCP Package Split + Diagnostics Boundary (DONE 2026-07-18)
+- Goal: Isolate MCP loading, probing, and diagnostics into focused package modules.
+- Outcome: Added a dedicated MCP package boundary (`mcp/loader.py`, `mcp/preflight.py`, `mcp/diagnostics.py`, `mcp/runtime.py`, `mcp/model_probe.py`) with compatibility facades preserved in `mcp_loader.py` and `mcp_preflight.py`. Startup diagnostics behavior remained unchanged, and validation is green for CLI regression, boundary checks, and operator-run end-to-end smoke.
+
 ## Archive Sweep Details (Moved From Prep 2026-07-16)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)
