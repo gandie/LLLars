@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from lllars_core.refactor_boundaries import (
+from boundary_checks.refactor_boundaries import (
     evaluate_boundaries,
     format_violations,
     load_boundaries,

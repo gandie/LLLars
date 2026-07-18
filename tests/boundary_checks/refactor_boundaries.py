@@ -16,7 +16,11 @@ class BoundaryViolation:
     reason: str
 
 
-def _iter_python_files(root: Path, include: list[str], exclude: list[str]) -> list[Path]:
+def _iter_python_files(
+    root: Path,
+    include: list[str],
+    exclude: list[str],
+) -> list[Path]:
     matched: set[Path] = set()
     for pattern in include:
         matched.update(root.glob(pattern))
@@ -67,7 +71,9 @@ def _iter_functions(tree: ast.Module, file_key: str) -> list[tuple[str, int]]:
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     size = _function_line_count(child)
                     if size is not None:
-                        result.append((_function_id(file_key, child, node.name), size))
+                        result.append(
+                            (_function_id(file_key, child, node.name), size)
+                        )
 
     return result
 
@@ -95,8 +101,16 @@ def _function_limit(
     fn_limit_default: int,
 ) -> tuple[int, str]:
     fn_waiver = fn_waivers.get(fn_id, {})
-    limit = int(fn_waiver.get("max_function_lines", file_waiver.get("max_function_lines", fn_limit_default)))
-    reason = fn_waiver.get("reason", file_waiver.get("reason", "function exceeds limit"))
+    limit = int(
+        fn_waiver.get(
+            "max_function_lines",
+            file_waiver.get("max_function_lines", fn_limit_default),
+        )
+    )
+    reason = fn_waiver.get(
+        "reason",
+        file_waiver.get("reason", "function exceeds limit"),
+    )
     return limit, reason
 
 
@@ -157,18 +171,33 @@ def _evaluate_file(
         )
 
     tree = ast.parse(source)
-    violations.extend(_function_violations(tree=tree, file_key=file_key, file_waiver=file_waiver, fn_waivers=fn_waivers, fn_limit_default=fn_limit_default))
+    violations.extend(
+        _function_violations(
+            tree=tree,
+            file_key=file_key,
+            file_waiver=file_waiver,
+            fn_waivers=fn_waivers,
+            fn_limit_default=fn_limit_default,
+        )
+    )
     return violations
 
 
-def evaluate_boundaries(root: Path, config: dict[str, Any]) -> list[BoundaryViolation]:
+def evaluate_boundaries(
+    root: Path,
+    config: dict[str, Any],
+) -> list[BoundaryViolation]:
     file_limit_default, fn_limit_default = _default_limits(config)
     file_waivers, fn_waivers = _waivers(config)
     include = config.get("include", ["lllars_core/*.py"])
     exclude = config.get("exclude", [])
 
     violations: list[BoundaryViolation] = []
-    for file_path in _iter_python_files(root, include=include, exclude=exclude):
+    for file_path in _iter_python_files(
+        root,
+        include=include,
+        exclude=exclude,
+    ):
         violations.extend(
             _evaluate_file(
                 root=root,
@@ -187,8 +216,10 @@ def format_violations(violations: list[BoundaryViolation]) -> str:
     if not violations:
         return ""
     lines = ["Refactor boundary violations detected:"]
-    for v in violations:
+    for violation in violations:
         lines.append(
-            f"- [{v.kind}] {v.key}: actual={v.actual}, limit={v.limit}, reason={v.reason}"
+            f"- [{violation.kind}] {violation.key}: "
+            f"actual={violation.actual}, "
+            f"limit={violation.limit}, reason={violation.reason}"
         )
     return "\n".join(lines)
