@@ -8,6 +8,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from lllars_core.config import load_config
+from lllars_core.runtime import (
+    ShellAdapterUnavailableError as package_shell_error,
+    run_job as package_run_job,
+)
 from lllars_core.runtime_models import JobSpec
 from lllars_core.runtime_runner import (
     ShellAdapterUnavailableError,
@@ -17,6 +21,10 @@ from lllars_core.shell import ShellSelection
 
 
 class RuntimeRunnerTests(unittest.TestCase):
+    def test_runtime_package_exports_runner_symbols(self) -> None:
+        self.assertIs(package_run_job, run_job)
+        self.assertIs(package_shell_error, ShellAdapterUnavailableError)
+
     def test_run_job_returns_runresult_with_telemetry_passthrough(
         self,
     ) -> None:

@@ -27,6 +27,10 @@ from lllars_core.shell import (
 
 
 ENABLE_LEGACY_SHELL_EXECUTION_PATH = False
+IMPORT_MIGRATION_NOTE = (
+    "Preferred import path: lllars_core.runtime.run_job and "
+    "lllars_core.runtime.ShellAdapterUnavailableError"
+)
 
 
 class ShellAdapterUnavailableError(RuntimeError):
@@ -538,3 +542,11 @@ def run_job(
         eval_error=eval_error,
         runtime_telemetry=runtime_telemetry,
     )
+
+
+__all__ = [
+    "ENABLE_LEGACY_SHELL_EXECUTION_PATH",
+    "IMPORT_MIGRATION_NOTE",
+    "ShellAdapterUnavailableError",
+    "run_job",
+]

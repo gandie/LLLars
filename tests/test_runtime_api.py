@@ -11,12 +11,20 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from lllars_core.runtime import (
+    RuntimeService as PackageRuntimeService,
+    create_runtime_app as package_create_runtime_app,
+)
 from lllars_core.runtime_models import JobSpec, RunResult
 from lllars_core.runtime_api import RuntimeService, create_runtime_app
 from lllars_core.runtime_runner import ShellAdapterUnavailableError
 
 
 class RuntimeApiTests(unittest.TestCase):
+    def test_runtime_package_exports_api_symbols(self) -> None:
+        self.assertIs(package_create_runtime_app, create_runtime_app)
+        self.assertIs(PackageRuntimeService, RuntimeService)
+
     def test_runtime_frontend_root_serves_html(self) -> None:
         cfg = SimpleNamespace(model="", provider_url="")
         app = create_runtime_app(cfg)

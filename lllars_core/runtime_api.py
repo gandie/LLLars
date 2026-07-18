@@ -24,6 +24,10 @@ from lllars_core.runtime_runner import (
 
 
 RUNTIME_UI_DIR = Path(__file__).resolve().parent / "static" / "runtime"
+IMPORT_MIGRATION_NOTE = (
+    "Preferred import path: lllars_core.runtime.create_runtime_app and "
+    "lllars_core.runtime.RuntimeService"
+)
 
 
 @dataclass
@@ -338,4 +342,8 @@ def create_runtime_app(cfg: HarnessConfig) -> FastAPI:
     return app
 
 
-__all__ = ["create_runtime_app", "RuntimeService"]
+__all__ = [
+    "IMPORT_MIGRATION_NOTE",
+    "RuntimeService",
+    "create_runtime_app",
+]

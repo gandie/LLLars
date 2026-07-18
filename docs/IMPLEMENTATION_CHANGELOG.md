@@ -81,6 +81,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Ensure cancel transitions terminate active agent execution, not only mark job state.
 - Outcome: Added cancel handle propagation from runtime service into active worker execution, introduced runner-level cancellation termination path, and finalized jobs race-safely so cancel wins over late success/failure completion.
 
+### T24 Refactor Governance and Size Gates (DONE 2026-07-17)
+- Goal: Establish enforceable size and structure constraints before moving code.
+- Outcome: Added refactor size governance docs, a machine-readable boundary policy file, and an automated boundary checker test contract to enforce file/function size limits with explicit waivers.
+
 ## Archive Sweep Details (Moved From Prep 2026-07-16)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)
@@ -576,4 +580,24 @@ Risks:
 - Cancellation remains cooperative at runner poll cadence; kill signal is immediate once cancellation is observed.
 Next handoff note:
 - Proceed with T17 Fully Automated Serve Smoke Test.
+
+Task: T24 Refactor Governance and Size Gates
+Date: 2026-07-17
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- docs/DESIGN.md
+- docs/refactor_boundaries.json
+- lllars_core/refactor_boundaries.py
+- tests/test_refactor_boundaries.py
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_refactor_boundaries.py"
+Result:
+- PASS
+- Added explicit refactor guardrails with default file/function size budgets and waiver policy.
+- Added machine-readable boundary policy contract to support incremental refactor debt burn-down.
+- Added automated unittest boundary checker to enforce limits for code-touching tasks.
+Risks:
+- Existing oversized modules remain temporarily allowed through explicit baseline waivers until extraction tickets remove them.
+Next handoff note:
+- Apply boundary checker validation on every code-touching ticket (T25+), and require waiver reason plus removal ticket for any exceeded default.
 ```

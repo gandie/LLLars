@@ -218,7 +218,7 @@ Boundary tool contract for code-touching tasks (T25+):
 - Target values: defaults in docs/refactor_boundaries.json (`max_file_lines=220`, `max_function_lines=35`)
 - If a touched file cannot meet defaults in the same ticket: add explicit waiver with reason + linked ticket for removal.
 
-### T25 Runtime Package Bootstrap + Compatibility Facade
+### T25 Runtime Package Bootstrap + Compatibility Facade (DONE 2026-07-18)
 - Goal: Create `runtime/` package and preserve existing imports through compatibility shims.
 - Files: lllars_core/runtime/__init__.py, lllars_core/runtime/compat.py, lllars_core/runtime_runner.py, lllars_core/runtime_api.py, tests/test_runtime_runner.py, tests/test_runtime_api.py.
 - Adds:
