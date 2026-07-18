@@ -16,79 +16,93 @@
     "files": {
       "lllars_core/cli.py": {
         "max_file_lines": 260,
-        "max_function_lines": 60,
         "reason": "T24-T28 decomposition pending"
-      },
-      "lllars_core/runtime_runner.py": {
-        "max_file_lines": 700,
-        "max_function_lines": 120,
-        "reason": "T26 runtime extraction pending"
       },
       "lllars_core/mcp_preflight.py": {
         "max_file_lines": 500,
-        "max_function_lines": 90,
         "reason": "T30 mcp package split pending"
       },
       "lllars_core/agent_builder.py": {
         "max_file_lines": 500,
-        "max_function_lines": 90,
         "reason": "T31 tools package split pending"
-      },
-      "lllars_core/runner.py": {
-        "max_file_lines": 500,
-        "max_function_lines": 130,
-        "reason": "T28 runner split pending"
-      },
-      "lllars_core/runtime_api.py": {
-        "max_file_lines": 450,
-        "max_function_lines": 150,
-        "reason": "T27 runtime api split pending"
-      },
-      "lllars_core/console.py": {
-        "max_function_lines": 90,
-        "reason": "T28/T31 split pending"
-      },
-      "lllars_core/mcp_loader.py": {
-        "max_function_lines": 60,
-        "reason": "T30 mcp package split pending"
-      },
-      "lllars_core/runtime_artifacts.py": {
-        "max_function_lines": 80,
-        "reason": "T27 runtime artifacts split pending"
-      },
-      "lllars_core/shell.py": {
-        "max_function_lines": 50,
-        "reason": "T26 runtime extraction pending"
-      },
-      "lllars_core/skills.py": {
-        "max_function_lines": 50,
-        "reason": "T31 tools decomposition pending"
-      },
-      "lllars_core/markdown_boundaries.py": {
-        "max_function_lines": 70,
-        "reason": "Boundary tooling module; compactness refactor can be done later"
       }
     },
     "functions": {
-      "lllars_core/runtime_runner.py::_apply_job_run_settings": {
-        "max_function_lines": 320,
-        "reason": "T26 runtime extraction pending"
+      "lllars_core/agent_builder.py::_build_agent_instance": {
+        "max_function_lines": 90,
+        "reason": "T31 tools package split pending"
+      },
+      "lllars_core/agent_builder.py::_register_file_tools": {
+        "max_function_lines": 90,
+        "reason": "T31 tools package split pending"
+      },
+      "lllars_core/agent_builder.py::_register_shell_tools": {
+        "max_function_lines": 90,
+        "reason": "T31 tools package split pending"
+      },
+      "lllars_core/cli.py::_print_runtime_startup": {
+        "max_function_lines": 60,
+        "reason": "T24-T28 decomposition pending"
+      },
+      "lllars_core/cli.py::_run_oneshot": {
+        "max_function_lines": 60,
+        "reason": "T24-T28 decomposition pending"
+      },
+      "lllars_core/cli.py::_run_serve": {
+        "max_function_lines": 60,
+        "reason": "T24-T28 decomposition pending"
+      },
+      "lllars_core/cli.py::main": {
+        "max_function_lines": 60,
+        "reason": "T24-T28 decomposition pending"
+      },
+      "lllars_core/console.py::print_summary": {
+        "max_function_lines": 90,
+        "reason": "T31 split pending"
+      },
+      "lllars_core/console.py::summarize_agent_stream_event": {
+        "max_function_lines": 90,
+        "reason": "T31 split pending"
+      },
+      "lllars_core/markdown_boundaries.py::evaluate_boundaries": {
+        "max_function_lines": 70,
+        "reason": "Boundary tooling module; compactness refactor can be done later"
+      },
+      "lllars_core/mcp_loader.py::load_toolsets_from_mcp_config": {
+        "max_function_lines": 60,
+        "reason": "T30 mcp package split pending"
+      },
+      "lllars_core/mcp_preflight.py::_check_model_endpoint": {
+        "max_function_lines": 90,
+        "reason": "T30 mcp package split pending"
+      },
+      "lllars_core/mcp_preflight.py::_probe_stdio_startup_noise": {
+        "max_function_lines": 90,
+        "reason": "T30 mcp package split pending"
+      },
+      "lllars_core/mcp_preflight.py::run_mcp_preflight": {
+        "max_function_lines": 90,
+        "reason": "T30 mcp package split pending"
       },
       "lllars_core/runtime_runner.py::run_job": {
         "max_function_lines": 140,
         "reason": "T26 runtime extraction pending"
       },
-      "lllars_core/runtime_api.py::RuntimeService._run_job": {
-        "max_function_lines": 180,
-        "reason": "T27 runtime api split pending"
-      },
       "lllars_core/runner.py::run_single_agent": {
         "max_function_lines": 150,
-        "reason": "T28 runner split pending"
+        "reason": "Post-T28 residual extraction still needed"
       },
-      "lllars_core/runner.py::run_agent_with_timeout": {
-        "max_function_lines": 150,
-        "reason": "T28 runner split pending"
+      "lllars_core/runtime_artifacts.py::persist_job_artifacts": {
+        "max_function_lines": 80,
+        "reason": "Post-T27 residual extraction still needed for oversized function"
+      },
+      "lllars_core/shell.py::_candidate_shells": {
+        "max_function_lines": 50,
+        "reason": "T26 runtime extraction pending"
+      },
+      "lllars_core/skills.py::_parse_markdown_skill": {
+        "max_function_lines": 50,
+        "reason": "T31 tools decomposition pending"
       }
     }
   }
