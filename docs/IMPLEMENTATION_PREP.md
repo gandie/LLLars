@@ -9,6 +9,7 @@ Completed ticket history has been archived to:
 Recent docs maintenance completed:
 - AgentOps Bootstrap document split into chaptered docs folder (DONE 2026-07-18).
 - AgentOps Bootstrap chapter navigation linked, legacy monolith removed, and markdown boundaries extended to nested docs (DONE 2026-07-18).
+- Refactor boundary checker now enforces its own limits; self-exclusion removed from boundaries config (DONE 2026-07-18).
 
 ## One-Pass Task Design Standard
 Use this contract for every task ticket.

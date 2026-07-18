@@ -77,59 +77,108 @@ def load_boundaries(config_path: Path) -> dict[str, Any]:
         return json.load(handle)
 
 
-def evaluate_boundaries(root: Path, config: dict[str, Any]) -> list[BoundaryViolation]:
+def _default_limits(config: dict[str, Any]) -> tuple[int, int]:
     defaults = config["defaults"]
-    file_limit_default = int(defaults["max_file_lines"])
-    fn_limit_default = int(defaults["max_function_lines"])
+    return int(defaults["max_file_lines"]), int(defaults["max_function_lines"])
 
+
+def _waivers(config: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     waivers = config.get("waivers", {})
-    file_waivers = waivers.get("files", {})
-    fn_waivers = waivers.get("functions", {})
+    return waivers.get("files", {}), waivers.get("functions", {})
 
+
+def _function_limit(
+    *,
+    fn_id: str,
+    file_waiver: dict[str, Any],
+    fn_waivers: dict[str, Any],
+    fn_limit_default: int,
+) -> tuple[int, str]:
+    fn_waiver = fn_waivers.get(fn_id, {})
+    limit = int(fn_waiver.get("max_function_lines", file_waiver.get("max_function_lines", fn_limit_default)))
+    reason = fn_waiver.get("reason", file_waiver.get("reason", "function exceeds limit"))
+    return limit, reason
+
+
+def _function_violations(
+    *,
+    tree: ast.Module,
+    file_key: str,
+    file_waiver: dict[str, Any],
+    fn_waivers: dict[str, Any],
+    fn_limit_default: int,
+) -> list[BoundaryViolation]:
+    violations: list[BoundaryViolation] = []
+    for fn_id, fn_lines in _iter_functions(tree, file_key=file_key):
+        fn_limit, reason = _function_limit(
+            fn_id=fn_id,
+            file_waiver=file_waiver,
+            fn_waivers=fn_waivers,
+            fn_limit_default=fn_limit_default,
+        )
+        if fn_lines > fn_limit:
+            violations.append(
+                BoundaryViolation(
+                    kind="function",
+                    key=fn_id,
+                    limit=fn_limit,
+                    actual=fn_lines,
+                    reason=reason,
+                )
+            )
+    return violations
+
+
+def _evaluate_file(
+    *,
+    root: Path,
+    file_path: Path,
+    file_limit_default: int,
+    fn_limit_default: int,
+    file_waivers: dict[str, Any],
+    fn_waivers: dict[str, Any],
+) -> list[BoundaryViolation]:
+    file_key = file_path.relative_to(root).as_posix()
+    source = file_path.read_text(encoding="utf-8")
+    file_waiver = file_waivers.get(file_key, {})
+    file_limit = int(file_waiver.get("max_file_lines", file_limit_default))
+
+    violations: list[BoundaryViolation] = []
+    file_lines = _line_count(source)
+    if file_lines > file_limit:
+        violations.append(
+            BoundaryViolation(
+                kind="file",
+                key=file_key,
+                limit=file_limit,
+                actual=file_lines,
+                reason=file_waiver.get("reason", "file exceeds limit"),
+            )
+        )
+
+    tree = ast.parse(source)
+    violations.extend(_function_violations(tree=tree, file_key=file_key, file_waiver=file_waiver, fn_waivers=fn_waivers, fn_limit_default=fn_limit_default))
+    return violations
+
+
+def evaluate_boundaries(root: Path, config: dict[str, Any]) -> list[BoundaryViolation]:
+    file_limit_default, fn_limit_default = _default_limits(config)
+    file_waivers, fn_waivers = _waivers(config)
     include = config.get("include", ["lllars_core/*.py"])
     exclude = config.get("exclude", [])
 
     violations: list[BoundaryViolation] = []
     for file_path in _iter_python_files(root, include=include, exclude=exclude):
-        file_key = file_path.relative_to(root).as_posix()
-
-        source = file_path.read_text(encoding="utf-8")
-        file_lines = _line_count(source)
-        file_waiver = file_waivers.get(file_key, {})
-        file_limit = int(file_waiver.get("max_file_lines", file_limit_default))
-
-        if file_lines > file_limit:
-            violations.append(
-                BoundaryViolation(
-                    kind="file",
-                    key=file_key,
-                    limit=file_limit,
-                    actual=file_lines,
-                    reason=file_waiver.get("reason", "file exceeds limit"),
-                )
+        violations.extend(
+            _evaluate_file(
+                root=root,
+                file_path=file_path,
+                file_limit_default=file_limit_default,
+                fn_limit_default=fn_limit_default,
+                file_waivers=file_waivers,
+                fn_waivers=fn_waivers,
             )
-
-        tree = ast.parse(source)
-        for fn_id, fn_lines in _iter_functions(tree, file_key=file_key):
-            fn_limit = int(
-                fn_waivers.get(fn_id, {}).get(
-                    "max_function_lines",
-                    file_waiver.get("max_function_lines", fn_limit_default),
-                )
-            )
-            if fn_lines > fn_limit:
-                violations.append(
-                    BoundaryViolation(
-                        kind="function",
-                        key=fn_id,
-                        limit=fn_limit,
-                        actual=fn_lines,
-                        reason=fn_waivers.get(fn_id, {}).get(
-                            "reason",
-                            file_waiver.get("reason", "function exceeds limit"),
-                        ),
-                    )
-                )
+        )
 
     return violations
 

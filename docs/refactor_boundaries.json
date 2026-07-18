@@ -8,9 +8,7 @@
     "lllars_core/*.py",
     "lllars_core/*/*.py"
   ],
-  "exclude": [
-    "lllars_core/refactor_boundaries.py"
-  ],
+  "exclude": [],
   "waivers": {
     "files": {},
     "functions": {}

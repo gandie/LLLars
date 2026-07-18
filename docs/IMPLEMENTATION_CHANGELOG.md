@@ -5,6 +5,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 
 ## Archived Completed Tickets
 
+### Docs + Guardrail Hardening: Boundary Checker Self-Compliance (DONE 2026-07-18)
+- Goal: Eliminate special-case exclusion for the boundary checker itself.
+- Outcome: Refactored `lllars_core/refactor_boundaries.py` into smaller helpers so file/function limits pass without waivers, and removed `lllars_core/refactor_boundaries.py` from `docs/refactor_boundaries.json` exclusions.
+
 ### Docs Refresh: DESIGN Truth Hierarchy Alignment (DONE 2026-07-18)
 - Goal: Remove stale future-tense assumptions in design docs and align governance text with strict hierarchy-of-truth rules.
 - Outcome: Updated `docs/DESIGN.md` to reflect current shipped runtime baseline, marked roadmap phases with explicit status, and added the missing lowest-priority truth source rule for non-repo memory.
