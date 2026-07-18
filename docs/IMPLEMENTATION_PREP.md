@@ -180,7 +180,7 @@ Archived in this sweep (moved to docs/IMPLEMENTATION_CHANGELOG.md):
 2. T25 Runtime Package Bootstrap + Compatibility Facade
 3. T26 Runtime Execution/Settings Deep Extraction
 4. T27 Runtime API/Web/Service Split
-5. T28 Runner Core Split (orchestration/worker/stream)
+5. T28 Runner Core Split (orchestration/worker/stream) (DONE 2026-07-18)
 6. T29 Config Package Split + Legacy Bridge
 7. T30 MCP Package Split + Diagnostics Boundary
 8. T31 Tools Package Split + Agent Builder Slimming
@@ -275,7 +275,7 @@ Boundary tool contract for code-touching tasks (T25+):
 - Completion artifact:
   - Route/service split landed with unchanged API behavior.
 
-### T28 Runner Core Split (orchestration/worker/stream)
+### T28 Runner Core Split (orchestration/worker/stream) (DONE 2026-07-18)
 - Goal: Split `runner.py` so orchestration, worker lifecycle, and stream handling are isolated.
 - Files: lllars_core/runner.py, lllars_core/runtime/runner_orchestrator.py, lllars_core/runtime/runner_worker.py, lllars_core/runtime/runner_stream.py, tests/test_cli_regression.py.
 - Adds:

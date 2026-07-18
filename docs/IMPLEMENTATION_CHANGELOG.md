@@ -97,6 +97,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Move HTTP, service, and frontend mounting concerns into dedicated runtime package modules.
 - Outcome: Split runtime API concerns into dedicated runtime package modules (`runtime/api.py`, `runtime/web.py`, `runtime/service.py`, `runtime/artifacts.py`) while preserving the top-level compatibility wrapper in `runtime_api.py`; API behavior remained unchanged with unit, smoke, boundary, and manual end-to-end checks green.
 
+### T28 Runner Core Split (orchestration/worker/stream) (DONE 2026-07-18)
+- Goal: Split `runner.py` so orchestration, worker lifecycle, and stream handling are isolated.
+- Outcome: Extracted runner orchestration, worker lifecycle, stream/event handling, and result shaping into focused runtime modules (`runtime/runner_orchestrator.py`, `runtime/runner_worker.py`, `runtime/runner_stream.py`, `runtime/runner_results.py`) while preserving `run_single_agent` and `run_agent_with_timeout` signatures in `runner.py`; regression, boundary, and manual end-to-end checks are green.
+
 ## Archive Sweep Details (Moved From Prep 2026-07-16)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)
