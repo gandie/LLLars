@@ -5,6 +5,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 
 ## Archived Completed Tickets
 
+### Docs Refresh: DESIGN Truth Hierarchy Alignment (DONE 2026-07-18)
+- Goal: Remove stale future-tense assumptions in design docs and align governance text with strict hierarchy-of-truth rules.
+- Outcome: Updated `docs/DESIGN.md` to reflect current shipped runtime baseline, marked roadmap phases with explicit status, and added the missing lowest-priority truth source rule for non-repo memory.
+
 ### Docs Consolidation: AgentOps Bootstrap Chapter Split (DONE 2026-07-18)
 - Goal: Split AgentOps Bootstrap guide into chapter files with an index page under a dedicated docs folder.
 - Outcome: Added docs/agentops_bootstrap/index.md plus 13 chapter files, then added previous/index/next chapter navigation links for GitHub browsing, removed the legacy monolithic file, and expanded markdown boundary coverage to nested docs paths.

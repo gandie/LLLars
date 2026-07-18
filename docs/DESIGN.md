@@ -3,11 +3,18 @@
 ## North Star
 LLLars reduces chaos in agentic coding by making orchestration explicit, predictable, and operator-controlled.
 
+## Document Status
+This document is a design and governance reference, not a substitute for runtime evidence.
+
+When statements here conflict with observed behavior, follow the hierarchy of truth and treat runtime behavior as authoritative.
+
 ## Current Baseline
 - Runtime controls rely on native PydanticAI capabilities (usage limits, retries, tool timeout, instrumentation).
 - Environment-aware execution is explicit (OS, shell, project-root context, allowlisted shell commands).
 - MCP support is config-driven with preflight validation.
-- Skills and custom-agent workflow are now in place for disciplined implementation.
+- Runtime service mode is active with HTTP job lifecycle endpoints and static operator UI.
+- Runtime package boundaries are split by concern (`runtime/`, `config/`, `mcp/`, `tools/`) with compatibility removed in favor of canonical package imports.
+- Queue backend support is currently productioned for `inmemory`; `redis` remains a scaling-path item.
 
 ## Governance and Decision Rules
 - Human operator has veto at all times.
@@ -18,6 +25,7 @@ LLLars reduces chaos in agentic coding by making orchestration explicit, predict
   2. Repository docs and design docs.
   3. Human discussion and intent framing.
   4. Agent internal reasoning.
+  5. Any non-repo memory or cached context (lowest trust).
 
 ## Autonomy Boundary (Current)
 In scope:
@@ -31,7 +39,7 @@ Guardrail:
 - Execution and safety policy changes require explicit human confirmation outside sandbox experiments.
 
 ## Runtime Vision
-Wrap the harness into a full runtime service that can run in containers on target systems, operate on mounted volumes, and interact with external APIs/tools under policy constraints.
+Operate as a runtime service that can run in containers on target systems, operate on mounted volumes, and interact with external APIs/tools under policy constraints.
 
 ```mermaid
 flowchart LR
@@ -49,10 +57,12 @@ flowchart LR
 ### Phase 1: Runtime Contract
 - Define JobSpec and RunResult schemas.
 - Include prompt, project root, command profile, usage limits, timeout, env allowlist, artifact paths.
+- Status: complete.
 
 ### Phase 2: Daemon Mode
 - Add service mode alongside one-shot CLI.
 - Expose minimal operational endpoints: health, submit, status, logs, cancel.
+- Status: complete.
 
 ### Phase 3: Container Filesystem Model
 - Standardize mounts:
@@ -60,29 +70,34 @@ flowchart LR
   - /config (ro)
   - /artifacts (rw)
 - Enforce project-root confinement under /work.
+- Status: complete for current runtime deployment assets.
 
 ### Phase 4: Execution Hardening
 - Move to named command profiles.
 - Add env pass-through allowlist.
 - Redact secrets in logs/artifacts.
 - Support optional no-network mode.
+- Status: partial; command profile and policy baseline are active, advanced hardening remains open.
 
 ### Phase 5: Packaging and Startup UX
 - Runtime image with non-root execution and healthcheck.
 - Support run-once and daemon startup.
 - Provide practical deployment examples.
+- Status: complete for current Docker runtime path.
 
 ### Phase 6: Observability and Operability
 - Structured per-job logs.
 - Persist job artifacts and telemetry timelines.
 - Startup preflight summary for endpoint, MCP, and mounts.
+- Status: complete for current single-service runtime.
 
 ### Phase 7: Scaling Path
 - Optional Redis-backed queue.
 - Stateless API and worker split.
 - Horizontal worker scaling and optional auth.
+- Status: planned; not baseline behavior.
 
-## MVP Slice
+## MVP Slice (Shipped)
 - Single runtime service container.
 - Mounted project volume support.
 - HTTP submit/status/cancel.
@@ -106,3 +121,11 @@ flowchart LR
 - Strong filesystem safety boundaries in containerized execution.
 - No regression between one-shot and runtime service paths.
 - Actionable artifacts/logs for debugging and audit.
+
+## Truth-Driven Maintenance Rule
+Any roadmap or baseline statement in this file must be updated when runtime behavior changes and validated.
+
+Validation sources for updates:
+- Passing targeted tests and smoke checks.
+- Current runtime endpoints/behavior in shipped code.
+- Matching entries in planning and changelog docs.
