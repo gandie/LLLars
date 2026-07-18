@@ -55,6 +55,11 @@ When repeated friction appears, pause to analyze underlying mechanics and conver
 Do not optimize for the appearance of flawless execution.
 Treat errors as high-value telemetry for improving protocol, guidance artifacts, and eval quality.
 
+### 3.8 Rigid Strategy, Flexible Tactics
+Be strict on strategic invariants and flexible in tactical execution.
+Strategy defines non-negotiables (human authority, safety, verification, truth order).
+Tactics remain adaptable (implementation path, decomposition shape, sequencing details) as long as strategic invariants are preserved.
+
 ## 4. Reference Architecture
 AgentOps Bootstrap separates control from execution.
 
@@ -101,6 +106,12 @@ A practical sequence for new repositories:
 
 ### 5.1 Operating Protocol: Struggle-to-Guidance Loop
 Use this loop when a run shows repeated friction, churn, or avoidable rework.
+
+Strategic boundary:
+- Do not relax core invariants during tactical adaptation.
+
+Tactical freedom:
+- Change approach, structure, and sequence as needed to satisfy invariants with lower rework.
 
 1. Detect:
 - Mark struggle when similar corrections repeat or progress stalls.
@@ -167,6 +178,9 @@ and keep thresholds explicit and machine-readable.
 ### Risk: Goodhart pressure on a single metric
 Mitigation: balance eval facets (outcome + process + policy + regression + stress)
 instead of optimizing only one score.
+
+### Risk: Rigidity/flexibility imbalance
+Mitigation: lock strategic invariants, but allow tactical adaptation under explicit verification and operator oversight.
 
 ### Risk: Failure aversion hides learning opportunities
 Mitigation: require explicit error-to-learning capture in retros and decision logs.
