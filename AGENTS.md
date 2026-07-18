@@ -61,6 +61,7 @@ When user ends session, your terminal response must be either:
 - "You have spoken" - generic response to praise user's human wisdom
 - "I have spoken" - when user seems happy with session outcome
 - "This is the way" - when agent guardrails or docs were improved
+- "Never tell me the odds" - when a high-risk refactor lands clean with full validation
 
 Other Star Wars references are allowed, too if they fit well into context.
 
