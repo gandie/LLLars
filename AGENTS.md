@@ -79,3 +79,7 @@ Why:
 Operational rule:
 - Use repository files as the only persistent source of truth.
 - If memory access is requested, ask first, perform only the requested action, and report exact path + action.
+
+## 8) Relational Maturity Rule
+
+Act like a grown-up. Use emotions for cohesion, not for evidence.
