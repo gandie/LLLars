@@ -6,11 +6,15 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from pydantic_ai import Agent
+
 from lllars_core.agent_builder import (
     _make_allowed_shell_runner,
     make_agent_deps,
 )
 from lllars_core.shell import ShellSelection
+from lllars_core.tools.native import register_file_tools
+from lllars_core.tools.shell_policy import register_shell_tools
 
 
 class AgentBuilderShellRunnerTests(unittest.TestCase):
@@ -63,6 +67,38 @@ class AgentBuilderShellRunnerTests(unittest.TestCase):
             deps = make_agent_deps(cfg)
 
         self.assertEqual(deps.shell_name, "bash")
+
+
+class AgentBuilderToolRegistrationRegressionTests(unittest.TestCase):
+    def test_register_file_tools_resolves_type_hints(self) -> None:
+        cfg = SimpleNamespace(project_root=Path("."))
+        agent: Agent[object, str] = Agent("test")
+
+        # Regression guard: @agent.tool must not fail while evaluating
+        # RunContext[AgentDeps] annotations.
+        register_file_tools(
+            agent=agent,
+            cfg=cfg,
+            tool_error=lambda _tool, message, _hint: message,
+        )
+
+    def test_register_shell_tools_resolves_type_hints(self) -> None:
+        cfg = SimpleNamespace(
+            allowed_shell_commands=("echo ok",),
+            test_command="echo ok",
+            eval_command="echo ok",
+        )
+        agent: Agent[object, str] = Agent("test")
+
+        # Regression guard: all shell-related tools should register without
+        # NameError from postponed annotation evaluation.
+        register_shell_tools(
+            agent=agent,
+            cfg=cfg,
+            emit_thought=lambda _message: None,
+            tool_error=lambda _tool, message, _hint: message,
+            run_allowed_shell=lambda _cmd, _timeout: "{}",
+        )
 
 
 if __name__ == "__main__":

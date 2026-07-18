@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 import platform
 
 from pydantic_ai import (
     Agent,
     InstrumentationSettings,
-    ModelRetry,
     ModelSettings,
     RunContext,
 )
@@ -22,17 +19,15 @@ from lllars_core.config import HarnessConfig, canonicalize_shell_command
 from lllars_core.mcp_loader import load_toolsets_from_mcp_config
 from lllars_core.shell import detect_shell, run_shell
 from lllars_core.skills import load_markdown_skill_capabilities
-
-
-@dataclass(frozen=True)
-class AgentDeps:
-    project_root: str
-    os_name: str
-    shell_name: str
-    command_profile: str
-    allowed_shell_commands: tuple[str, ...]
-    has_test_command: bool
-    has_eval_command: bool
+from lllars_core.tools import (
+    AgentDeps,
+    make_allowed_shell_runner as make_allowed_shell_runner_policy,
+    register_file_tools as register_file_tools_policy,
+    register_runtime_tools,
+    register_shell_tools as register_shell_tools_policy,
+    resolve_under as resolve_under_policy,
+    runtime_tooling_instructions as runtime_tooling_instructions_policy,
+)
 
 
 def make_agent_deps(cfg: HarnessConfig) -> AgentDeps:
@@ -49,17 +44,6 @@ def make_agent_deps(cfg: HarnessConfig) -> AgentDeps:
         has_test_command=cfg.test_command is not None,
         has_eval_command=cfg.eval_command is not None,
     )
-
-
-def resolve_under(root: Path, user_path: str) -> Path:
-    candidate = Path(user_path)
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    candidate = candidate.resolve()
-    root_resolved = root.resolve()
-    if candidate != root_resolved and root_resolved not in candidate.parents:
-        raise ValueError("Path is outside configured project-root")
-    return candidate
 
 
 def normalize_ollama_base_url(provider_url: str) -> str:
@@ -80,6 +64,25 @@ def parse_ollama_model(model_value: str) -> str:
     return value
 
 
+def resolve_under(root: Path, user_path: str) -> Path:
+    return resolve_under_policy(root, user_path)
+
+
+def _build_capabilities(cfg: HarnessConfig) -> list[object]:
+    capabilities = [TodoCapability(enable_subtasks=True)]
+    capabilities.extend(load_markdown_skill_capabilities(cfg))
+    return capabilities
+
+
+def _load_mcp_toolsets(cfg: HarnessConfig) -> list[object]:
+    if not cfg.mcp_enabled or cfg.mcp_config_path is None:
+        return []
+    return load_toolsets_from_mcp_config(
+        mcp_config_path=cfg.mcp_config_path,
+        init_timeout_sec=cfg.mcp_init_timeout_sec,
+    )
+
+
 def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
     model_obj = OllamaModel(
         parse_ollama_model(cfg.model),
@@ -87,16 +90,6 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
             base_url=normalize_ollama_base_url(cfg.provider_url)
         ),
     )
-
-    capabilities = [TodoCapability(enable_subtasks=True)]
-    capabilities.extend(load_markdown_skill_capabilities(cfg))
-
-    toolsets: list[object] = []
-    if cfg.mcp_enabled and cfg.mcp_config_path is not None:
-        toolsets = load_toolsets_from_mcp_config(
-            mcp_config_path=cfg.mcp_config_path,
-            init_timeout_sec=cfg.mcp_init_timeout_sec,
-        )
 
     agent = Agent[AgentDeps, str](
         model_obj,
@@ -114,8 +107,8 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
             "provider": "ollama",
             "project_root": str(cfg.project_root),
         },
-        capabilities=capabilities,
-        toolsets=toolsets,
+        capabilities=_build_capabilities(cfg),
+        toolsets=_load_mcp_toolsets(cfg),
     )
 
     if cfg.instrumentation_enabled:
@@ -130,62 +123,17 @@ def _runtime_tooling_instructions(
     cfg: HarnessConfig,
     deps: AgentDeps,
 ) -> str:
-    lines = [
-        cfg.tool_policy,
-        "",
-        "Execution environment:",
-        f"- OS: {deps.os_name}",
-        f"- Shell: {deps.shell_name}",
-        f"- Project root: {deps.project_root}",
-        f"- Command profile: {deps.command_profile}",
-        "",
-        "Operational rules:",
-        "- Use only registered tools.",
-    ]
-    if deps.os_name.lower() == "windows":
-        lines.append("- Use PowerShell-compatible commands only.")
-    else:
-        lines.append("- Use POSIX shell-compatible commands only.")
-    if deps.allowed_shell_commands:
-        lines.append(
-            "- For shell execution, call "
-            "list_allowed_shell_commands, then "
-            "run_allowlisted_shell(command_id=...)."
-        )
-    else:
-        lines.append(
-            "- No shell command tool is available in "
-            "this configuration."
-        )
-    return "\n".join(lines)
+    return runtime_tooling_instructions_policy(cfg, deps)
 
 
 def _make_allowed_shell_runner(
     cfg: HarnessConfig,
 ) -> Callable[[str, int], str]:
-    def _run_allowed_shell(command: str, timeout_sec: int) -> str:
-        canonical = canonicalize_shell_command(command)
-        if canonical not in cfg.allowed_shell_commands:
-            payload = {
-                "returncode": 126,
-                "stdout": "",
-                "stderr": (
-                    "[lllars] rejected shell command: not in allowlist. "
-                    "Use list_allowed_shell_commands first."
-                ),
-            }
-            return json.dumps(payload)
-        return json.dumps(
-            run_shell(
-                command=command,
-                cwd=cfg.project_root,
-                timeout_sec=timeout_sec,
-                shell_mode=cfg.shell_mode,
-                shell_override=cfg.shell_override,
-            )
-        )
-
-    return _run_allowed_shell
+    return make_allowed_shell_runner_policy(
+        cfg,
+        canonicalize_shell_command,
+        lambda **kwargs: run_shell(**kwargs),
+    )
 
 
 def _register_file_tools(
@@ -193,80 +141,7 @@ def _register_file_tools(
     cfg: HarnessConfig,
     tool_error: Callable[[str, str, str | None], str],
 ) -> None:
-    @agent.tool
-    def list_files(
-        ctx: RunContext[AgentDeps],
-        path: str = ".",
-        recursive: bool = True,
-    ) -> str:
-        """List files and folders under project root."""
-        _ = ctx
-        try:
-            target = resolve_under(cfg.project_root, path)
-            if not target.exists():
-                return tool_error(
-                    "list_files",
-                    f"Path not found: {path}",
-                    "Choose an existing path under project_root.",
-                )
-            if target.is_file():
-                return str(target.relative_to(cfg.project_root)).replace(
-                    "\\", "/"
-                )
-            iterator = target.rglob("*") if recursive else target.iterdir()
-            return "\n".join(
-                sorted(
-                    str(item.relative_to(cfg.project_root)).replace("\\", "/")
-                    for item in iterator
-                )
-            )
-        except Exception as exc:
-            return tool_error(
-                "list_files",
-                str(exc),
-                "Only access files inside project_root.",
-            )
-
-    @agent.tool
-    def read_file(ctx: RunContext[AgentDeps], path: str) -> str:
-        """Read a UTF-8 text file under project root."""
-        _ = ctx
-        try:
-            target = resolve_under(cfg.project_root, path)
-            if not target.exists() or not target.is_file():
-                return tool_error(
-                    "read_file",
-                    f"File not found: {path}",
-                    "Pass a valid file path under project_root.",
-                )
-            return target.read_text(encoding="utf-8")
-        except Exception as exc:
-            return tool_error(
-                "read_file",
-                str(exc),
-                "Only access files inside project_root.",
-            )
-
-    @agent.tool
-    def write_file(
-        ctx: RunContext[AgentDeps],
-        path: str,
-        content: str,
-    ) -> str:
-        """Write UTF-8 text content to a file under project root."""
-        _ = ctx
-        try:
-            target = resolve_under(cfg.project_root, path)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8")
-            rel = str(target.relative_to(cfg.project_root)).replace("\\", "/")
-            return f"Wrote {rel}"
-        except Exception as exc:
-            return tool_error(
-                "write_file",
-                str(exc),
-                "Use a writable path inside project_root.",
-            )
+    register_file_tools_policy(agent, cfg, tool_error)
 
 
 def _register_shell_tools(
@@ -276,72 +151,13 @@ def _register_shell_tools(
     tool_error: Callable[[str, str, str | None], str],
     run_allowed_shell: Callable[[str, int], str],
 ) -> None:
-    if cfg.allowed_shell_commands:
-
-        @agent.tool
-        def list_allowed_shell_commands(ctx: RunContext[AgentDeps]) -> str:
-            """Return numeric IDs for each allowed shell command."""
-            _ = ctx
-            return "\n".join(
-                f"{idx}: {cmd}"
-                for idx, cmd in enumerate(cfg.allowed_shell_commands, start=1)
-            )
-
-        @agent.tool
-        def run_allowlisted_shell(
-            ctx: RunContext[AgentDeps],
-            command_id: int,
-            timeout_sec: int = 90,
-        ) -> str:
-            """Run one allowed shell command by numeric ID.
-
-            Always call list_allowed_shell_commands first and
-            pass one of those IDs.
-            """
-            _ = ctx
-            emit_thought("tool: run_allowlisted_shell")
-            try:
-                if (
-                    command_id < 1
-                    or command_id > len(cfg.allowed_shell_commands)
-                ):
-                    raise ModelRetry(
-                        "Invalid command_id. Call "
-                        "list_allowed_shell_commands and use "
-                        "a listed ID."
-                    )
-                command = cfg.allowed_shell_commands[command_id - 1]
-                return run_allowed_shell(command, timeout_sec)
-            except Exception as exc:
-                return tool_error(
-                    "run_allowlisted_shell",
-                    str(exc),
-                    "Use a valid command_id from list_allowed_shell_commands.",
-                )
-
-    if cfg.test_command is not None:
-
-        @agent.tool
-        def run_test_command(ctx: RunContext[AgentDeps]) -> str:
-            """Run the configured test command."""
-            _ = ctx
-            emit_thought("tool: run_test_command")
-            try:
-                return run_allowed_shell(cfg.test_command, 90)
-            except Exception as exc:
-                return tool_error("run_test_command", str(exc), None)
-
-    if cfg.eval_command is not None:
-
-        @agent.tool
-        def run_eval_command(ctx: RunContext[AgentDeps]) -> str:
-            """Run the configured evaluation command."""
-            _ = ctx
-            emit_thought("tool: run_eval_command")
-            try:
-                return run_allowed_shell(cfg.eval_command, 90)
-            except Exception as exc:
-                return tool_error("run_eval_command", str(exc), None)
+    register_shell_tools_policy(
+        agent=agent,
+        cfg=cfg,
+        emit_thought=emit_thought,
+        tool_error=tool_error,
+        run_allowed_shell=run_allowed_shell,
+    )
 
 
 def build_agent(
@@ -367,13 +183,12 @@ def build_agent(
         return _runtime_tooling_instructions(cfg, ctx.deps)
 
     run_allowed_shell = _make_allowed_shell_runner(cfg)
-    _register_file_tools(agent, cfg, _tool_error)
-    _register_shell_tools(
-        agent,
-        cfg,
-        emit_thought,
-        _tool_error,
-        run_allowed_shell,
+    register_runtime_tools(
+        agent=agent,
+        cfg=cfg,
+        emit_thought=emit_thought,
+        tool_error=_tool_error,
+        run_allowed_shell=run_allowed_shell,
     )
 
     return agent

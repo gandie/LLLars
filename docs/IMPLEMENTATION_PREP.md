@@ -333,7 +333,7 @@ Boundary tool contract for code-touching tasks (T25+):
 - Completion artifact:
   - MCP modules split and startup diagnostics unchanged.
 
-### T31 Tools Package Split + Agent Builder Slimming
+### T31 Tools Package Split + Agent Builder Slimming (DONE 2026-07-18)
 - Goal: Move tool registration policy out of `agent_builder.py` into a dedicated tools package.
 - Files: lllars_core/tools/__init__.py, lllars_core/tools/registry.py, lllars_core/tools/native.py, lllars_core/tools/shell_policy.py, lllars_core/tools/descriptors.py, lllars_core/agent_builder.py, tests/test_agent_builder.py.
 - Adds:

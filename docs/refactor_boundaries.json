@@ -17,25 +17,9 @@
       "lllars_core/cli.py": {
         "max_file_lines": 260,
         "reason": "T24-T28 decomposition pending"
-      },
-      "lllars_core/agent_builder.py": {
-        "max_file_lines": 500,
-        "reason": "T31 tools package split pending"
       }
     },
     "functions": {
-      "lllars_core/agent_builder.py::_build_agent_instance": {
-        "max_function_lines": 90,
-        "reason": "T31 tools package split pending"
-      },
-      "lllars_core/agent_builder.py::_register_file_tools": {
-        "max_function_lines": 90,
-        "reason": "T31 tools package split pending"
-      },
-      "lllars_core/agent_builder.py::_register_shell_tools": {
-        "max_function_lines": 90,
-        "reason": "T31 tools package split pending"
-      },
       "lllars_core/cli.py::_print_runtime_startup": {
         "max_function_lines": 60,
         "reason": "T24-T28 decomposition pending"

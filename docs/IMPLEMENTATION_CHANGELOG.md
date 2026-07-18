@@ -109,6 +109,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Isolate MCP loading, probing, and diagnostics into focused package modules.
 - Outcome: Added a dedicated MCP package boundary (`mcp/loader.py`, `mcp/preflight.py`, `mcp/diagnostics.py`, `mcp/runtime.py`, `mcp/model_probe.py`) with compatibility facades preserved in `mcp_loader.py` and `mcp_preflight.py`. Startup diagnostics behavior remained unchanged, and validation is green for CLI regression, boundary checks, and operator-run end-to-end smoke.
 
+### T31 Tools Package Split + Agent Builder Slimming (DONE 2026-07-18)
+- Goal: Move tool registration policy out of `agent_builder.py` into a dedicated tools package.
+- Outcome: Added a dedicated tools package boundary (`tools/descriptors.py`, `tools/native.py`, `tools/shell_policy.py`, `tools/registry.py`, `tools/__init__.py`) and reduced `agent_builder.py` to assembly orchestration with compatibility wrappers for legacy helper signatures. Validation is green for `test_agent_builder.py`, `test_cli_regression.py`, and `test_refactor_boundaries.py`.
+
 ## Archive Sweep Details (Moved From Prep 2026-07-16)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)
