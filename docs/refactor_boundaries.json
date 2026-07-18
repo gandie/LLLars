@@ -9,7 +9,6 @@
     "lllars_core/*/*.py"
   ],
   "exclude": [
-    "lllars_core/__init__.py",
     "lllars_core/refactor_boundaries.py"
   ],
   "waivers": {
