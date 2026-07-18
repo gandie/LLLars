@@ -114,7 +114,7 @@ flowchart LR
   - PydanticAI Framework Expertise
   - FastAPI Expert
   - Modern Python Guru
-- Task-oriented implementation backlog and invocation mapping live in docs/IMPLEMENTATION_PREP.md.
+- Task-oriented implementation workflow is managed through docs/workflow/README.md and task files under docs/workflow/tasks/.
 
 ## Success Criteria
 - Reproducible runs from API payloads.

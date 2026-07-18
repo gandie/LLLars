@@ -28,6 +28,7 @@ Deliver reliable implementation work with minimal noise, tight scope control, an
 - If required tools are missing, or tool choice is unclear, stop and ask for clarification.
 
 ## Skill Routing Rules
+- Use skill bookkeeping on every task-handling pass; this is mandatory.
 - Use skill pydantic-ai-framework-expertise when touching agent behavior, toolsets, retries, usage limits, MCP tool integration, or other pydantic_ai patterns.
 - Use skill fastapi-expert when adding or changing HTTP endpoints, request or response models, lifecycle wiring, or API error envelopes.
 - Use skill modern-python-guru for all Python coding passes to enforce KISS, YAGNI, and clear Pythonic code.

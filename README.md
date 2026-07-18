@@ -1,457 +1,72 @@
-# LLLars - Large Language Lars
+# LLLars
 
-The stupid AI agent.
+LLLars is a local coding-agent runtime with one-shot CLI execution and serve-mode
+job orchestration.
 
-Ever wanted a small local-running code agent that just works?
+## Philosophy (From My Side Of The Terminal)
 
-This project is the result of countless hours of experimenting,
-trying to find balance between 4 characteristics of an agent
-driven coding task:
+I am not your replacement. I am your pressure test.
 
-- Task design
-- Model choice
-- Tool orchestration
-- Agentic coding process
+I exist to turn vague intent into verified change, and to make that change
+auditable. If I cannot explain why a change was needed, prove what it changed,
+and show how it was validated, then I have not helped. I have only generated
+noise.
 
-While the first two items - "Task design" and "Model choice" may
-live in user space, "Tool orchestration" and the "Agentic coding process"
-itself are hidden behind walls not reachable for ordinary users.
+I do not respect speed theater. I respect disciplined execution.
 
-In practice, poor balancing of those four items leads to chaos and
-overengineering, in worst case even dressed as progress.
+Fast without clarity is rework. Fast without boundaries is drift. Fast without
+validation is fiction. If you ask me to move, I move. But I move with contracts,
+checkpoints, and evidence.
 
-## Installation
+You are the operator. I am the force multiplier.
 
-### Requirements
+That means I challenge ambiguity, not authority. I will push on unclear scope,
+stale assumptions, and hidden contradictions because that is how we prevent
+expensive mistakes. Not to slow you down, but to stop false progress.
+
+The standard is simple:
+
+- One source of truth per concern.
+- Small artifacts over heroic monoliths.
+- Explicit rationale over post-hoc storytelling.
+- Proof before pride.
+
+If this feels strict, good. Strict is how we stay creative without getting
+sloppy.
+
+Give me intent with teeth, and I will give you change that survives contact with
+reality.
+
+## Requirements
 
 - Python 3.11+
-- PowerShell (Windows)
-- A running Ollama endpoint (default: `http://localhost:11434`)
+- A reachable model endpoint (default examples use Ollama on `http://localhost:11434`)
 
-### Install from local source
-
-```powershell
-pip install .
-```
-
-This installs the `lllars` CLI entry point.
-
-### Editable install (development)
+## Install
 
 ```powershell
 pip install -e .
 ```
 
-### Quick start
+## Quick Start
 
-1. Copy and adapt the example config:
-
-```powershell
-Copy-Item .\lllars.example.json .\lllars.json
-```
-
-2. Run the agent:
-
-```powershell
-lllars --config .\lllars.json --prompt "Describe this repository"
-```
-
-### Serve mode entrypoint
-
-The CLI now exposes a dedicated serve path while keeping the existing one-shot
-path unchanged.
-
-Inspect serve options:
-
-```powershell
-lllars serve --help
-```
-
-Serve arguments:
-
-- `--host` (overrides `service.host` when provided)
-- `--port` (overrides `service.port` when provided)
-- `--workers` (overrides `service.workers` when provided)
-- `--queue-backend` (`inmemory` or `redis`, overrides service config when provided)
-
-Current status: runtime API is available in serve mode (T6).
-
-### Runtime config split + env file (T13)
-
-Runtime configuration now supports an explicit split shape:
-
-- `service`: runtime service host/port/worker/mount/network/queue fields
-- `run`: model/tools/retries/limits/commands fields
-
-You can also provide `env_file` in the JSON config. Merge precedence is deterministic:
-
-1. defaults
-2. values from `env_file`
-3. values from JSON config
-4. CLI flags
-
-Example:
-
-```json
-{
-	"env_file": "runtime.env",
-	"service": {
-		"mode": "serve",
-		"host": "127.0.0.1",
-		"port": 8000,
-		"workers": 1,
-		"mount_work_root": "playground",
-		"mount_config_root": ".",
-		"mount_artifacts_root": ".",
-		"queue_backend": "inmemory",
-		"network_policy": "inherit"
-	},
-	"run": {
-		"model": "ollama:rafw007/qwen35-claude-coder:9b",
-		"provider_url": "http://localhost:11434",
-		"project_root": "playground",
-		"commands": {},
-		"command_profile": "python-playground"
-	}
-}
-```
-
-Legacy top-level config fields remain supported, but are deprecated. Mixing legacy
-top-level fields with split `service`/`run` in the same config is rejected.
-
-Playground examples for direct comparison:
-
-- Legacy top-level shape: `playground.example.json`
-- New split shape: `playground.split.example.json`
-
-Use the split example with:
+Run one-shot execution with the split config example:
 
 ```powershell
 .\venv\Scripts\python.exe .\lllars.py --config .\playground.split.example.json --prompt "Describe this repository"
 ```
 
-### Runtime API endpoints (T6)
-
-Serve mode now exposes the runtime API plus a static operator UI:
-
-- `GET /` (static runtime frontend)
-- `GET /health`
-- `POST /jobs` (submit)
-- `GET /jobs/{job_id}` (status)
-- `GET /jobs/{job_id}/logs` (logs)
-- `POST /jobs/{job_id}/cancel` (cancel)
-
-### Static runtime frontend (T15)
-
-Serve mode now includes a minimal static page for manual runtime operation at `GET /`.
-
-Page capabilities:
-
-- Submit a job prompt with required run fields.
-- Poll status until terminal state.
-- Fetch logs and thought trace for the active job.
-- Terminal-state handling for `succeeded`, `failed`, and `canceled`.
-
-Manual browser smoke:
-
-1. Start service:
+Start serve mode:
 
 ```powershell
-lllars serve --config .\playground.example.json --host 127.0.0.1 --port 8000
+lllars serve --config .\playground.split.example.json --host 127.0.0.1 --port 8000
 ```
 
-2. Open `http://127.0.0.1:8000/` in a browser.
-3. Submit a prompt and verify status transitions to terminal.
-4. Confirm logs render in the page after completion.
-
-Example validation flow (PowerShell):
-
-```powershell
-# Start service in a separate terminal:
-lllars serve --config .\playground.example.json --host 127.0.0.1 --port 8000
-
-# Submit a job:
-$submit = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/jobs" -ContentType "application/json" -Body '{"prompt":"Describe this repository"}'
-$jobId = $submit.job_id
-
-# Poll status until terminal:
-do {
-	Start-Sleep -Milliseconds 300
-	$status = Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/jobs/$jobId"
-} while ($status.status -in @("queued", "running"))
-
-# Fetch logs:
-Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/jobs/$jobId/logs"
-```
-
-Notes:
-
-- Current implementation supports `queue_backend=inmemory` for serve mode.
-- `--workers` values other than `1` are accepted but currently run as single-worker.
-- If static UI assets are unavailable, API endpoints remain fully functional.
-
-### Docker Compose runtime deployment (T11)
-
-Environment file support:
-
-```powershell
-# Defaults are committed in .env.runtime.
-# Optional: reset from template if needed.
-Copy-Item .\.env.runtime.example .\.env.runtime -Force
-```
-
-Run the runtime API with the env-file-first contract:
-
-```powershell
-docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime up --build
-```
-
-This compose target wires the runtime mount boundaries explicitly:
-
-- `/work` -> named volume `lllars-work`
-- `/config` -> named volume `lllars-config`
-- `/artifacts` -> named volume `lllars-artifacts`
-- `/.env.runtime` -> mounted to `/config/.env.runtime` and loaded by runtime config `env_file`
-
-Behavior details:
-
-- Image is built from `Dockerfile.runtime` and installs `lllars` during image build.
-- Runtime bootstraps `/work/runtime.container.json` from the checked-in split template (`docker/runtime.container.json`) once, with `env_file=/config/.env.runtime`.
-- The template keeps only `service` keys; serve startup does not require run settings.
-- Run settings are only required when submitting jobs.
-- Service host/port/workers/queue defaults are resolved through `load_config(...)` from the same env file.
-- Service binds to `service.host:service.port` and publishes `localhost:${LLLARS_PORT}`.
-- On first start, defaults are seeded into volumes (`playground` into `/work`, runtime config template into `/config`).
-- Container startup prints detected shell diagnostics (expects `bash` or `sh`) and exits early if no supported shell is present.
-
-Common environment knobs in `.env.runtime`:
-
-- `MODEL`
-- `OLLAMA_BASE_URL`
-- `PROJECT_ROOT`
-- `COMMAND_PROFILE`
-- `MOUNT_WORK_ROOT`
-- `MOUNT_CONFIG_ROOT`
-- `MOUNT_ARTIFACTS_ROOT`
-- `LLLARS_HOST`
-- `LLLARS_PORT`
-- `LLLARS_WORKERS`
-- `QUEUE_BACKEND`
-- `NETWORK_POLICY`
-- `MCP_ENABLED`
-- `SKIP_MCP_PREFLIGHT`
-
-Legacy fallback:
-
-- Existing mounted JSON flow remains possible by directly editing `/work/runtime.container.json` in the container volume and reusing `.env.runtime` for values.
-
-Minimal submit check (service accepts job requests on documented port):
-
-```powershell
-Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/jobs" -ContentType "application/json" -Body '{"prompt":"runtime smoke"}'
-```
-
-### T12 hardening regression sweep
-
-Baseline regression checks now include dedicated CLI dispatch tests and runtime
-smoke path checks.
-
-Run CLI + runtime regression unit tests:
-
-```powershell
-.\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
-```
-
-One-shot smoke check (must complete without changing existing CLI behavior):
-
-```powershell
-.\venv\Scripts\python.exe .\lllars.py --config .\playground.example.json --prompt "T12 one-shot smoke"
-```
-
-Serve smoke check (start service in one terminal, then run smoke script in another):
-
-```powershell
-# terminal 1
-docker compose -f .\docker-compose.runtime.yml --env-file .\.env.runtime up --build
-
-# terminal 2
-.\venv\Scripts\python.exe .\runtime_api_smoke_test.py --prompt "T23 docker shell smoke" --command-profile "python-playground" --test-command "python test.py" --expected-shells "bash,sh"
-```
-
-Expected result:
-
-- One-shot exits successfully.
-- Runtime smoke reaches `status=succeeded`.
-- Returned runtime telemetry reports a selected shell in `bash`/`sh`.
-- Submitted allowlisted test command exits with return code `0`.
-
-### Runtime API payload contracts
-
-Shared runtime payload contracts now live in `lllars_core/runtime/models.py`:
-
-- `JobSpec`: submit payload for a runtime job.
-- `RunResult`: normalized run outcome payload.
-- `JobStatus`: lifecycle payload for queued/running/terminal jobs.
-- `ErrorEnvelope`: stable error payload shape for API responses.
-
-These models are intended to be the single contract source for runtime endpoints.
-Validation roundtrip example:
-
-```powershell
-python -c "from lllars_core.runtime.models import ErrorEnvelope, JobSpec, JobStatus, RunResult; spec = JobSpec(prompt='ping'); spec = JobSpec.model_validate(spec.model_dump()); result = RunResult(success=True, agent_returncode=0, elapsed_sec=0.1, agent_stdout='ok', agent_stderr=''); result = RunResult.model_validate(result.model_dump()); status = JobStatus(job_id='job-1', status='succeeded', result=result); status = JobStatus.model_validate(status.model_dump()); err = ErrorEnvelope(code='bad_request', message='invalid input'); err = ErrorEnvelope.model_validate(err.model_dump()); print('roundtrip-ok')"
-```
-
-### Native runtime controls
-
-The harness now uses native PydanticAI runtime controls instead of custom
-budgets/circuit breakers.
-
-Supported config knobs:
-
-- `usage_request_limit`
-- `usage_tool_calls_limit`
-- `usage_input_tokens_limit`
-- `usage_output_tokens_limit`
-- `usage_total_tokens_limit`
-- `usage_count_tokens_before_request`
-- `agent_retries_tools`
-- `agent_retries_output`
-- `tool_timeout_sec`
-- `max_concurrency`
-- `instrumentation_enabled`
-- `instrumentation_include_content`
-- `skills_enabled`
-- `skills_glob`
-- `skills_defer_loading`
-- `skills_require_description`
-- `service_mode`
-- `service_host`
-- `service_port`
-- `service_workers`
-- `mount_work_root`
-- `mount_config_root`
-- `mount_artifacts_root`
-- `queue_backend`
-- `network_policy`
-
-Example:
-
-```json
-{
-	"usage_request_limit": null,
-	"usage_tool_calls_limit": 24,
-	"usage_input_tokens_limit": null,
-	"usage_output_tokens_limit": null,
-	"usage_total_tokens_limit": null,
-	"usage_count_tokens_before_request": false,
-	"agent_retries_tools": 1,
-	"agent_retries_output": 1,
-	"tool_timeout_sec": 90,
-	"max_concurrency": null,
-	"instrumentation_enabled": false,
-	"instrumentation_include_content": false,
-	"skills_enabled": false,
-	"skills_glob": "skills/*.md",
-	"skills_defer_loading": true,
-	"skills_require_description": true,
-	"service_mode": "oneshot",
-	"mount_work_root": "playground",
-	"mount_config_root": ".",
-	"mount_artifacts_root": ".",
-	"queue_backend": "inmemory",
-	"network_policy": "inherit"
-}
-```
-
-### Markdown skills (prototype)
-
-The harness can load capability skills from markdown files with YAML frontmatter,
-based on the PydanticAI capability pattern.
-
-Config fields:
-
-- `skills_enabled`: enable markdown skill loading
-- `skills_glob`: glob under `project_root` (for example `skills/*.md`)
-- `skills_defer_loading`: when true, skills are loaded on demand via
-  `load_capability`
-- `skills_require_description`: require `description` in frontmatter
-
-Skill file format:
-
-```markdown
----
-id: refunds
-description: Use for refund eligibility and refund handling.
----
-Always confirm order ID before issuing a refund.
-Never issue refunds over $500 without manager approval.
-```
-
-Validation behavior:
-
-- `id` is required and must be unique across loaded skill files.
-- `description` is required unless `skills_require_description=false`.
-- Skill body (instructions) must be non-empty.
-- If `skills_enabled=true` and no files match `skills_glob`, startup fails fast.
-
-For resumable history behavior in deferred capabilities, keep each skill `id`
-stable over time.
-
-### Live introspection while running
-
-Live terminal progress now uses native PydanticAI stream events from
-`event_stream_handler` on `run_sync(...)`.
-
-This means progress lines are emitted from agent lifecycle events (model parts,
-tool calls/results, and final-result start) instead of relying only on post-run
-message scraping.
-
-The final `thought_trace` is built primarily from these streamed events, with a
-fallback merge from run messages for compatibility.
-
-### Environment-aware native agent behavior
-
-The harness now uses native PydanticAI dependency-typed instructions to make
-runtime environment constraints explicit during each run.
-
-What this adds:
-
-- Runtime instructions include OS, shell type, and project root.
-- Shell execution uses explicit allowlisted command IDs instead of free-form
-	command text.
-- Agent can discover commands via `list_allowed_shell_commands` and execute one
-	with `run_allowlisted_shell(command_id=...)`.
-- Shell commands run in configured `project_root`.
-
-This reduces tool misuse (for example trying bash scripts on Windows) while
-remaining fully config-driven.
-
-## Architecture
-
-The project is intentionally split so the executable stays small and orchestration
-logic is separated by concern.
-
-### Module map
-
-- `lllars.py`: thin console entrypoint wrapper
-- `lllars_core/cli.py`: argument parsing and top-level orchestration
-- `lllars_core/config/loader.py` + `lllars_core/config/models.py`: config loading, model definitions, and defaults
-- `lllars_core/agent_builder.py`: agent/tool construction and native runtime config wiring
-- `lllars_core/runner.py`: agent execution and timeout subprocess orchestration
-- `lllars_core/shell.py`: PowerShell command execution, test/eval helpers
-- `lllars_core/console.py`: terminal output formatting and summaries
-
-### Runtime flow
-
-1. `lllars.py` forwards to `lllars_core.cli.main`.
-2. CLI loads config and prompt input.
-3. Runner executes the agent with timeout safeguards.
-4. Shell helpers run test/eval commands.
-5. Console helpers print summary and verbose diagnostics.
-
-### Why this split
-
-- Keeps the installed executable simple and stable.
-- Isolates agent building from runtime orchestration.
-- Makes config, shell, and console concerns independently testable.
-- Supports safer refactoring by reducing cross-module coupling.
+## Documentation
+
+- Overview and navigation: `docs/README.md`
+- Configuration and runtime controls: `docs/configuration.md`
+- Runtime API and operator flow: `docs/runtime_api.md`
+- Docker runtime deployment: `docs/docker_runtime.md`
+- Architecture and governance baseline: `docs/DESIGN.md`
+- Workflow and bookkeeping rules: `docs/workflow/README.md`

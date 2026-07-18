@@ -43,14 +43,21 @@ If uncertain, stop, ask, then continue.
 Bookkeeping is part of baseline operation, not optional cleanup.
 
 After each completed task, update repository state before closing the run:
-- Mark task status in planning docs (for example `docs/IMPLEMENTATION_PREP.md`).
-- Archive outcome in changelog docs (for example `docs/IMPLEMENTATION_CHANGELOG.md`).
+- Ensure a task artifact exists before implementation.
+- Capture why the change was needed in the task artifact.
+- Record outcome in the repository's changelog system.
+- Finalize task state according to repository-local workflow rules.
 - Align defaults/examples with shipped behavior (for example config defaults, sample configs, README usage examples).
 
+Use bookkeeping skill for any task-handling operation.
+
+For concrete paths, file layout, and exact completion semantics, follow the repository-local bookkeeping playbook and skill definitions.
+
 Stop-check before handoff:
-1. Task state is marked DONE where tracked.
+1. Task file includes why the change was needed, completion notes, and validation evidence.
 2. Changelog entry exists and reflects actual validation.
-3. Defaults/examples are consistent with current runtime behavior.
+3. Task state has been finalized per repository-local rules.
+4. Defaults/examples are consistent with current runtime behavior.
 
 If any item is not complete, task is not complete.
 
