@@ -85,6 +85,14 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Establish enforceable size and structure constraints before moving code.
 - Outcome: Added refactor size governance docs, a machine-readable boundary policy file, and an automated boundary checker test contract to enforce file/function size limits with explicit waivers.
 
+### T25 Runtime Package Bootstrap + Compatibility Facade (DONE 2026-07-18)
+- Goal: Create runtime package and preserve existing imports through compatibility shims.
+- Outcome: Added runtime package facade and compatibility exports so legacy runtime imports continue to work while package-first paths are available.
+
+### T26 Runtime Execution/Settings Deep Extraction (DONE 2026-07-18)
+- Goal: Aggressively split runtime execution and settings mapping into small files.
+- Outcome: Extracted runtime settings mapping, shell execution helpers, and terminal-result mapping into focused runtime package modules; reduced runtime runner to orchestration + compatibility wrappers with boundary checks and regressions passing.
+
 ## Archive Sweep Details (Moved From Prep 2026-07-16)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)
@@ -600,4 +608,31 @@ Risks:
 - Existing oversized modules remain temporarily allowed through explicit baseline waivers until extraction tickets remove them.
 Next handoff note:
 - Apply boundary checker validation on every code-touching ticket (T25+), and require waiver reason plus removal ticket for any exceeded default.
+
+Task: T26 Runtime Execution/Settings Deep Extraction
+Date: 2026-07-18
+Implemented by: GitHub Copilot (Friday mode)
+Files changed:
+- lllars_core/runtime_runner.py
+- lllars_core/runtime/settings.py
+- lllars_core/runtime/execution.py
+- lllars_core/runtime/results.py
+- lllars_core/runtime/models.py
+- docs/IMPLEMENTATION_PREP.md
+- docs/IMPLEMENTATION_CHANGELOG.md
+Validation command(s):
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_runtime_runner.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_cli_regression.py"
+- .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_refactor_boundaries.py"
+- Operator-verified manual end-to-end runtime flow (PASS)
+Result:
+- PASS
+- `_apply_job_run_settings` was decomposed into focused runtime settings helpers.
+- `run_job` was reduced to composition/orchestration while keeping compatibility wrapper names.
+- Runtime execution/result mapping concerns were extracted into focused modules under `lllars_core/runtime/`.
+- Boundary and regression validations passed.
+Risks:
+- Low; behavior parity is covered by runtime runner + CLI regression suites and operator manual runtime verification.
+Next handoff note:
+- Proceed to T27 Runtime API/Web/Service Split using the new runtime package boundaries.
 ```

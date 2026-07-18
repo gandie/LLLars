@@ -237,7 +237,7 @@ Boundary tool contract for code-touching tasks (T25+):
 - Completion artifact:
   - Passing tests with both old and new import paths.
 
-### T26 Runtime Execution/Settings Deep Extraction
+### T26 Runtime Execution/Settings Deep Extraction (DONE 2026-07-18)
 - Goal: Aggressively split runtime execution and settings mapping into small files.
 - Files: lllars_core/runtime/execution.py, lllars_core/runtime/settings.py, lllars_core/runtime/models.py, lllars_core/runtime_runner.py, tests/test_runtime_runner.py.
 - Adds:
@@ -254,7 +254,7 @@ Boundary tool contract for code-touching tasks (T25+):
 - Rollback strategy:
   - Keep wrapper functions with old names and restore previous call chain if parity breaks.
 - Completion artifact:
-  - `runtime_runner.py` trimmed below budget with passing tests.
+  - `runtime_runner.py` trimmed below budget (178 lines) with passing tests.
 
 ### T27 Runtime API/Web/Service Split
 - Goal: Move HTTP, service, and frontend mounting concerns into dedicated runtime package modules.
