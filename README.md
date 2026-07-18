@@ -83,6 +83,16 @@ Example run config fields:
 See `playground.example.json` and `playground.command-profiles.yaml` for a full
 working example.
 
+## Provider-Aware Startup Preflight
+
+Startup preflight probes model endpoints by inferred provider family:
+
+- `ollama:*` models use `.../api/tags`
+- OpenAI-compatible models use `.../v1/models`
+
+If OpenAI-compatible model listing is unsupported, preflight emits a structured
+warning instead of failing startup.
+
 ## Documentation
 
 - Overview and navigation: `docs/README.md`

@@ -76,6 +76,27 @@ Native runtime controls are configured through these keys:
 - `queue_backend`
 - `network_policy`
 
+## Startup Preflight Model Probe
+
+Startup preflight now infers provider family from model naming conventions used
+by pydantic_ai provider wrappers (`<provider>:<model>`), then probes with a
+provider-specific strategy:
+
+- Ollama family:
+  - Endpoint: `.../api/tags`
+  - Expects model names under `models[].name`
+- OpenAI-compatible family:
+  - Endpoint: `.../v1/models`
+  - Expects model ids under `data[].id`
+
+When OpenAI-compatible providers do not support model listing, preflight emits a
+structured warning and continues startup instead of failing hard.
+
+Examples:
+
+- `model="ollama:qwen2.5-coder:7b"` + `provider_url="http://localhost:11434"`
+- `model="openai:gpt-4o-mini"` + `provider_url="https://api.example.com"`
+
 ## Markdown Skills
 
 Capability skills can be loaded from markdown files with YAML frontmatter.

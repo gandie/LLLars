@@ -15,6 +15,48 @@ This folder is the canonical bookkeeping surface for implementation work.
 4. Append changelog entry.
 5. Move completed task file from `tasks/` to `done/`.
 
+Folder location is the only status protocol:
+- `tasks/` means active.
+- `done/` means complete.
+
+No protocol extension is allowed:
+- Do not add lifecycle metadata fields such as `Status` or `Priority` to task files.
+
+## Mandatory Task Template
+
+```markdown
+# TXX Short Task Title
+
+## Metadata
+- Owner: unassigned
+- Created: YYYY-MM-DD
+- Updated: YYYY-MM-DD
+
+## Why Needed
+<Why this change is required>
+
+## Objective
+<Expected outcome>
+
+## Scope
+- <In-scope item>
+
+## Non-Goals
+- <Out-of-scope item>
+
+## Target Files
+- <path/to/file>
+
+## Verification
+- .\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\
+
+## Rollback
+<Rollback plan>
+
+## Completion Artifact
+<What proves completion>
+```
+
 This file and the bookkeeping skill define the active workflow contract.
 
 ## Bookkeeping Skill

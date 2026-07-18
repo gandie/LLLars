@@ -23,11 +23,51 @@ Enforce low-ceremony, folder-driven bookkeeping so each task has a clear artifac
 - Each task file must contain a `Why Needed` section explaining why the change is required.
 - A task is not complete until changelog entry and validation evidence are recorded.
 - A task is not complete until full test suite passes via `.\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\`.
+- Folder location is the only status protocol (`tasks/` = active, `done/` = complete).
+- No protocol extension is allowed (no custom lifecycle metadata fields such as `Status` or `Priority` in task files).
+
+## Mandatory Task Template
+
+Every new task file must follow this template exactly (no additional lifecycle metadata fields):
+
+```markdown
+# TXX Short Task Title
+
+## Metadata
+- Owner: unassigned
+- Created: YYYY-MM-DD
+- Updated: YYYY-MM-DD
+
+## Why Needed
+<Why this change is required>
+
+## Objective
+<Expected outcome>
+
+## Scope
+- <In-scope item>
+
+## Non-Goals
+- <Out-of-scope item>
+
+## Target Files
+- <path/to/file>
+
+## Verification
+- .\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\
+
+## Rollback
+<Rollback plan>
+
+## Completion Artifact
+<What proves completion>
+```
 
 ## Task Handling Protocol
 1. Before implementation:
 - Ensure the task file exists in docs/workflow/tasks/.
-- Ensure `Why Needed`, objective, scope, non-goals, verification, and rollback sections are present.
+- Ensure the task file follows the mandatory template exactly.
+- Ensure no custom lifecycle metadata fields are present.
 
 2. During implementation:
 - Keep task file updated with verification commands/results.
@@ -57,5 +97,6 @@ Enforce low-ceremony, folder-driven bookkeeping so each task has a clear artifac
 - Closing a task without moving it to docs/workflow/done/.
 - Recording completion without test evidence.
 - Completing a task file without an explicit `Why Needed` section.
+- Using `Status`, `Priority`, or any custom lifecycle metadata in task files.
 - Reintroducing backlog or in-progress index ceremony.
 - Bundling multiple unrelated tasks into one task file.
