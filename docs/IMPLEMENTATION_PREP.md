@@ -6,6 +6,10 @@ Prepare runtime implementation for one-pass Copilot agent execution loops with h
 Completed ticket history has been archived to:
 - docs/IMPLEMENTATION_CHANGELOG.md
 
+Recent docs maintenance completed:
+- AgentOps Bootstrap document split into chaptered docs folder (DONE 2026-07-18).
+- AgentOps Bootstrap chapter navigation linked, legacy monolith removed, and markdown boundaries extended to nested docs (DONE 2026-07-18).
+
 ## One-Pass Task Design Standard
 Use this contract for every task ticket.
 

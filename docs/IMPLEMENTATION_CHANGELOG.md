@@ -5,6 +5,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 
 ## Archived Completed Tickets
 
+### Docs Consolidation: AgentOps Bootstrap Chapter Split (DONE 2026-07-18)
+- Goal: Split AgentOps Bootstrap guide into chapter files with an index page under a dedicated docs folder.
+- Outcome: Added docs/agentops_bootstrap/index.md plus 13 chapter files, then added previous/index/next chapter navigation links for GitHub browsing, removed the legacy monolithic file, and expanded markdown boundary coverage to nested docs paths.
+
 ### T1 Runtime Config Surface (DONE 2026-07-14)
 - Goal: Add runtime-mode config keys and validation defaults.
 - Outcome: Runtime config keys were added and validated, and CLI startup shows normalized runtime config.

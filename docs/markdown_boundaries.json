@@ -6,6 +6,7 @@
   },
   "include": [
     "docs/*.md",
+    "docs/**/*.md",
     "README.md",
     "AGENTS.md"
   ],
