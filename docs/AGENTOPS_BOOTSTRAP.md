@@ -47,6 +47,14 @@ When facts conflict, prefer:
 ### 3.5 Minimal Necessary Change
 Keep diffs small, scoped, and validated. Avoid speculative architecture.
 
+### 3.6 Struggle Becomes Protocol
+Execution struggle is a signal, not noise.
+When repeated friction appears, pause to analyze underlying mechanics and convert the lesson into durable guidance artifacts (skills, agent rules, eval checks, or templates).
+
+### 3.7 Failure Is Learning Input
+Do not optimize for the appearance of flawless execution.
+Treat errors as high-value telemetry for improving protocol, guidance artifacts, and eval quality.
+
 ## 4. Reference Architecture
 AgentOps Bootstrap separates control from execution.
 
@@ -73,6 +81,10 @@ Core eval facets:
 - Regression evals: did behavior remain stable after prompt/tool/code changes?
 - Stress evals: does behavior remain acceptable under ambiguity and partial failure?
 
+Meta-pattern eval expectation:
+- When meaningful execution struggle occurs, runs should produce a short retro artifact and a concrete guidance update proposal.
+- Error episodes should include learning capture (what failed, why, what was updated to prevent repeat).
+
 In practice, these evals should be repository-native (tests/scripts/config), versioned,
 and required in the same run loop as functional tests.
 
@@ -82,9 +94,35 @@ A practical sequence for new repositories:
 2. Define a reusable implementation agent.
 3. Add domain skills (framework, API, language discipline).
 4. Define one-pass task protocol.
-5. Install baseline agent evals (outcome/process/policy/regression).
-6. Consolidate planning docs.
-7. Start task execution with strict validation, eval gating, and handoff logging.
+5. Define struggle-capture protocol (how to detect friction, write retro notes, and update guidance artifacts).
+6. Install baseline agent evals (outcome/process/policy/regression).
+7. Consolidate planning docs.
+8. Start task execution with strict validation, eval gating, and handoff logging.
+
+### 5.1 Operating Protocol: Struggle-to-Guidance Loop
+Use this loop when a run shows repeated friction, churn, or avoidable rework.
+
+1. Detect:
+- Mark struggle when similar corrections repeat or progress stalls.
+
+2. Analyze mechanics:
+- Identify why the struggle happened (missing rule, unclear sequence, absent stop condition, weak eval).
+
+3. Generalize:
+- Rewrite the lesson as a repo-agnostic pattern, not a one-off fix.
+
+4. Encode:
+- Update one or more durable artifacts:
+	- skill guidance
+	- agent operating rules
+	- eval checks
+	- planning templates/checklists
+
+5. Verify adoption:
+- Ensure the next similar task references and applies the new guidance.
+
+6. Record transfer:
+- Log what changed, why it changed, and where it should be reused across repos.
 
 ## 6. Role of Friday in This Pattern
 In this repository, Friday functions as the primary implementation operator under explicit constraints:
@@ -130,6 +168,9 @@ and keep thresholds explicit and machine-readable.
 Mitigation: balance eval facets (outcome + process + policy + regression + stress)
 instead of optimizing only one score.
 
+### Risk: Failure aversion hides learning opportunities
+Mitigation: require explicit error-to-learning capture in retros and decision logs.
+
 ## 9. Evaluation Metrics
 A lightweight scorecard for whether the bootstrap is working:
 - Scope adherence: percent of runs without out-of-scope edits.
@@ -144,6 +185,9 @@ Add eval-specific indicators:
 - Regression catch rate: percent of failures caught by evals before merge.
 - Boundary compliance trend: file/routine complexity violations over time.
 - Mean time to restore green eval suite after refactor changes.
+- Guidance harvest rate: meaningful struggles converted into durable artifacts.
+- Repeated-struggle rate: how often the same friction recurs after guidance updates.
+- Error-to-learning latency: time from meaningful failure detection to merged guidance/eval update.
 
 ## 10. Standardization Pattern
 For cross-repo adoption, keep a small reusable package:
@@ -160,6 +204,11 @@ Standardization should include a minimal eval starter pack:
 - At least one policy eval and one regression eval.
 - Clear command contract to run evals locally and in CI.
 - Waiver protocol with explicit rationale and removal task linkage.
+
+Standardization should also include a learning starter pack:
+- Retro template for struggle analysis.
+- Skill/agent update checklist.
+- Cross-repo transfer note format (what is universal vs repo-specific).
 
 ## Conclusion
 AgentOps Bootstrap reframes AI coding from assistant usage to operational engineering. By installing governance, role design, execution protocol, and eval planes directly in the repository, teams gain a durable system that improves reliability, safety, and delivery velocity without sacrificing operator control.
@@ -193,3 +242,4 @@ Pony Farm backlog (later thoughts and possible implementation order):
 - Waiver hygiene eval: require reason plus removal linkage and prevent waiver sprawl.
 - Eval runtime budget eval: keep eval suite fast enough to run every cycle.
 - Decision-log completeness eval: ensure task outcomes include validation and risk notes.
+- Struggle-loop completeness eval: require detection, mechanism analysis, and guidance encoding when repeated friction appears.
