@@ -287,7 +287,7 @@ Expected result:
 
 ### Runtime API payload contracts
 
-Shared runtime payload contracts now live in `lllars_core/runtime_models.py`:
+Shared runtime payload contracts now live in `lllars_core/runtime/models.py`:
 
 - `JobSpec`: submit payload for a runtime job.
 - `RunResult`: normalized run outcome payload.
@@ -298,7 +298,7 @@ These models are intended to be the single contract source for runtime endpoints
 Validation roundtrip example:
 
 ```powershell
-python -c "from lllars_core.runtime_models import ErrorEnvelope, JobSpec, JobStatus, RunResult; spec = JobSpec(prompt='ping'); spec = JobSpec.model_validate(spec.model_dump()); result = RunResult(success=True, agent_returncode=0, elapsed_sec=0.1, agent_stdout='ok', agent_stderr=''); result = RunResult.model_validate(result.model_dump()); status = JobStatus(job_id='job-1', status='succeeded', result=result); status = JobStatus.model_validate(status.model_dump()); err = ErrorEnvelope(code='bad_request', message='invalid input'); err = ErrorEnvelope.model_validate(err.model_dump()); print('roundtrip-ok')"
+python -c "from lllars_core.runtime.models import ErrorEnvelope, JobSpec, JobStatus, RunResult; spec = JobSpec(prompt='ping'); spec = JobSpec.model_validate(spec.model_dump()); result = RunResult(success=True, agent_returncode=0, elapsed_sec=0.1, agent_stdout='ok', agent_stderr=''); result = RunResult.model_validate(result.model_dump()); status = JobStatus(job_id='job-1', status='succeeded', result=result); status = JobStatus.model_validate(status.model_dump()); err = ErrorEnvelope(code='bad_request', message='invalid input'); err = ErrorEnvelope.model_validate(err.model_dump()); print('roundtrip-ok')"
 ```
 
 ### Native runtime controls
@@ -435,7 +435,7 @@ logic is separated by concern.
 
 - `lllars.py`: thin console entrypoint wrapper
 - `lllars_core/cli.py`: argument parsing and top-level orchestration
-- `lllars_core/config.py`: config model, defaults, and config loading
+- `lllars_core/config/loader.py` + `lllars_core/config/models.py`: config loading, model definitions, and defaults
 - `lllars_core/agent_builder.py`: agent/tool construction and native runtime config wiring
 - `lllars_core/runner.py`: agent execution and timeout subprocess orchestration
 - `lllars_core/shell.py`: PowerShell command execution, test/eval helpers

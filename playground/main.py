@@ -1,5 +1,4 @@
 """Towers of Hanoi solver with enhanced console visualization."""
-import sys
 import time
 
 
@@ -97,7 +96,7 @@ def visualize_hanoi(
     print(f"{'=' * 50}")
     
     # Show initial state
-    print(f"Initial state:")
+    print("Initial state:")
     print("-" * 40)
     display_lines = []
     for row in range(n, -1, -1):
