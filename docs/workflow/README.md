@@ -11,8 +11,9 @@ This folder is the canonical bookkeeping surface for implementation work.
 ## Operating Rules
 1. Update task file first, including an explicit `Why Needed` section.
 2. Run implementation and validations.
-3. Append changelog entry.
-4. Move completed task file from `tasks/` to `done/`.
+3. Run full suite and confirm pass: `.\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\`.
+4. Append changelog entry.
+5. Move completed task file from `tasks/` to `done/`.
 
 This file and the bookkeeping skill define the active workflow contract.
 

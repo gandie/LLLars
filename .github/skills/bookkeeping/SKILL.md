@@ -22,6 +22,7 @@ Enforce low-ceremony, folder-driven bookkeeping so each task has a clear artifac
 - No separate backlog index file is used.
 - Each task file must contain a `Why Needed` section explaining why the change is required.
 - A task is not complete until changelog entry and validation evidence are recorded.
+- A task is not complete until full test suite passes via `.\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\`.
 
 ## Task Handling Protocol
 1. Before implementation:
@@ -33,6 +34,7 @@ Enforce low-ceremony, folder-driven bookkeeping so each task has a clear artifac
 - Keep scope minimal; do not widen task intent.
 
 3. On completion:
+- Run full suite and confirm pass: `.\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\`.
 - Add an entry to current monthly file in docs/workflow/changelog/.
 - Ensure `Why Needed` remains accurate for the shipped change.
 - Update task metadata and completion notes.
@@ -44,11 +46,14 @@ Enforce low-ceremony, folder-driven bookkeeping so each task has a clear artifac
 - Include: date, task id/link, outcome summary, files changed, validation result, residual risk.
 
 ## Validation Contract
+- Mandatory completion gate:
+  - .\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\
 - Run markdown boundary validation when docs are touched:
   - .\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_markdown_boundaries.py"
 - Run targeted or full tests for implementation changes per task verification section.
 
 ## Anti-Patterns
+- Moving a task to docs/workflow/done/ before full-suite unittest discover passes.
 - Closing a task without moving it to docs/workflow/done/.
 - Recording completion without test evidence.
 - Completing a task file without an explicit `Why Needed` section.
