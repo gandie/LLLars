@@ -294,11 +294,12 @@ Boundary tool contract for code-touching tasks (T25+):
 - Completion artifact:
   - Runner modules each under size budget with unchanged behavior.
 
-### T29 Config Package Split + Legacy Bridge
+### T29 Config Package Split (DONE 2026-07-18)
 - Goal: Break `config.py` monolith into package modules while preserving `load_config` API stability.
-- Files: lllars_core/config/__init__.py, lllars_core/config/loader.py, lllars_core/config/models.py, lllars_core/config/env_layer.py, lllars_core/config/runtime_section.py, lllars_core/config/tools_section.py, lllars_core/config/legacy_bridge.py, lllars_core/config.py, tests/test_config.py.
+- Files: lllars_core/config/__init__.py, lllars_core/config/loader.py, lllars_core/config/models.py, lllars_core/config/env_layer.py, lllars_core/config/runtime_section.py, lllars_core/config/tools_section.py, lllars_core/config.py, tests/test_config.py.
 - Adds:
-  - Split parsers by concern (env, runtime, tools, legacy flattening).
+  - Split parsers by concern (service, run, tools).
+  - Strict split-root config handling (`service`/`run` plus optional `env_file`).
   - Top-level `config.py` shim forwarding to package loader.
   - Symbol migration map for downstream imports.
 - Validation:
@@ -307,11 +308,11 @@ Boundary tool contract for code-touching tasks (T25+):
   - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_refactor_boundaries.py" (targets: file<=220, function<=35 unless explicit waiver)
 - Non-goals:
   - No new config keys.
-  - No semantic changes in precedence.
+  - No role/policy feature expansion.
 - Rollback strategy:
-  - Switch shim back to legacy inline parser if behavior drift appears.
+  - Rebind shim to previous config loader flow if behavior drift appears.
 - Completion artifact:
-  - `config.py` reduced to facade with parity tests passing.
+  - `config.py` reduced to facade with parity tests passing and boundary checks green.
 
 ### T30 MCP Package Split + Diagnostics Boundary
 - Goal: Isolate MCP loading, probing, and diagnostics into focused package modules.

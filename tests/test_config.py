@@ -15,16 +15,20 @@ def _base_config(
     *,
     mount_work_root: str | None,
 ) -> dict[str, object]:
-    config: dict[str, object] = {
-        "model": "test-model",
-        "provider-url": "http://localhost:11434",
-        "project_root": project_root,
-        "commands": {},
-        "command_profile": "none",
-    }
+    service: dict[str, object] = {}
     if mount_work_root is not None:
-        config["mount_work_root"] = mount_work_root
-    return config
+        service["mount_work_root"] = mount_work_root
+
+    return {
+        "service": service,
+        "run": {
+            "model": "test-model",
+            "provider_url": "http://localhost:11434",
+            "project_root": project_root,
+            "commands": {},
+            "command_profile": "none",
+        },
+    }
 
 
 class ConfigFilesystemBoundaryTests(unittest.TestCase):
@@ -59,7 +63,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
             self.assertEqual(cfg.provider_url, "")
             self.assertEqual(cfg.project_root, (root / "workspace").resolve())
 
-    def test_split_service_only_config_is_supported_with_env_file(
+    def test_env_file_overrides_service_settings_only(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -70,10 +74,8 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
             env_file.write_text(
                 "\n".join(
                     [
-                        "MODEL=test-model",
-                        "OLLAMA_BASE_URL=http://localhost:11434",
-                        "PROJECT_ROOT=workspace/project",
-                        "COMMAND_PROFILE=none",
+                        "SERVICE_PORT=9015",
+                        "QUEUE_BACKEND=redis",
                     ]
                 ),
                 encoding="utf-8",
@@ -100,10 +102,12 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
             cfg = load_config(config_path)
 
             self.assertEqual(cfg.service_mode, "serve")
-            self.assertEqual(cfg.run.model, "test-model")
+            self.assertEqual(cfg.service_port, 9015)
+            self.assertEqual(cfg.queue_backend, "redis")
+            self.assertEqual(cfg.run.model, "")
             self.assertEqual(
                 cfg.project_root,
-                (root / "workspace" / "project").resolve(),
+                (root / "workspace").resolve(),
             )
             self.assertIsNone(cfg.test_command)
             self.assertIsNone(cfg.eval_command)
@@ -150,7 +154,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 ("python main.py", "python test.py"),
             )
 
-    def test_split_and_legacy_mix_is_rejected(self) -> None:
+    def test_split_and_unsupported_root_key_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / "workspace" / "project").mkdir(parents=True)
@@ -161,7 +165,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 },
                 "run": {
                     "model": "test-model",
-                    "provider-url": "http://localhost:11434",
+                    "provider_url": "http://localhost:11434",
                     "project_root": "workspace/project",
                     "commands": {},
                     "command_profile": "none",
@@ -174,7 +178,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                "cannot mix split and legacy fields",
+                "unsupported root keys",
             ):
                 load_config(config_path)
 
@@ -204,7 +208,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 },
                 "run": {
                     "model": "test-model",
-                    "provider-url": "http://localhost:11434",
+                    "provider_url": "http://localhost:11434",
                     "project_root": "workspace/project",
                     "commands": {},
                     "command_profile": "none",
@@ -222,8 +226,8 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 },
             )
 
-            self.assertEqual(cfg.service_port, 9020)
-            self.assertEqual(cfg.queue_backend, "inmemory")
+            self.assertEqual(cfg.service_port, 9001)
+            self.assertEqual(cfg.queue_backend, "redis")
             self.assertIsNone(cfg.test_command)
 
     def test_unknown_command_profile_is_rejected(self) -> None:
@@ -235,7 +239,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 project_root="workspace/project",
                 mount_work_root="workspace",
             )
-            config["command_profile"] = "does-not-exist"
+            config["run"]["command_profile"] = "does-not-exist"
 
             config_path = root / "config.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -252,7 +256,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 project_root="workspace/project",
                 mount_work_root="workspace",
             )
-            config["command_profile"] = "python-playground"
+            config["run"]["command_profile"] = "python-playground"
 
             config_path = root / "config.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -392,7 +396,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 project_root="workspace/project",
                 mount_work_root="workspace",
             )
-            config["shell_override"] = "fish"
+            config["run"]["shell_override"] = "fish"
 
             config_path = root / "config.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -409,7 +413,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 project_root="workspace/project",
                 mount_work_root="workspace",
             )
-            config["shell_mode"] = "override"
+            config["run"]["shell_mode"] = "override"
 
             config_path = root / "config.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -429,7 +433,7 @@ class ConfigFilesystemBoundaryTests(unittest.TestCase):
                 project_root="workspace/project",
                 mount_work_root="workspace",
             )
-            config["shell_override"] = "cmd"
+            config["run"]["shell_override"] = "cmd"
 
             config_path = root / "config.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")

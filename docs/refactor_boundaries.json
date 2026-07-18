@@ -19,11 +19,6 @@
         "max_function_lines": 60,
         "reason": "T24-T28 decomposition pending"
       },
-      "lllars_core/config.py": {
-        "max_file_lines": 1000,
-        "max_function_lines": 80,
-        "reason": "T29 config package split pending"
-      },
       "lllars_core/runtime_runner.py": {
         "max_file_lines": 700,
         "max_function_lines": 120,
@@ -75,10 +70,6 @@
       }
     },
     "functions": {
-      "lllars_core/config.py::load_config": {
-        "max_function_lines": 400,
-        "reason": "T29 config package split pending"
-      },
       "lllars_core/runtime_runner.py::_apply_job_run_settings": {
         "max_function_lines": 320,
         "reason": "T26 runtime extraction pending"

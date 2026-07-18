@@ -101,6 +101,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Split `runner.py` so orchestration, worker lifecycle, and stream handling are isolated.
 - Outcome: Extracted runner orchestration, worker lifecycle, stream/event handling, and result shaping into focused runtime modules (`runtime/runner_orchestrator.py`, `runtime/runner_worker.py`, `runtime/runner_stream.py`, `runtime/runner_results.py`) while preserving `run_single_agent` and `run_agent_with_timeout` signatures in `runner.py`; regression, boundary, and manual end-to-end checks are green.
 
+### T29 Config Package Split (DONE 2026-07-18)
+- Goal: Break `config.py` monolith into package modules while preserving `load_config` API stability.
+- Outcome: Split config handling into focused package modules (`config/loader.py`, `config/models.py`, `config/env_layer.py`, `config/runtime_section.py`, `config/runtime_values.py`, `config/run_builder.py`, `config/harness_builder.py`) with a thin `config.py` facade preserved. Config loading now enforces strict split-root shape (`service`/`run` with optional `env_file`), and `env_file` precedence is applied to service settings.
+
 ## Archive Sweep Details (Moved From Prep 2026-07-16)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)
