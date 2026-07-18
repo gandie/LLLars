@@ -256,7 +256,7 @@ Boundary tool contract for code-touching tasks (T25+):
 - Completion artifact:
   - `runtime_runner.py` trimmed below budget (178 lines) with passing tests.
 
-### T27 Runtime API/Web/Service Split
+### T27 Runtime API/Web/Service Split (DONE 2026-07-18)
 - Goal: Move HTTP, service, and frontend mounting concerns into dedicated runtime package modules.
 - Files: lllars_core/runtime/api.py, lllars_core/runtime/web.py, lllars_core/runtime/service.py, lllars_core/runtime/artifacts.py, lllars_core/runtime_api.py, tests/test_runtime_api.py.
 - Adds:

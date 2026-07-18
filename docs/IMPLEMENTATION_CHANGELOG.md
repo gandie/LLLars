@@ -93,6 +93,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Aggressively split runtime execution and settings mapping into small files.
 - Outcome: Extracted runtime settings mapping, shell execution helpers, and terminal-result mapping into focused runtime package modules; reduced runtime runner to orchestration + compatibility wrappers with boundary checks and regressions passing.
 
+### T27 Runtime API/Web/Service Split (DONE 2026-07-18)
+- Goal: Move HTTP, service, and frontend mounting concerns into dedicated runtime package modules.
+- Outcome: Split runtime API concerns into dedicated runtime package modules (`runtime/api.py`, `runtime/web.py`, `runtime/service.py`, `runtime/artifacts.py`) while preserving the top-level compatibility wrapper in `runtime_api.py`; API behavior remained unchanged with unit, smoke, boundary, and manual end-to-end checks green.
+
 ## Archive Sweep Details (Moved From Prep 2026-07-16)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)

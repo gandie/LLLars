@@ -62,7 +62,7 @@ class RuntimeApiTests(unittest.TestCase):
         client = TestClient(app)
 
         with patch(
-            "lllars_core.runtime_api.run_job",
+            "lllars_core.runtime.service.run_job",
             return_value=RunResult(
                 success=True,
                 agent_returncode=0,
@@ -120,7 +120,7 @@ class RuntimeApiTests(unittest.TestCase):
         client = TestClient(app)
 
         with patch(
-            "lllars_core.runtime_api.run_job",
+            "lllars_core.runtime.service.run_job",
             return_value=RunResult(
                 success=True,
                 agent_returncode=0,
@@ -200,7 +200,7 @@ class RuntimeApiTests(unittest.TestCase):
             )
 
         with patch(
-            "lllars_core.runtime_api.run_job",
+            "lllars_core.runtime.service.run_job",
             side_effect=blocking_run_job,
         ):
             submit_resp = client.post(
@@ -265,7 +265,7 @@ class RuntimeApiTests(unittest.TestCase):
         client = TestClient(app)
 
         with patch(
-            "lllars_core.runtime_api.run_job",
+            "lllars_core.runtime.service.run_job",
             side_effect=ShellAdapterUnavailableError(
                 shell_mode="auto",
                 shell_override=None,
@@ -318,7 +318,7 @@ class RuntimeApiTests(unittest.TestCase):
         client = TestClient(app)
 
         with patch(
-            "lllars_core.runtime_api.run_job",
+            "lllars_core.runtime.service.run_job",
             return_value=RunResult(
                 success=False,
                 agent_returncode=1,
@@ -395,7 +395,7 @@ class RuntimeApiTests(unittest.TestCase):
             ).spec
 
             with patch(
-                "lllars_core.runtime_api.run_job",
+                "lllars_core.runtime.service.run_job",
                 return_value=RunResult(
                     success=True,
                     agent_returncode=0,
@@ -451,7 +451,7 @@ class RuntimeApiTests(unittest.TestCase):
             ).spec
 
             with patch(
-                "lllars_core.runtime_api.run_job",
+                "lllars_core.runtime.service.run_job",
                 side_effect=RuntimeError("boom"),
             ):
                 service._run_job("job-failure", spec)
@@ -476,7 +476,7 @@ class RuntimeApiTests(unittest.TestCase):
         cfg = SimpleNamespace(model="", provider_url="")
 
         with patch(
-            "lllars_core.runtime_api.RUNTIME_UI_DIR",
+            "lllars_core.runtime.web.RUNTIME_UI_DIR",
             Path("missing-ui"),
         ):
             app = create_runtime_app(cfg)
