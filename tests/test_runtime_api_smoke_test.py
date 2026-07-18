@@ -6,6 +6,35 @@ from unittest.mock import patch
 from runtime_api_smoke_test import run_smoke_test
 
 
+def _run_smoke_with_responses(
+    responses: list[dict[str, object]],
+    *,
+    monotonic_values: list[float] | float,
+) -> tuple[int, list[object]]:
+    monotonic_patch = patch(
+        "runtime_api_smoke_test.time.monotonic",
+        side_effect=monotonic_values,
+    ) if isinstance(monotonic_values, list) else patch(
+        "runtime_api_smoke_test.time.monotonic",
+        return_value=monotonic_values,
+    )
+    with patch("runtime_api_smoke_test._request_json", side_effect=responses) as request_json:
+        with monotonic_patch, patch("runtime_api_smoke_test.time.sleep"):
+            rc = run_smoke_test(
+            base_url="http://127.0.0.1:8000",
+            prompt="hello",
+            model="test-model",
+            provider_url="http://localhost:11434",
+            project_root=".",
+            command_profile="python-playground",
+            test_command="python test.py",
+            expected_shells=("bash", "sh"),
+            poll_interval_sec=0.01,
+            timeout_sec=1.0,
+        )
+    return rc, list(request_json.call_args_list)
+
+
 class RuntimeApiSmokeScriptTests(unittest.TestCase):
     def test_run_smoke_test_returns_zero_on_succeeded_terminal_state(
         self,
@@ -26,33 +55,13 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
             {"agent_stdout": "done"},
         ]
 
-        with (
-            patch(
-                "runtime_api_smoke_test._request_json",
-                side_effect=responses,
-            ) as request_json,
-            patch(
-                "runtime_api_smoke_test.time.monotonic",
-                side_effect=[0.0, 0.1],
-            ),
-            patch("runtime_api_smoke_test.time.sleep"),
-        ):
-            rc = run_smoke_test(
-                base_url="http://127.0.0.1:8000",
-                prompt="hello",
-                model="test-model",
-                provider_url="http://localhost:11434",
-                project_root=".",
-                command_profile="python-playground",
-                test_command="python test.py",
-                expected_shells=("bash", "sh"),
-                poll_interval_sec=0.01,
-                timeout_sec=1.0,
-            )
-
+        rc, call_args = _run_smoke_with_responses(
+            responses,
+            monotonic_values=[0.0, 0.1],
+        )
         self.assertEqual(rc, 0)
-        self.assertEqual(request_json.call_count, 5)
-        submit_payload = request_json.call_args_list[1].args[2]
+        self.assertEqual(len(call_args), 5)
+        submit_payload = call_args[1].args[2]
         self.assertEqual(
             submit_payload["run"]["command_profile"],
             "python-playground",
@@ -70,27 +79,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
             {"agent_stdout": "", "agent_stderr": "boom"},
         ]
 
-        with (
-            patch(
-                "runtime_api_smoke_test._request_json",
-                side_effect=responses,
-            ),
-            patch("runtime_api_smoke_test.time.monotonic", return_value=0.0),
-            patch("runtime_api_smoke_test.time.sleep"),
-        ):
-            rc = run_smoke_test(
-                base_url="http://127.0.0.1:8000",
-                prompt="hello",
-                model="test-model",
-                provider_url="http://localhost:11434",
-                project_root=".",
-                command_profile="python-playground",
-                test_command="python test.py",
-                expected_shells=("bash", "sh"),
-                poll_interval_sec=0.01,
-                timeout_sec=1.0,
-            )
-
+        rc, _ = _run_smoke_with_responses(responses, monotonic_values=0.0)
         self.assertEqual(rc, 1)
 
     def test_run_smoke_test_returns_one_when_shell_missing(self) -> None:
@@ -107,27 +96,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
             {"agent_stdout": "done"},
         ]
 
-        with (
-            patch(
-                "runtime_api_smoke_test._request_json",
-                side_effect=responses,
-            ),
-            patch("runtime_api_smoke_test.time.monotonic", return_value=0.0),
-            patch("runtime_api_smoke_test.time.sleep"),
-        ):
-            rc = run_smoke_test(
-                base_url="http://127.0.0.1:8000",
-                prompt="hello",
-                model="test-model",
-                provider_url="http://localhost:11434",
-                project_root=".",
-                command_profile="python-playground",
-                test_command="python test.py",
-                expected_shells=("bash", "sh"),
-                poll_interval_sec=0.01,
-                timeout_sec=1.0,
-            )
-
+        rc, _ = _run_smoke_with_responses(responses, monotonic_values=0.0)
         self.assertEqual(rc, 1)
 
 

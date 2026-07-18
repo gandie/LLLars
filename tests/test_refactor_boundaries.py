@@ -16,6 +16,12 @@ class RefactorBoundaryTests(unittest.TestCase):
         config_path = repo_root / "docs" / "refactor_boundaries.json"
 
         config = load_boundaries(config_path)
+        self.assertIn(
+            "tests/*.py",
+            config.get("include", []),
+            msg="Refactor boundaries must include test files in scope.",
+        )
+
         violations = evaluate_boundaries(repo_root, config)
 
         self.assertEqual(

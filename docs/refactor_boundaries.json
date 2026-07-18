@@ -6,7 +6,8 @@
   },
   "include": [
     "lllars_core/*.py",
-    "lllars_core/*/*.py"
+    "lllars_core/*/*.py",
+    "tests/*.py"
   ],
   "exclude": [],
   "waivers": {

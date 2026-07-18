@@ -29,6 +29,33 @@ def _ok_result() -> RunResult:
     )
 
 
+def _run_cancel_success_race(store: InMemoryJobStore, job_id: str) -> list[Exception]:
+    barrier = threading.Barrier(2)
+    errors: list[Exception] = []
+
+    def do_cancel() -> None:
+        barrier.wait()
+        try:
+            store.cancel(job_id)
+        except Exception as exc:  # pragma: no cover
+            errors.append(exc)
+
+    def do_success() -> None:
+        barrier.wait()
+        try:
+            store.update(job_id, status="succeeded", result=_ok_result())
+        except Exception as exc:  # pragma: no cover
+            errors.append(exc)
+
+    cancel_thread = threading.Thread(target=do_cancel)
+    success_thread = threading.Thread(target=do_success)
+    cancel_thread.start()
+    success_thread.start()
+    cancel_thread.join()
+    success_thread.join()
+    return errors
+
+
 class InMemoryJobStoreTests(unittest.TestCase):
     def test_create_get_list_primitives(self) -> None:
         store = InMemoryJobStore()
@@ -85,30 +112,7 @@ class InMemoryJobStoreTests(unittest.TestCase):
         store.create(_job_spec(), job_id="job-1")
         store.update("job-1", status="running")
 
-        barrier = threading.Barrier(2)
-        errors: list[Exception] = []
-
-        def do_cancel() -> None:
-            barrier.wait()
-            try:
-                store.cancel("job-1")
-            except Exception as exc:  # pragma: no cover
-                errors.append(exc)
-
-        def do_success() -> None:
-            barrier.wait()
-            try:
-                store.update("job-1", status="succeeded", result=_ok_result())
-            except Exception as exc:  # pragma: no cover
-                errors.append(exc)
-
-        cancel_thread = threading.Thread(target=do_cancel)
-        success_thread = threading.Thread(target=do_success)
-        cancel_thread.start()
-        success_thread.start()
-        cancel_thread.join()
-        success_thread.join()
-
+        errors = _run_cancel_success_race(store, "job-1")
         self.assertEqual(errors, [])
 
         final_record = store.get("job-1")
