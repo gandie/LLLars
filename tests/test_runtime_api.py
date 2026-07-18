@@ -15,9 +15,10 @@ from lllars_core.runtime import (
     RuntimeService as PackageRuntimeService,
     create_runtime_app as package_create_runtime_app,
 )
-from lllars_core.runtime_models import JobSpec, RunResult
-from lllars_core.runtime_api import RuntimeService, create_runtime_app
-from lllars_core.runtime_runner import ShellAdapterUnavailableError
+from lllars_core.runtime.api import create_runtime_app
+from lllars_core.runtime.job_runner import ShellAdapterUnavailableError
+from lllars_core.runtime.models import JobSpec, RunResult
+from lllars_core.runtime.service import RuntimeService
 
 
 class RuntimeApiTests(unittest.TestCase):

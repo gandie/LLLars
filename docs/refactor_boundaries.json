@@ -13,49 +13,7 @@
     "lllars_core/refactor_boundaries.py"
   ],
   "waivers": {
-    "files": {
-      "lllars_core/cli.py": {
-        "max_file_lines": 260,
-        "reason": "T24-T28 decomposition pending"
-      }
-    },
-    "functions": {
-      "lllars_core/cli.py::_print_runtime_startup": {
-        "max_function_lines": 60,
-        "reason": "T24-T28 decomposition pending"
-      },
-      "lllars_core/cli.py::_run_oneshot": {
-        "max_function_lines": 60,
-        "reason": "T24-T28 decomposition pending"
-      },
-      "lllars_core/cli.py::_run_serve": {
-        "max_function_lines": 60,
-        "reason": "T24-T28 decomposition pending"
-      },
-      "lllars_core/cli.py::main": {
-        "max_function_lines": 60,
-        "reason": "T24-T28 decomposition pending"
-      },
-      "lllars_core/markdown_boundaries.py::evaluate_boundaries": {
-        "max_function_lines": 70,
-        "reason": "Boundary tooling module; compactness refactor can be done later"
-      },
-      "lllars_core/runtime_runner.py::run_job": {
-        "max_function_lines": 140,
-        "reason": "T26 runtime extraction pending"
-      },
-      "lllars_core/runner.py::run_single_agent": {
-        "max_function_lines": 150,
-        "reason": "Post-T28 residual extraction still needed"
-      },
-      "lllars_core/runtime_artifacts.py::persist_job_artifacts": {
-        "max_function_lines": 80,
-        "reason": "Post-T27 residual extraction still needed for oversized function"
-      },
-      "lllars_core/shell.py::_candidate_shells": {
-        "max_function_lines": 50,
-        "reason": "T26 runtime extraction pending"
-      }
-    }
+    "files": {},
+    "functions": {}
   }
 }

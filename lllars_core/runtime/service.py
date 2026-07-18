@@ -13,13 +13,16 @@ from lllars_core.runtime.service_execution import (
     handle_exception,
     handle_shell_unavailable,
 )
-from lllars_core.runtime_models import (
+from lllars_core.runtime.job_runner import (
+    ShellAdapterUnavailableError,
+    run_job,
+)
+from lllars_core.runtime.models import (
     ErrorEnvelope,
     JobSpec,
     JobStatus,
     RunResult,
 )
-from lllars_core.runtime_runner import ShellAdapterUnavailableError, run_job
 
 
 @dataclass

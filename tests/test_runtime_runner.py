@@ -8,15 +8,15 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from lllars_core.config import load_config
+from lllars_core.runtime import run_job as package_run_job
 from lllars_core.runtime import (
     ShellAdapterUnavailableError as package_shell_error,
-    run_job as package_run_job,
 )
-from lllars_core.runtime_models import JobSpec
-from lllars_core.runtime_runner import (
+from lllars_core.runtime.job_runner import (
     ShellAdapterUnavailableError,
     run_job,
 )
+from lllars_core.runtime.models import JobSpec
 from lllars_core.shell import ShellSelection
 
 
@@ -33,7 +33,7 @@ class RuntimeRunnerTests(unittest.TestCase):
 
         with (
             patch(
-                "lllars_core.runtime_runner.run_agent_with_timeout",
+                "lllars_core.runtime.job_runner.run_agent_with_timeout",
                 return_value=(
                     "agent-out",
                     "",
@@ -43,7 +43,7 @@ class RuntimeRunnerTests(unittest.TestCase):
                 ),
             ) as run_agent,
             patch(
-                "lllars_core.runtime_runner.detect_shell",
+                "lllars_core.runtime.job_runner.detect_shell",
                 return_value=ShellSelection(
                     name="powershell",
                     executable="powershell",
@@ -56,7 +56,7 @@ class RuntimeRunnerTests(unittest.TestCase):
                 ),
             ),
             patch(
-                "lllars_core.runtime_runner.run_shell",
+                "lllars_core.runtime.job_runner.run_shell",
                 side_effect=[
                     {
                         "returncode": 0,
@@ -73,7 +73,7 @@ class RuntimeRunnerTests(unittest.TestCase):
                 ],
             ),
             patch(
-                "lllars_core.runtime_runner.is_eval_success",
+                "lllars_core.runtime.job_runner.is_eval_success",
                 return_value=True,
             ),
         ):
@@ -126,11 +126,11 @@ class RuntimeRunnerTests(unittest.TestCase):
 
         with (
             patch(
-                "lllars_core.runtime_runner.load_config",
+                "lllars_core.runtime.job_runner.load_config",
                 return_value=cfg,
             ) as load_cfg,
             patch(
-                "lllars_core.runtime_runner.detect_shell",
+                "lllars_core.runtime.job_runner.detect_shell",
                 return_value=ShellSelection(
                     name="powershell",
                     executable="powershell",
@@ -143,11 +143,11 @@ class RuntimeRunnerTests(unittest.TestCase):
                 ),
             ),
             patch(
-                "lllars_core.runtime_runner.run_agent_with_timeout",
+                "lllars_core.runtime.job_runner.run_agent_with_timeout",
                 return_value=("", "", 0, {}, []),
             ),
             patch(
-                "lllars_core.runtime_runner.is_eval_success",
+                "lllars_core.runtime.job_runner.is_eval_success",
                 return_value=True,
             ),
         ):
@@ -212,7 +212,7 @@ class RuntimeRunnerTests(unittest.TestCase):
 
             with (
                 patch(
-                    "lllars_core.runtime_runner.detect_shell",
+                    "lllars_core.runtime.job_runner.detect_shell",
                     return_value=ShellSelection(
                         name="powershell",
                         executable="powershell",
@@ -225,11 +225,11 @@ class RuntimeRunnerTests(unittest.TestCase):
                     ),
                 ),
                 patch(
-                    "lllars_core.runtime_runner.run_agent_with_timeout",
+                    "lllars_core.runtime.job_runner.run_agent_with_timeout",
                     return_value=("", "", 0, {}, []),
                 ) as run_agent,
                 patch(
-                    "lllars_core.runtime_runner.is_eval_success",
+                    "lllars_core.runtime.job_runner.is_eval_success",
                     return_value=True,
                 ),
             ):
@@ -265,11 +265,11 @@ class RuntimeRunnerTests(unittest.TestCase):
 
         with (
             patch(
-                "lllars_core.runtime_runner.detect_shell",
+                "lllars_core.runtime.job_runner.detect_shell",
                 return_value=None,
             ),
             patch(
-                "lllars_core.runtime_runner.run_agent_with_timeout"
+                "lllars_core.runtime.job_runner.run_agent_with_timeout"
             ) as run_agent,
         ):
             with self.assertRaises(ShellAdapterUnavailableError):
@@ -294,7 +294,7 @@ class RuntimeRunnerTests(unittest.TestCase):
 
         with (
             patch(
-                "lllars_core.runtime_runner.run_agent_with_timeout",
+                "lllars_core.runtime.job_runner.run_agent_with_timeout",
                 return_value=(
                     "",
                     "[lllars] agent canceled",
@@ -304,7 +304,7 @@ class RuntimeRunnerTests(unittest.TestCase):
                 ),
             ) as run_agent,
             patch(
-                "lllars_core.runtime_runner.detect_shell",
+                "lllars_core.runtime.job_runner.detect_shell",
                 return_value=ShellSelection(
                     name="powershell",
                     executable="powershell",
@@ -316,8 +316,8 @@ class RuntimeRunnerTests(unittest.TestCase):
                     ),
                 ),
             ),
-            patch("lllars_core.runtime_runner.run_shell") as run_shell,
-            patch("lllars_core.runtime_runner.is_eval_success") as is_eval,
+            patch("lllars_core.runtime.job_runner.run_shell") as run_shell,
+            patch("lllars_core.runtime.job_runner.is_eval_success") as is_eval,
         ):
             result = run_job(
                 JobSpec(

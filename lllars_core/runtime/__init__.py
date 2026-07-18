@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
-
-from lllars_core.runtime import compat
+from lllars_core.runtime.api import create_runtime_app
+from lllars_core.runtime.job_runner import (
+    ShellAdapterUnavailableError,
+    run_job,
+)
+from lllars_core.runtime.service import RuntimeService
 
 
 __all__ = [
@@ -11,7 +14,3 @@ __all__ = [
     "ShellAdapterUnavailableError",
     "run_job",
 ]
-
-
-def __getattr__(name: str) -> Any:
-    return getattr(compat, name)

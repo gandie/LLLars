@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lllars_core.job_store import InvalidTransitionError
-from lllars_core.runtime_models import ErrorEnvelope, JobSpec, RunResult
-from lllars_core.runtime_runner import ShellAdapterUnavailableError
+from lllars_core.runtime.job_runner import ShellAdapterUnavailableError
+from lllars_core.runtime.models import ErrorEnvelope, JobSpec, RunResult
 
 if TYPE_CHECKING:
     from lllars_core.runtime.service import RuntimeService

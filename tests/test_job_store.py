@@ -4,7 +4,7 @@ import threading
 import unittest
 
 from lllars_core.job_store import InMemoryJobStore, InvalidTransitionError
-from lllars_core.runtime_models import JobSpec, RunResult
+from lllars_core.runtime.models import JobSpec, RunResult
 
 
 def _job_spec(prompt: str = "hello") -> JobSpec:

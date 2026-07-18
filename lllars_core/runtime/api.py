@@ -5,7 +5,7 @@ from fastapi import FastAPI, status
 from lllars_core.config import HarnessConfig
 from lllars_core.runtime.service import RuntimeService
 from lllars_core.runtime.web import mount_runtime_frontend
-from lllars_core.runtime_models import JobSpec, JobStatus
+from lllars_core.runtime.models import JobSpec, JobStatus
 
 
 def register_runtime_routes(

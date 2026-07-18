@@ -18,36 +18,37 @@ class ShellSelection:
     command_prefix: tuple[str, ...]
 
 
-def _candidate_shells() -> tuple[ShellSelection, ...]:
-    if platform.system() == "Windows":
-        return (
-            ShellSelection(
-                name="pwsh",
-                executable="pwsh",
-                command_prefix=(
-                    "-NoProfile",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-Command",
-                ),
+def _windows_shells() -> tuple[ShellSelection, ...]:
+    return (
+        ShellSelection(
+            name="pwsh",
+            executable="pwsh",
+            command_prefix=(
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
             ),
-            ShellSelection(
-                name="powershell",
-                executable="powershell",
-                command_prefix=(
-                    "-NoProfile",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-Command",
-                ),
+        ),
+        ShellSelection(
+            name="powershell",
+            executable="powershell",
+            command_prefix=(
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
             ),
-            ShellSelection(
-                name="cmd",
-                executable="cmd",
-                command_prefix=("/d", "/s", "/c"),
-            ),
-        )
+        ),
+        ShellSelection(
+            name="cmd",
+            executable="cmd",
+            command_prefix=("/d", "/s", "/c"),
+        ),
+    )
 
+
+def _posix_shells() -> tuple[ShellSelection, ...]:
     return (
         ShellSelection(
             name="bash",
@@ -60,6 +61,12 @@ def _candidate_shells() -> tuple[ShellSelection, ...]:
             command_prefix=("-lc",),
         ),
     )
+
+
+def _candidate_shells() -> tuple[ShellSelection, ...]:
+    if platform.system() == "Windows":
+        return _windows_shells()
+    return _posix_shells()
 
 
 def detect_shell(

@@ -113,6 +113,10 @@ Archive completed implementation tickets and decision-log outcomes so the active
 - Goal: Move tool registration policy out of `agent_builder.py` into a dedicated tools package.
 - Outcome: Added a dedicated tools package boundary (`tools/descriptors.py`, `tools/native.py`, `tools/shell_policy.py`, `tools/registry.py`, `tools/__init__.py`) and reduced `agent_builder.py` to assembly orchestration with compatibility wrappers for legacy helper signatures. Validation is green for `test_agent_builder.py`, `test_cli_regression.py`, and `test_refactor_boundaries.py`.
 
+### T32 Integration Stabilization Sweep (imports, facades, naming) (DONE 2026-07-18)
+- Goal: Normalize imports and enforce package/facade boundaries after aggressive splits.
+- Outcome: Migrated internal and test imports to canonical package modules, removed top-level compatibility facade modules (`config.py`, `mcp_loader.py`, `mcp_preflight.py`, `runtime_api.py`, `runtime_artifacts.py`, `runtime_models.py`, `runtime_runner.py`, `runtime/compat.py`), and removed all boundary waivers from `docs/refactor_boundaries.json` by splitting oversized functions/files into focused helpers/modules.
+
 ## Archive Sweep Details (Moved From Prep 2026-07-16)
 
 ### T21 Shell Runtime Foundation (DONE 2026-07-16)

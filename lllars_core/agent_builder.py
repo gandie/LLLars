@@ -16,7 +16,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 from pydantic_ai_todo import TodoCapability
 
 from lllars_core.config import HarnessConfig, canonicalize_shell_command
-from lllars_core.mcp_loader import load_toolsets_from_mcp_config
+from lllars_core.mcp import load_toolsets_from_mcp_config
 from lllars_core.shell import detect_shell, run_shell
 from lllars_core.skills import load_markdown_skill_capabilities
 from lllars_core.tools import (

@@ -9,27 +9,8 @@ from lllars_core.tools.shell_policy import (
     runtime_tooling_instructions,
 )
 
-SYMBOL_MIGRATION_MAP = {
-    "AgentDeps": "lllars_core.tools.descriptors.AgentDeps",
-    "resolve_under": "lllars_core.tools.native.resolve_under",
-    "register_file_tools": "lllars_core.tools.native.register_file_tools",
-    "make_allowed_shell_runner": (
-        "lllars_core.tools.shell_policy.make_allowed_shell_runner"
-    ),
-    "register_shell_tools": (
-        "lllars_core.tools.shell_policy.register_shell_tools"
-    ),
-    "runtime_tooling_instructions": (
-        "lllars_core.tools.shell_policy.runtime_tooling_instructions"
-    ),
-    "register_runtime_tools": (
-        "lllars_core.tools.registry.register_runtime_tools"
-    ),
-}
-
 __all__ = [
     "AgentDeps",
-    "SYMBOL_MIGRATION_MAP",
     "make_allowed_shell_runner",
     "register_file_tools",
     "register_runtime_tools",

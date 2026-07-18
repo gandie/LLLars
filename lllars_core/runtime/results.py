@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 
 from lllars_core.runtime.execution import build_runtime_telemetry
-from lllars_core.runtime_models import RunResult
+from lllars_core.runtime.models import RunResult
 from lllars_core.shell import ShellSelection
 
 

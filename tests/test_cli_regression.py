@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from lllars_core.cli import main
 from lllars_core.config import RunConfig
-from lllars_core.runtime_models import RunResult
+from lllars_core.runtime.models import RunResult
 from lllars_core.shell import detect_shell
 
 
@@ -136,7 +136,7 @@ class CliRegressionTests(unittest.TestCase):
                 ],
             ),
             patch("lllars_core.cli.load_config", return_value=cfg),
-            patch("lllars_core.cli._print_runtime_startup"),
+            patch("lllars_core.cli.print_runtime_startup"),
             patch("lllars_core.cli._run_startup_preflight"),
             patch(
                 "lllars_core.cli.run_job",
@@ -198,7 +198,7 @@ class CliRegressionTests(unittest.TestCase):
                 ],
             ),
             patch("lllars_core.cli.load_config", return_value=cfg),
-            patch("lllars_core.cli._print_runtime_startup"),
+            patch("lllars_core.cli.print_runtime_startup"),
             patch("lllars_core.cli._run_startup_preflight"),
             patch(
                 "lllars_core.cli.create_runtime_app",
@@ -238,7 +238,7 @@ class CliRegressionTests(unittest.TestCase):
                 ],
             ),
             patch("lllars_core.cli.load_config", return_value=cfg),
-            patch("lllars_core.cli._print_runtime_startup"),
+            patch("lllars_core.cli.print_runtime_startup"),
             patch("lllars_core.cli._run_startup_preflight"),
         ):
             with self.assertRaisesRegex(

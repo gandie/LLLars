@@ -6,7 +6,7 @@ from time import time
 from typing import Mapping
 from uuid import uuid4
 
-from lllars_core.runtime_models import (
+from lllars_core.runtime.models import (
     ErrorEnvelope,
     JobSpec,
     JobState,

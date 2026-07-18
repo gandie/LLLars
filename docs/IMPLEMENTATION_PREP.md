@@ -352,23 +352,23 @@ Boundary tool contract for code-touching tasks (T25+):
 - Completion artifact:
   - `agent_builder.py` reduced to assembly orchestration with parity tests.
 
-### T32 Integration Stabilization Sweep (imports, facades, naming)
+### T32 Integration Stabilization Sweep (imports, facades, naming) (DONE 2026-07-18)
 - Goal: Normalize imports and enforce package/facade boundaries after aggressive splits.
 - Files: lllars_core/*.py, lllars_core/runtime/*.py, lllars_core/tools/*.py, lllars_core/mcp/*.py, lllars_core/config/*.py, tests/test_*.py.
 - Adds:
   - Standardized import style and no-cross-layer shortcut imports.
-  - Compatibility alias map documented for old module paths.
-  - Final pass on file-size budget compliance.
+  - Removed compatibility facades and alias maps in favor of canonical package paths.
+  - Final pass on file-size budget compliance with zero waivers.
 - Validation:
   - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
   - .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_refactor_boundaries.py" (targets: file<=220, function<=35 unless explicit waiver)
 - Non-goals:
   - No new product features.
-  - No docs expansion beyond migration notes.
+  - No endpoint/CLI feature expansion.
 - Rollback strategy:
-  - Keep compatibility aliases until two full feature tickets pass on new layout.
+  - Recreate thin wrappers only if external integration breakage is explicitly reported.
 - Completion artifact:
-  - Green baseline test suite with stable package boundaries.
+  - Green baseline test suite with stable package boundaries and no boundary waivers.
 
 ### T33 Scheduling and Triggering Design Prep
 - Goal: Define stable contracts for deadlines, schedules, and trigger sources on top of `runtime/` package boundaries.

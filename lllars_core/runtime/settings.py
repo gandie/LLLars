@@ -14,7 +14,7 @@ from lllars_core.runtime.models import HARNESS_RUN_SYNC_FIELDS
 from lllars_core.runtime.models import RUN_CFG_OVERRIDE_FIELDS
 from lllars_core.runtime.models import RunCommandSettings
 from lllars_core.runtime_guard import resolve_project_root
-from lllars_core.runtime_models import JobSpec
+from lllars_core.runtime.models import JobSpec
 
 
 def resolve_config_path(spec: JobSpec) -> Path:
