@@ -78,9 +78,8 @@ Native runtime controls are configured through these keys:
 
 ## Startup Preflight Model Probe
 
-Startup preflight now infers provider family from model naming conventions used
-by pydantic_ai provider wrappers (`<provider>:<model>`), then probes with a
-provider-specific strategy:
+Startup preflight now delegates provider parsing to pydantic_ai native model
+mechanics, then probes only supported listing families:
 
 - Ollama family:
   - Endpoint: `.../api/tags`
@@ -89,8 +88,9 @@ provider-specific strategy:
   - Endpoint: `.../v1/models`
   - Expects model ids under `data[].id`
 
-When OpenAI-compatible providers do not support model listing, preflight emits a
-structured warning and continues startup instead of failing hard.
+When model listing is unsupported (or when the resolved provider family does not
+have a listing strategy), preflight emits a structured warning/skip line and
+continues startup instead of failing hard.
 
 Examples:
 

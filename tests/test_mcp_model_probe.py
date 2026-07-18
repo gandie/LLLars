@@ -126,6 +126,42 @@ class ModelProbeTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("reason=", "\n".join(lines))
 
+    def test_non_openai_non_ollama_provider_is_skipped(self) -> None:
+        cfg = _cfg(
+            model="anthropic:claude-sonnet-4-6",
+            provider_url="https://api.anthropic.com",
+        )
+
+        with patch(
+            "lllars_core.mcp.model_probe_support.url_request.urlopen",
+        ) as urlopen:
+            ok, lines = check_model_endpoint(cfg)
+
+        self.assertTrue(ok)
+        self.assertIn(
+            "skipped unsupported provider family provider=anthropic",
+            "\n".join(lines),
+        )
+        urlopen.assert_not_called()
+
+    def test_unknown_provider_prefix_is_skipped(self) -> None:
+        cfg = _cfg(
+            model="totally-custom:my-model",
+            provider_url="https://example.invalid",
+        )
+
+        with patch(
+            "lllars_core.mcp.model_probe_support.url_request.urlopen",
+        ) as urlopen:
+            ok, lines = check_model_endpoint(cfg)
+
+        self.assertTrue(ok)
+        self.assertIn(
+            "skipped unsupported provider family provider=unknown",
+            "\n".join(lines),
+        )
+        urlopen.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

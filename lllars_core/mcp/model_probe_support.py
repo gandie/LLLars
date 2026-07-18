@@ -1,41 +1,45 @@
 from __future__ import annotations
 
 import json
+import warnings
+from typing import get_args
 from urllib import error as url_error
 from urllib import request as url_request
+
+from pydantic_ai.models import infer_provider_class, parse_model_id
+from pydantic_ai.models.openai import (
+    OpenAIChatCompatibleProvider,
+    OpenAIResponsesCompatibleProvider,
+)
 
 from lllars_core.config import HarnessConfig
 
 OLLAMA_PROVIDER = "ollama"
 OPENAI_COMPATIBLE_PROVIDER = "openai-compatible"
+UNKNOWN_PROVIDER_FAMILY = "unknown"
 
-KNOWN_PROVIDER_PREFIXES = {
-    "anthropic",
-    "azure",
-    "bedrock",
-    "cohere",
-    "deepseek",
-    "google",
-    "groq",
-    "mistral",
-    "ollama",
-    "openai",
-    "openrouter",
-    "together",
-    "vertexai",
-}
+OPENAI_FAMILY_PROVIDER_NAMES = frozenset(
+    {
+        "openai",
+        "openai-chat",
+        "openai-responses",
+        *get_args(OpenAIChatCompatibleProvider.__value__),
+        *get_args(OpenAIResponsesCompatibleProvider.__value__),
+    }
+)
 
 UNSUPPORTED_LISTING_STATUS_CODES = frozenset({404, 405, 501})
 
 
 def normalize_model_name(model_value: str) -> str:
     value = model_value.strip()
-    if ":" not in value:
+    if not value:
         return value
-    prefix, remainder = value.split(":", 1)
-    if prefix.strip().lower() in KNOWN_PROVIDER_PREFIXES and remainder.strip():
-        return remainder.strip()
-    return value
+
+    provider_name, provider_model = parse_model_spec(value)
+    if provider_name is None:
+        return value
+    return provider_model.strip() if provider_model.strip() else value
 
 
 def build_ollama_tags_url(provider_url: str) -> str:
@@ -139,30 +143,34 @@ def parse_json_payload(payload_raw: str) -> tuple[dict, str | None]:
     return payload, None
 
 
-def provider_prefix(model_value: str) -> str | None:
+def parse_model_spec(model_value: str) -> tuple[str | None, str]:
     value = model_value.strip()
-    if ":" not in value:
-        return None
-    prefix = value.split(":", 1)[0].strip().lower()
-    if prefix in KNOWN_PROVIDER_PREFIXES:
-        return prefix
-    return None
+    if not value:
+        return None, ""
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        provider_name, provider_model = parse_model_id(value)
+
+    if provider_name is None:
+        return None, provider_model
+
+    normalized_provider = provider_name.strip().lower()
+    try:
+        infer_provider_class(normalized_provider)
+    except Exception:
+        return None, provider_model
+
+    return normalized_provider, provider_model
 
 
 def infer_provider_family(cfg: HarnessConfig) -> str:
-    # Model prefixes follow pydantic_ai provider wrappers.
-    prefix = provider_prefix(str(cfg.model))
-    if prefix == OLLAMA_PROVIDER:
+    provider_name, _provider_model = parse_model_spec(str(cfg.model))
+    if provider_name == OLLAMA_PROVIDER:
         return OLLAMA_PROVIDER
-    if prefix is not None:
+    if provider_name in OPENAI_FAMILY_PROVIDER_NAMES:
         return OPENAI_COMPATIBLE_PROVIDER
-
-    base_url = str(cfg.provider_url).strip().lower()
-    if "/v1" in base_url:
-        return OPENAI_COMPATIBLE_PROVIDER
-    if "/api" in base_url and "/v1" not in base_url:
-        return OLLAMA_PROVIDER
-    return OLLAMA_PROVIDER
+    return UNKNOWN_PROVIDER_FAMILY
 
 
 def is_unsupported_listing_response(

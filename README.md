@@ -85,13 +85,15 @@ working example.
 
 ## Provider-Aware Startup Preflight
 
-Startup preflight probes model endpoints by inferred provider family:
+Startup preflight probes model endpoints using pydantic_ai-native provider
+parsing:
 
 - `ollama:*` models use `.../api/tags`
 - OpenAI-compatible models use `.../v1/models`
 
-If OpenAI-compatible model listing is unsupported, preflight emits a structured
-warning instead of failing startup.
+If listing is unsupported (or the provider family does not expose a supported
+listing probe), preflight emits a structured warning/skip line instead of
+failing startup.
 
 ## Documentation
 

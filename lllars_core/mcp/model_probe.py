@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from lllars_core.config import HarnessConfig
 from lllars_core.mcp.model_probe_support import (
+    UNKNOWN_PROVIDER_FAMILY,
     extract_model_names_for_family,
     infer_provider_family,
+    parse_model_spec,
     is_unsupported_listing_response,
     normalize_model_name,
     probe_url_for_family,
@@ -17,10 +19,42 @@ def check_model_endpoint(cfg: HarnessConfig) -> tuple[bool, list[str]]:
     if skip_line is not None:
         return True, [skip_line]
 
+    provider_probe = _provider_probe_context(cfg)
+    if provider_probe is None:
+        provider_name, _provider_model = parse_model_spec(str(cfg.model))
+        return True, [
+            _unsupported_provider_skip_line(
+                UNKNOWN_PROVIDER_FAMILY,
+                provider_name,
+            )
+        ]
+
+    provider_family, probe_url, lines = provider_probe
+    return _probe_and_verify(
+        model_value=cfg.model,
+        provider_family=provider_family,
+        probe_url=probe_url,
+        lines=lines,
+    )
+
+
+def _provider_probe_context(
+    cfg: HarnessConfig,
+) -> tuple[str, str, list[str]] | None:
     provider_family = infer_provider_family(cfg)
+    if provider_family == UNKNOWN_PROVIDER_FAMILY:
+        return None
     probe_url = probe_url_for_family(provider_family, cfg.provider_url)
     lines = [f"model_endpoint: provider_family={provider_family}"]
+    return provider_family, probe_url, lines
 
+
+def _probe_and_verify(
+    model_value: str,
+    provider_family: str,
+    probe_url: str,
+    lines: list[str],
+) -> tuple[bool, list[str]]:
     ok, status_code, payload_raw, error_line = read_model_payload(probe_url)
     if not ok:
         return _failed_probe_result(
@@ -36,10 +70,22 @@ def check_model_endpoint(cfg: HarnessConfig) -> tuple[bool, list[str]]:
         f"model_endpoint: ok url={probe_url} http_status={status_code}"
     )
     return _verify_configured_model(
-        cfg.model,
+        model_value,
         provider_family,
         payload_raw,
         lines,
+    )
+
+
+def _unsupported_provider_skip_line(
+    provider_family: str,
+    provider_name: str | None,
+) -> str | None:
+    if provider_family != UNKNOWN_PROVIDER_FAMILY:
+        return None
+    return (
+        "model_endpoint: skipped unsupported provider family "
+        f"provider={provider_name or 'unknown'}"
     )
 
 
