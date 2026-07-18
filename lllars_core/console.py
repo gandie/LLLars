@@ -32,54 +32,69 @@ def append_trace(trace: list[str], message: str, limit: int = 24) -> None:
         del trace[:-limit]
 
 
+def _read_tool_name(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _format_part_start_event(event: Any) -> str:
+    part = getattr(event, "part", None)
+    part_kind = part.__class__.__name__.replace("Part", "")
+    tool_name = _read_tool_name(getattr(part, "tool_name", None))
+    if tool_name:
+        return f"model: started tool call part ({tool_name})"
+    return f"model: started {part_kind.lower()} part"
+
+
+def _format_function_tool_call(event: Any) -> str:
+    part = getattr(event, "part", None)
+    tool_name = _read_tool_name(getattr(part, "tool_name", None))
+    args = getattr(part, "args", None)
+    args_preview = truncate(
+        json.dumps(args) if isinstance(args, dict) else str(args),
+        120,
+    )
+    if tool_name:
+        return f"tool: call {tool_name} args={args_preview}"
+    return "tool: call"
+
+
+def _format_tool_result(event: Any) -> str:
+    part = getattr(event, "part", None)
+    tool_name = _read_tool_name(getattr(part, "tool_name", None))
+    if tool_name:
+        return f"tool: result {tool_name}"
+    return "tool: result"
+
+
+def _format_builtin_tool_call(event: Any) -> str:
+    part = getattr(event, "part", None)
+    tool_name = _read_tool_name(getattr(part, "tool_name", None))
+    if tool_name:
+        return f"native-tool: call {tool_name}"
+    return "native-tool: call"
+
+
+def _format_builtin_tool_result(event: Any) -> str:
+    result = getattr(event, "result", None)
+    tool_name = _read_tool_name(getattr(result, "tool_name", None))
+    if tool_name:
+        return f"native-tool: result {tool_name}"
+    return "native-tool: result"
+
+
 def summarize_agent_stream_event(event: Any) -> str | None:
     kind = event.__class__.__name__
-
-    if kind == "PartStartEvent":
-        part = getattr(event, "part", None)
-        part_kind = part.__class__.__name__.replace("Part", "")
-        tool_name = getattr(part, "tool_name", None)
-        if isinstance(tool_name, str) and tool_name:
-            return f"model: started tool call part ({tool_name})"
-        return f"model: started {part_kind.lower()} part"
-
-    if kind == "FunctionToolCallEvent":
-        part = getattr(event, "part", None)
-        tool_name = getattr(part, "tool_name", None)
-        args = getattr(part, "args", None)
-        if isinstance(args, dict):
-            args_preview = truncate(json.dumps(args), 120)
-        else:
-            args_preview = truncate(str(args), 120)
-        if isinstance(tool_name, str) and tool_name:
-            return f"tool: call {tool_name} args={args_preview}"
-        return "tool: call"
-
-    if kind == "FunctionToolResultEvent":
-        part = getattr(event, "part", None)
-        tool_name = getattr(part, "tool_name", None)
-        if isinstance(tool_name, str) and tool_name:
-            return f"tool: result {tool_name}"
-        return "tool: result"
-
-    if kind == "BuiltinToolCallEvent":
-        part = getattr(event, "part", None)
-        tool_name = getattr(part, "tool_name", None)
-        if isinstance(tool_name, str) and tool_name:
-            return f"native-tool: call {tool_name}"
-        return "native-tool: call"
-
-    if kind == "BuiltinToolResultEvent":
-        result = getattr(event, "result", None)
-        tool_name = getattr(result, "tool_name", None)
-        if isinstance(tool_name, str) and tool_name:
-            return f"native-tool: result {tool_name}"
-        return "native-tool: result"
-
+    handlers = {
+        "PartStartEvent": _format_part_start_event,
+        "FunctionToolCallEvent": _format_function_tool_call,
+        "FunctionToolResultEvent": _format_tool_result,
+        "BuiltinToolCallEvent": _format_builtin_tool_call,
+        "BuiltinToolResultEvent": _format_builtin_tool_result,
+    }
     if kind == "FinalResultEvent":
         return "model: final result started"
-
-    return None
+    handler = handlers.get(kind)
+    return handler(event) if handler else None
 
 
 def emit_live_thought(message: str, thought_log_path: Path | None) -> None:
@@ -117,6 +132,56 @@ def extract_thought_trace(result: Any) -> list[str]:
     return trace[:12]
 
 
+def _eval_text(result: dict[str, Any]) -> str:
+    eval_json = result.get("eval")
+    eval_error = result.get("eval_error")
+    if isinstance(eval_json, dict):
+        summary = eval_json.get("summary")
+        if isinstance(summary, dict) and isinstance(
+            summary.get("pass_rate"), (int, float)
+        ):
+            return f"pass_rate={float(summary['pass_rate']):.1f}%"
+        return "ok"
+    if isinstance(eval_error, str) and eval_error.strip():
+        return f"error: {truncate(eval_error, 90)}"
+    return "skipped"
+
+
+def _skill_telemetry(runtime_telemetry: Any) -> tuple[int, str, int, str]:
+    if not isinstance(runtime_telemetry, dict):
+        return 0, "none", 0, "none"
+    loaded_ids = runtime_telemetry.get("skills_loaded_ids", [])
+    used_ids = runtime_telemetry.get("skills_used_ids", [])
+    loaded_count = int(runtime_telemetry.get("skills_loaded_count", 0))
+    used_count = int(runtime_telemetry.get("skills_used_count", 0))
+    loaded_text = ", ".join(str(item) for item in loaded_ids) or "none"
+    used_text = ", ".join(str(item) for item in used_ids) or "none"
+    return loaded_count, loaded_text, used_count, used_text
+
+
+def _print_verbose(result: dict[str, Any], runtime_telemetry: Any) -> None:
+    print("\n-- verbose --")
+    agent_stderr = str(result.get("agent_stderr", "")).strip()
+    if agent_stderr:
+        print("agent_stderr:")
+        print(truncate(agent_stderr, 1200))
+    print("telemetry:")
+    print(json.dumps(runtime_telemetry, indent=2))
+    print("raw_result:")
+    print(json.dumps(result, indent=2))
+
+
+def _print_result_body(result: dict[str, Any], success: bool) -> None:
+    if not success:
+        stderr_preview = truncate(str(result.get("agent_stderr", "")), 180)
+        if stderr_preview:
+            print(f"agent_error: {stderr_preview}")
+    agent_stdout = str(result.get("agent_stdout", "")).strip()
+    if agent_stdout:
+        print("agent_output:")
+        print(truncate(agent_stdout, 1200))
+
+
 def print_summary(result: dict[str, Any], verbose: bool) -> None:
     success = bool(result.get("success", False))
     status_text = "SUCCESS" if success else "FAILED"
@@ -126,37 +191,12 @@ def print_summary(result: dict[str, Any], verbose: bool) -> None:
     agent_rc = int(result.get("agent_returncode", 125))
     test = result.get("test", {})
     test_rc = int(test.get("returncode", 1)) if isinstance(test, dict) else 1
-    eval_json = result.get("eval")
-    eval_error = result.get("eval_error")
-
-    eval_text = "skipped"
-    if isinstance(eval_json, dict):
-        summary = eval_json.get("summary")
-        if isinstance(summary, dict) and isinstance(
-            summary.get("pass_rate"), (int, float)
-        ):
-            eval_text = f"pass_rate={float(summary['pass_rate']):.1f}%"
-        else:
-            eval_text = "ok"
-    elif isinstance(eval_error, str) and eval_error.strip():
-        eval_text = f"error: {truncate(eval_error, 90)}"
+    eval_text = _eval_text(result)
 
     runtime_telemetry = result.get("runtime_telemetry", {})
-    if isinstance(runtime_telemetry, dict):
-        loaded_ids = runtime_telemetry.get("skills_loaded_ids", [])
-        used_ids = runtime_telemetry.get("skills_used_ids", [])
-        loaded_count = int(
-            runtime_telemetry.get("skills_loaded_count", 0)
-        )
-        used_count = int(runtime_telemetry.get("skills_used_count", 0))
-    else:
-        loaded_ids = []
-        used_ids = []
-        loaded_count = 0
-        used_count = 0
-
-    loaded_text = ", ".join(str(item) for item in loaded_ids) or "none"
-    used_text = ", ".join(str(item) for item in used_ids) or "none"
+    loaded_count, loaded_text, used_count, used_text = _skill_telemetry(
+        runtime_telemetry
+    )
 
     print(f"{status_color}{Color.BOLD}{status_text}{Color.RESET}")
     print(
@@ -167,29 +207,8 @@ def print_summary(result: dict[str, Any], verbose: bool) -> None:
         f"skills_loaded={loaded_count} [{loaded_text}] | "
         f"skills_used={used_count} [{used_text}]"
     )
-
-    if not success:
-        stderr_preview = truncate(str(result.get("agent_stderr", "")), 180)
-        if stderr_preview:
-            print(f"agent_error: {stderr_preview}")
-
-    agent_stdout = str(result.get("agent_stdout", "")).strip()
-    if agent_stdout:
-        print("agent_output:")
-        print(truncate(agent_stdout, 1200))
+    _print_result_body(result, success)
 
     if not verbose:
         return
-
-    print("\n-- verbose --")
-
-    agent_stderr = str(result.get("agent_stderr", "")).strip()
-    if agent_stderr:
-        print("agent_stderr:")
-        print(truncate(agent_stderr, 1200))
-
-    print("telemetry:")
-    print(json.dumps(runtime_telemetry, indent=2))
-
-    print("raw_result:")
-    print(json.dumps(result, indent=2))
+    _print_verbose(result, runtime_telemetry)

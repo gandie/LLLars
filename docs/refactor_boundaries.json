@@ -36,14 +36,6 @@
         "max_function_lines": 60,
         "reason": "T24-T28 decomposition pending"
       },
-      "lllars_core/console.py::print_summary": {
-        "max_function_lines": 90,
-        "reason": "T31 split pending"
-      },
-      "lllars_core/console.py::summarize_agent_stream_event": {
-        "max_function_lines": 90,
-        "reason": "T31 split pending"
-      },
       "lllars_core/markdown_boundaries.py::evaluate_boundaries": {
         "max_function_lines": 70,
         "reason": "Boundary tooling module; compactness refactor can be done later"
@@ -63,10 +55,6 @@
       "lllars_core/shell.py::_candidate_shells": {
         "max_function_lines": 50,
         "reason": "T26 runtime extraction pending"
-      },
-      "lllars_core/skills.py::_parse_markdown_skill": {
-        "max_function_lines": 50,
-        "reason": "T31 tools decomposition pending"
       }
     }
   }

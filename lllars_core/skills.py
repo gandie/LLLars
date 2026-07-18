@@ -38,39 +38,62 @@ def _discover_skill_paths(cfg: HarnessConfig) -> list[Path]:
     return skill_paths
 
 
-def _parse_markdown_skill(
-    path: Path,
-    require_description: bool,
-) -> MarkdownSkillSpec:
-    raw = path.read_text(encoding="utf-8")
+def _split_frontmatter(path: Path, raw: str) -> tuple[str, str]:
     if not raw.startswith("---"):
         raise ValueError(
             f"Invalid skill file {path}: missing YAML frontmatter"
         )
-
     parts = raw.split("---", 2)
     if len(parts) < 3:
         raise ValueError(
             f"Invalid skill file {path}: malformed YAML frontmatter"
         )
-
     _, frontmatter, body = parts
+    return frontmatter, body
+
+
+def _load_skill_meta(path: Path, frontmatter: str) -> dict[str, Any]:
     meta = yaml.safe_load(frontmatter)
     if not isinstance(meta, dict):
         raise ValueError(
             f"Invalid skill file {path}: frontmatter must be a mapping"
         )
+    return meta
 
+
+def _skill_id(meta: dict[str, Any], path: Path) -> str:
     capability_id = str(meta.get("id", "")).strip()
     if not capability_id:
         raise ValueError(f"Invalid skill file {path}: missing id")
+    return capability_id
 
+
+def _skill_description(
+    meta: dict[str, Any],
+    path: Path,
+    require_description: bool,
+) -> str | None:
     description = str(meta.get("description", "")).strip()
     if require_description and not description:
         raise ValueError(
             f"Invalid skill file {path}: missing description"
         )
+    return description or None
 
+
+def _parse_markdown_skill(
+    path: Path,
+    require_description: bool,
+) -> MarkdownSkillSpec:
+    raw = path.read_text(encoding="utf-8")
+    frontmatter, body = _split_frontmatter(path, raw)
+    meta = _load_skill_meta(path, frontmatter)
+    capability_id = _skill_id(meta, path)
+    description = _skill_description(
+        meta,
+        path,
+        require_description,
+    )
     instructions = body.strip()
     if not instructions:
         raise ValueError(
@@ -79,7 +102,7 @@ def _parse_markdown_skill(
 
     return MarkdownSkillSpec(
         skill_id=capability_id,
-        description=description or None,
+        description=description,
         instructions=instructions,
         source_path=str(path),
     )
