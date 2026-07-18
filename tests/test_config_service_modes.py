@@ -61,6 +61,15 @@ class ConfigServiceModeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / "workspace" / "project").mkdir(parents=True)
+            (root / "profiles.yaml").write_text(
+                (
+                    "profiles:\n"
+                    "  playground-python:\n"
+                    "    - python main.py\n"
+                    "    - python test.py\n"
+                ),
+                encoding="utf-8",
+            )
             payload = {
                 "service": default_service_block(workers=2),
                 "run": {
@@ -68,14 +77,15 @@ class ConfigServiceModeTests(unittest.TestCase):
                     "provider_url": "http://localhost:11434",
                     "project_root": "workspace/project",
                     "commands": {},
-                    "command_profile": "python-playground",
+                    "command_profile": "playground-python",
+                    "command_profiles_path": "profiles.yaml",
                 },
             }
             cfg = load_config(write_config(root, payload))
             self.assertEqual(cfg.service_mode, "serve")
             self.assertEqual(cfg.service_workers, 2)
             self.assertEqual(cfg.run.model, "test-model")
-            self.assertEqual(cfg.run.command_profile, "python-playground")
+            self.assertEqual(cfg.run.command_profile, "playground-python")
             self.assertEqual(
                 cfg.allowed_shell_commands,
                 ("python main.py", "python test.py"),

@@ -40,7 +40,8 @@ If `env_file` is provided, values are resolved in this order:
     "provider_url": "http://localhost:11434",
     "project_root": "playground",
     "commands": {},
-    "command_profile": "python-playground"
+    "command_profile": "playground-python",
+    "command_profiles_path": "playground.command-profiles.yaml"
   }
 }
 ```

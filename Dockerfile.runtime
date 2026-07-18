@@ -7,15 +7,10 @@ WORKDIR /opt/lllars
 
 COPY . .
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends bash \
-    && rm -rf /var/lib/apt/lists/* \
-    && (command -v bash >/dev/null || command -v sh >/dev/null) \
-    && pip install --no-cache-dir . \
-    && chmod +x /opt/lllars/docker/runtime-entrypoint.sh \
-    && mkdir -p /config /work /artifacts /opt/lllars/defaults/config /opt/lllars/defaults/work \
-    && cp /opt/lllars/docker/runtime.container.json /opt/lllars/defaults/config/ \
-    && cp /opt/lllars/.env.runtime.example /opt/lllars/defaults/config/ \
-    && cp -R /opt/lllars/playground/. /opt/lllars/defaults/work/
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends bash
+RUN rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir .
+RUN chmod +x /opt/lllars/docker/runtime-entrypoint.sh
 
 ENTRYPOINT ["/opt/lllars/docker/runtime-entrypoint.sh"]

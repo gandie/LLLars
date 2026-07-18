@@ -65,8 +65,9 @@ lllars serve --config .\playground.split.example.json --host 127.0.0.1 --port 80
 ## External Command Profiles
 
 Command profiles can be extended from local JSON or YAML without code edits.
-Built-in profiles are always available, and `run.command_profiles_path` is merged
-on top with conflict validation.
+Only the minimal built-in profile (`none`) is always available. Use
+`run.command_profiles_path` for project-specific profiles with conflict
+validation.
 
 Example run config fields:
 

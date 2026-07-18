@@ -27,7 +27,10 @@ Runtime config uses `env_file=/config/.env.runtime`.
 ## Behavior Notes
 
 - Image is built from `Dockerfile.runtime`.
-- Startup seeds defaults into mounted volumes on first run.
+- Entrypoint does not copy runtime config/profile/env files into mounted volumes.
+- Service starts with `--config /opt/lllars/docker/runtime.container.json`.
+- Docker runtime command profiles are loaded from `/opt/lllars/docker/runtime.command-profiles.yaml`.
+- In serve mode, when `run.project_root` is not set, effective project root resolves to `service.mount_work_root` (`/work`). Mount your workspace content there when needed.
 - Serve startup only needs `service` settings; `run` fields are needed at job submit time.
 - Container startup reports detected shell diagnostics and fails fast if no supported shell exists.
 

@@ -35,7 +35,10 @@ class ConfigCommandProfileTests(unittest.TestCase):
             payload = _profile_payload(root, "profiles.json", "lint-only")
             cfg = load_config(write_config(root, payload))
             self.assertEqual(cfg.command_profile, "lint-only")
-            self.assertEqual(cfg.allowed_shell_commands, ("python -m pytest -q",))
+            self.assertEqual(
+                cfg.allowed_shell_commands,
+                ("python -m pytest -q",),
+            )
 
     def test_external_command_profile_is_loaded_from_yaml(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -47,19 +50,24 @@ class ConfigCommandProfileTests(unittest.TestCase):
             payload = _profile_payload(root, "profiles.yaml", "lint-only")
             cfg = load_config(write_config(root, payload))
             self.assertEqual(cfg.command_profile, "lint-only")
-            self.assertEqual(cfg.allowed_shell_commands, ("python -m pytest -q",))
+            self.assertEqual(
+                cfg.allowed_shell_commands,
+                ("python -m pytest -q",),
+            )
 
-    def test_external_profile_conflicting_with_builtin_is_rejected(self) -> None:
+    def test_external_profile_conflicting_with_builtin_is_rejected(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = _workspace_root(temp_dir)
             (root / "profiles.json").write_text(
-                '{"python-playground": ["python -m pytest -q"]}',
+                '{"none": ["python -m pytest -q"]}',
                 encoding="utf-8",
             )
             payload = _profile_payload(
                 root,
                 "profiles.json",
-                "python-playground",
+                "none",
             )
             with self.assertRaisesRegex(
                 ValueError,

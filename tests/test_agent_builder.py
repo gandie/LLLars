@@ -24,7 +24,7 @@ class AgentBuilderShellRunnerTests(unittest.TestCase):
             project_root=Path("."),
             shell_mode="auto",
             shell_override=None,
-            command_profile="python-playground",
+            command_profile="none",
             test_command="python test.py",
             eval_command=None,
         )

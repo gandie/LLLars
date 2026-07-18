@@ -28,7 +28,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
                 model="test-model",
                 provider_url="http://localhost:11434",
                 project_root=".",
-                command_profile="python-playground",
+                command_profile="playground-python",
                 test_command="python test.py",
                 expected_shells=("bash", "sh"),
                 poll_interval_sec=0.001,
@@ -38,7 +38,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(len(harness.submissions), 1)
         run_payload = harness.submissions[0]["run"]
-        self.assertEqual(run_payload["command_profile"], "python-playground")
+        self.assertEqual(run_payload["command_profile"], "playground-python")
         self.assertEqual(run_payload["test_command"], "python test.py")
 
     def test_run_smoke_test_returns_one_on_failed_terminal_state(self) -> None:
@@ -49,7 +49,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
                 model="test-model",
                 provider_url="http://localhost:11434",
                 project_root=".",
-                command_profile="python-playground",
+                command_profile="playground-python",
                 test_command="python test.py",
                 expected_shells=("bash", "sh"),
                 poll_interval_sec=0.001,
@@ -68,7 +68,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
                 model="test-model",
                 provider_url="http://localhost:11434",
                 project_root=".",
-                command_profile="python-playground",
+                command_profile="playground-python",
                 test_command="python test.py",
                 expected_shells=("bash", "sh"),
                 poll_interval_sec=0.001,
@@ -89,7 +89,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
                     model="test-model",
                     provider_url="http://localhost:11434",
                     project_root=".",
-                    command_profile="python-playground",
+                    command_profile="playground-python",
                     test_command="python test.py",
                     expected_shells=("bash", "sh"),
                     poll_interval_sec=0.01,
@@ -116,7 +116,7 @@ class RuntimeApiSmokeScriptTests(unittest.TestCase):
                 model="test-model",
                 provider_url="http://localhost:11434",
                 project_root=".",
-                command_profile="python-playground",
+                command_profile="playground-python",
                 test_command="python test.py",
                 expected_shells=("bash", "sh"),
                 poll_interval_sec=0.001,

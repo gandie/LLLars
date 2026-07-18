@@ -181,7 +181,7 @@ def main() -> None:
     parser.add_argument("--project-root", default=".")
     parser.add_argument(
         "--command-profile",
-        default="python-playground",
+        default="playground-python",
     )
     parser.add_argument(
         "--test-command",

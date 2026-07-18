@@ -26,12 +26,22 @@ class ConfigRuntimePathTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / "workspace" / "project").mkdir(parents=True)
+            (root / "profiles.yaml").write_text(
+                (
+                    "profiles:\n"
+                    "  playground-python:\n"
+                    "    - python main.py\n"
+                    "    - python test.py\n"
+                ),
+                encoding="utf-8",
+            )
             payload = base_config(
                 project_root="workspace/project", mount_work_root="workspace"
             )
-            payload["run"]["command_profile"] = "python-playground"
+            payload["run"]["command_profile"] = "playground-python"
+            payload["run"]["command_profiles_path"] = "profiles.yaml"
             cfg = load_config(write_config(root, payload))
-            self.assertEqual(cfg.command_profile, "python-playground")
+            self.assertEqual(cfg.command_profile, "playground-python")
             self.assertEqual(
                 cfg.allowed_shell_commands,
                 ("python main.py", "python test.py"),

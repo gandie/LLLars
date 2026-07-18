@@ -9,10 +9,6 @@ from lllars_core.config.models import DEFAULT_COMMAND_PROFILE
 
 COMMAND_PROFILE_REGISTRY = {
     "none": (),
-    "python-playground": (
-        "python main.py",
-        "python test.py",
-    ),
 }
 
 

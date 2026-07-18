@@ -10,5 +10,9 @@
     "mount_artifacts_root": "/artifacts",
     "queue_backend": "inmemory",
     "network_policy": "inherit"
+  },
+  "run": {
+    "command_profile": "playground-python",
+    "command_profiles_path": "/opt/lllars/docker/runtime.command-profiles.yaml"
   }
 }
