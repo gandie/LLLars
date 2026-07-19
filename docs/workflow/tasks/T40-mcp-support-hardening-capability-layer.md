@@ -1,8 +1,6 @@
 # T40 MCP Support Hardening and Capability Layer
 
 ## Metadata
-- Status: Proposed
-- Priority: P1
 - Owner: unassigned
 - Created: 2026-07-16
 - Updated: 2026-07-18

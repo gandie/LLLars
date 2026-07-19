@@ -1,8 +1,6 @@
 # T41 Tooling and MCP Operator Docs
 
 ## Metadata
-- Status: Proposed
-- Priority: P2
 - Owner: unassigned
 - Created: 2026-07-16
 - Updated: 2026-07-18

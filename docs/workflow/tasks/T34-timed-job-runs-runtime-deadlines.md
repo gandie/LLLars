@@ -1,8 +1,6 @@
 # T34 Timed Job Runs (Runtime Deadlines)
 
 ## Metadata
-- Status: Proposed
-- Priority: P1
 - Owner: unassigned
 - Created: 2026-07-16
 - Updated: 2026-07-18
