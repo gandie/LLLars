@@ -7,7 +7,6 @@ from lllars_core.runtime.job_runner import (
 )
 from lllars_core.runtime.service import RuntimeService
 
-
 __all__ = [
     "RuntimeService",
     "create_runtime_app",

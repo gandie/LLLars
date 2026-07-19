@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import unittest
+from datetime import datetime
 
 from lllars_core.job_store import InMemoryJobStore, InvalidTransitionError
 from lllars_core.runtime.models import JobSpec, RunResult
@@ -16,6 +17,20 @@ def _job_spec(prompt: str = "hello") -> JobSpec:
             "project_root": ".",
             "command_profile": "none",
         },
+    )
+
+
+def _scheduled_job_spec(schedule: str = "every:1m") -> JobSpec:
+    return JobSpec(
+        prompt="scheduled",
+        run={
+            "model": "test-model",
+            "provider_url": "http://localhost:11434",
+            "project_root": ".",
+            "command_profile": "none",
+        },
+        schedule=schedule,
+        trigger_source="scheduled",
     )
 
 
@@ -129,6 +144,46 @@ class InMemoryJobStoreTests(unittest.TestCase):
         if final_record.status == "canceled":
             self.assertIsNone(final_record.result)
             self.assertIsNotNone(final_record.error)
+
+    def test_create_persists_schedule_next_run_metadata(self) -> None:
+        store = InMemoryJobStore()
+        next_run_at = datetime(2030, 1, 1, 10, 0, 0)
+        created = store.create(
+            _scheduled_job_spec(),
+            job_id="job-sched",
+            next_run_at=next_run_at,
+        )
+
+        self.assertEqual(created.next_run_at, next_run_at)
+        status = created.as_status()
+        self.assertEqual(status.schedule, "every:1m")
+        self.assertEqual(status.next_run_at, next_run_at)
+        self.assertEqual(status.run_count, 0)
+
+    def test_mark_running_sets_last_run_and_increments_count(self) -> None:
+        store = InMemoryJobStore()
+        store.create(_job_spec(), job_id="job-1")
+
+        started_at = datetime(2030, 1, 1, 10, 5, 0)
+        record = store.mark_running("job-1", started_at=started_at)
+
+        self.assertEqual(record.status, "running")
+        self.assertEqual(record.last_run_at, started_at)
+        self.assertEqual(record.run_count, 1)
+
+    def test_reschedule_recurring_returns_job_to_queued(self) -> None:
+        store = InMemoryJobStore()
+        store.create(_scheduled_job_spec(), job_id="job-1")
+        store.mark_running("job-1", started_at=datetime(2030, 1, 1, 8, 0, 0))
+        store.update("job-1", status="failed", error=None)
+
+        next_run_at = datetime(2030, 1, 1, 9, 0, 0)
+        record = store.reschedule_recurring("job-1", next_run_at=next_run_at)
+
+        self.assertEqual(record.status, "queued")
+        self.assertEqual(record.next_run_at, next_run_at)
+        self.assertIsNone(record.result)
+        self.assertIsNone(record.error)
 
 
 if __name__ == "__main__":

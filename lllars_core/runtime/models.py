@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 from typing import Any, Literal
-
 from dataclasses import dataclass
-
 from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
 from lllars_core.config import RunConfig
+from lllars_core.runtime.scheduler import parse_interval_schedule
 
 
 @dataclass(frozen=True)
@@ -27,22 +24,9 @@ class ShellRuntimeTelemetry:
     invocation_mode: str
 
 
-JobState = Literal[
-    "queued",
-    "running",
-    "succeeded",
-    "failed",
-    "canceled",
-]
-
-
+JobState = Literal["queued", "running", "succeeded", "failed", "canceled"]
 TriggerSource = Literal[
-    "submit",
-    "scheduled",
-    "manual",
-    "api",
-    "retry",
-    "external",
+    "submit", "scheduled", "manual", "api", "retry", "external"
 ]
 
 
@@ -103,6 +87,9 @@ class JobSpec(_StrictModel):
         if self.schedule is not None and self.run_at is not None:
             raise ValueError("run_at and schedule are mutually exclusive")
 
+        if self.schedule is not None:
+            parse_interval_schedule(self.schedule)
+
         if self.schedule is not None and self.trigger_source != "scheduled":
             raise ValueError(
                 "trigger_source must be 'scheduled' when schedule is provided"
@@ -142,6 +129,11 @@ class ErrorEnvelope(_StrictModel):
 class JobStatus(_StrictModel):
     job_id: str = Field(min_length=1)
     status: JobState
+    run_at: datetime | None = None
+    schedule: str | None = None
+    next_run_at: datetime | None = None
+    last_run_at: datetime | None = None
+    run_count: int = Field(default=0, ge=0)
     result: RunResult | None = None
     error: ErrorEnvelope | None = None
 
@@ -174,7 +166,6 @@ RUN_CFG_OVERRIDE_FIELDS: tuple[str, ...] = (
     "shell_override",
 )
 
-
 HARNESS_RUN_SYNC_FIELDS: tuple[str, ...] = (
     "eval_expect_json",
     "eval_success_pass_rate",
@@ -201,7 +192,6 @@ HARNESS_RUN_SYNC_FIELDS: tuple[str, ...] = (
     "shell_mode",
     "shell_override",
 )
-
 
 __all__ = [
     "ErrorEnvelope",

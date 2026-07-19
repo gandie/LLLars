@@ -37,18 +37,20 @@ def submit_job(
     prompt: str = "hello",
     timeout_sec: int = 5,
     run_overrides: dict[str, Any] | None = None,
+    spec_overrides: dict[str, Any] | None = None,
 ) -> str:
     run_payload = base_run_payload()
     if run_overrides:
         run_payload.update(run_overrides)
-    submit_resp = client.post(
-        "/jobs",
-        json={
-            "prompt": prompt,
-            "run": run_payload,
-            "timeout_sec": timeout_sec,
-        },
-    )
+    submit_payload = {
+        "prompt": prompt,
+        "run": run_payload,
+        "timeout_sec": timeout_sec,
+    }
+    if spec_overrides:
+        submit_payload.update(spec_overrides)
+
+    submit_resp = client.post("/jobs", json=submit_payload)
     assert submit_resp.status_code == 202
     return submit_resp.json()["job_id"]
 
@@ -64,6 +66,24 @@ def wait_for_terminal_status(
         assert status_resp.status_code == 200
         payload = status_resp.json()
         if payload["status"] in {"succeeded", "failed", "canceled"}:
+            return payload
+        time.sleep(0.05)
+    return payload
+
+
+def wait_for_status(
+    client: TestClient,
+    job_id: str,
+    *,
+    statuses: set[str],
+    attempts: int = 80,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for _ in range(attempts):
+        status_resp = client.get(f"/jobs/{job_id}")
+        assert status_resp.status_code == 200
+        payload = status_resp.json()
+        if payload["status"] in statuses:
             return payload
         time.sleep(0.05)
     return payload

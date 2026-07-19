@@ -1,59 +1,30 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from datetime import datetime
 from threading import RLock
 from time import time
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
 from uuid import uuid4
 
-from lllars_core.runtime.models import (
-    ErrorEnvelope,
-    JobSpec,
-    JobState,
-    JobStatus,
-    RunResult,
+from lllars_core.job_store_record import (
+    TERMINAL_STATES,
+    InvalidTransitionError,
+    JobNotFoundError,
+    JobRecord,
+    JobStoreError,
+    clone_record,
+    validate_payload,
+    validate_transition,
 )
+from dataclasses import replace
 
-TERMINAL_STATES = frozenset({"succeeded", "failed", "canceled"})
-_ALLOWED_TRANSITIONS: dict[JobState, frozenset[JobState]] = {
-    "queued": frozenset({"running", "canceled"}),
-    "running": frozenset({"succeeded", "failed", "canceled"}),
-    "succeeded": frozenset(),
-    "failed": frozenset(),
-    "canceled": frozenset(),
-}
-
-
-class JobStoreError(RuntimeError):
-    """Base error for in-memory job store operations."""
-
-
-class JobNotFoundError(JobStoreError):
-    """Raised when a job id does not exist in the store."""
-
-
-class InvalidTransitionError(JobStoreError):
-    """Raised when a requested state transition is not valid."""
-
-
-@dataclass(frozen=True, slots=True)
-class JobRecord:
-    job_id: str
-    spec: JobSpec
-    status: JobState
-    created_at: float
-    updated_at: float
-    result: RunResult | None = None
-    error: ErrorEnvelope | None = None
-    artifacts: dict[str, str] = field(default_factory=dict)
-
-    def as_status(self) -> JobStatus:
-        return JobStatus(
-            job_id=self.job_id,
-            status=self.status,
-            result=self.result,
-            error=self.error,
-        )
+if TYPE_CHECKING:
+    from lllars_core.runtime.models import (
+        ErrorEnvelope,
+        JobSpec,
+        JobState,
+        RunResult,
+    )
 
 
 class InMemoryJobStore:
@@ -66,6 +37,7 @@ class InMemoryJobStore:
         spec: JobSpec,
         *,
         job_id: str | None = None,
+        next_run_at: datetime | None = None,
     ) -> JobRecord:
         resolved_job_id = job_id or f"job-{uuid4().hex}"
         now = time()
@@ -75,25 +47,25 @@ class InMemoryJobStore:
             status="queued",
             created_at=now,
             updated_at=now,
+            next_run_at=next_run_at,
         )
-
         with self._lock:
             if resolved_job_id in self._jobs:
                 raise JobStoreError(f"Job already exists: {resolved_job_id}")
             self._jobs[resolved_job_id] = record
-            return self._clone_record(record)
+            return clone_record(record)
 
     def get(self, job_id: str) -> JobRecord | None:
         with self._lock:
             record = self._jobs.get(job_id)
-            return None if record is None else self._clone_record(record)
+            return None if record is None else clone_record(record)
 
     def list(self) -> list[JobRecord]:
         with self._lock:
-            return [
-                self._clone_record(record)
-                for record in self._jobs.values()
-            ]
+            cloned: list[JobRecord] = []
+            for record in self._jobs.values():
+                cloned.append(clone_record(record))
+            return cloned
 
     def update(
         self,
@@ -109,10 +81,8 @@ class InMemoryJobStore:
             next_status = status or current.status
 
             if status is not None and status != current.status:
-                self._validate_transition(current.status, status)
-
-            self._validate_payload(next_status, result, error, current)
-
+                validate_transition(current.status, status)
+            validate_payload(next_status, result, error, current)
             merged_artifacts = dict(current.artifacts)
             if artifacts:
                 merged_artifacts.update(artifacts)
@@ -126,7 +96,50 @@ class InMemoryJobStore:
                 updated_at=time(),
             )
             self._jobs[job_id] = updated
-            return self._clone_record(updated)
+            return clone_record(updated)
+
+    def mark_running(
+        self,
+        job_id: str,
+        *,
+        started_at: datetime,
+    ) -> JobRecord:
+        with self._lock:
+            current = self._require_job(job_id)
+            validate_transition(current.status, "running")
+            updated = replace(
+                current,
+                status="running",
+                last_run_at=started_at,
+                next_run_at=None,
+                run_count=current.run_count + 1,
+                updated_at=time(),
+            )
+            self._jobs[job_id] = updated
+            return clone_record(updated)
+
+    def reschedule_recurring(
+        self,
+        job_id: str,
+        *,
+        next_run_at: datetime,
+    ) -> JobRecord:
+        with self._lock:
+            current = self._require_job(job_id)
+            if current.status == "canceled":
+                return clone_record(current)
+            if current.spec.schedule is None:
+                return clone_record(current)
+            updated = replace(
+                current,
+                status="queued",
+                result=None,
+                error=None,
+                next_run_at=next_run_at,
+                updated_at=time(),
+            )
+            self._jobs[job_id] = updated
+            return clone_record(updated)
 
     def cancel(
         self,
@@ -134,10 +147,12 @@ class InMemoryJobStore:
         *,
         reason: str = "Canceled by operator",
     ) -> JobRecord:
+        from lllars_core.runtime.models import ErrorEnvelope
+
         with self._lock:
             current = self._require_job(job_id)
             if current.status in TERMINAL_STATES:
-                return self._clone_record(current)
+                return clone_record(current)
 
             updated = replace(
                 current,
@@ -146,60 +161,13 @@ class InMemoryJobStore:
                 updated_at=time(),
             )
             self._jobs[job_id] = updated
-            return self._clone_record(updated)
+            return clone_record(updated)
 
     def _require_job(self, job_id: str) -> JobRecord:
         record = self._jobs.get(job_id)
         if record is None:
             raise JobNotFoundError(f"Unknown job_id: {job_id}")
         return record
-
-    @staticmethod
-    def _validate_transition(current: JobState, requested: JobState) -> None:
-        if requested not in _ALLOWED_TRANSITIONS[current]:
-            raise InvalidTransitionError(
-                f"Invalid job transition: {current} -> {requested}"
-            )
-
-    @staticmethod
-    def _validate_payload(
-        status: JobState,
-        result: RunResult | None,
-        error: ErrorEnvelope | None,
-        current: JobRecord,
-    ) -> None:
-        effective_result = result if result is not None else current.result
-        effective_error = error if error is not None else current.error
-
-        if status == "succeeded" and effective_result is None:
-            raise ValueError("status='succeeded' requires a RunResult")
-        if status in {"queued", "running"} and effective_result is not None:
-            raise ValueError("RunResult can only be set for terminal states")
-        if (
-            status in {"queued", "running", "succeeded"}
-            and effective_error is not None
-        ):
-            raise ValueError(
-                "ErrorEnvelope is only valid for failed/canceled jobs"
-            )
-
-    @staticmethod
-    def _clone_record(record: JobRecord) -> JobRecord:
-        return replace(
-            record,
-            spec=record.spec.model_copy(deep=True),
-            result=(
-                None
-                if record.result is None
-                else record.result.model_copy(deep=True)
-            ),
-            error=(
-                None
-                if record.error is None
-                else record.error.model_copy(deep=True)
-            ),
-            artifacts=dict(record.artifacts),
-        )
 
 
 __all__ = [

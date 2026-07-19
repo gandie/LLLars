@@ -250,6 +250,14 @@
           <input id="timeoutSec" type="number" min="1" value="600" />
         </div>
         <div>
+          <label for="runAt">Run At (optional)</label>
+          <input id="runAt" type="datetime-local" />
+        </div>
+        <div>
+          <label for="schedule">Schedule (optional)</label>
+          <input id="schedule" placeholder="every:15m" />
+        </div>
+        <div>
           <label for="evalExpectJson">Eval Expect JSON</label>
           <input id="evalExpectJson" type="checkbox" />
         </div>
@@ -384,6 +392,8 @@
     const projectRootInput = document.getElementById("projectRoot");
     const commandProfileInput = document.getElementById("commandProfile");
     const timeoutInput = document.getElementById("timeoutSec");
+    const runAtInput = document.getElementById("runAt");
+    const scheduleInput = document.getElementById("schedule");
     const evalExpectJsonInput = document.getElementById("evalExpectJson");
     const evalSuccessPassRateInput = document.getElementById("evalSuccessPassRate");
     const usageRequestLimitInput = document.getElementById("usageRequestLimit");
@@ -448,6 +458,19 @@
       setCancelAvailability(status);
     }
 
+    function summarizeTiming(payload) {
+      if (!payload) {
+        return "";
+      }
+      if (payload.next_run_at) {
+        return ` | next run: ${payload.next_run_at}`;
+      }
+      if (payload.run_at) {
+        return ` | run at: ${payload.run_at}`;
+      }
+      return "";
+    }
+
     function stopPolling() {
       if (pollingHandle !== null) {
         window.clearInterval(pollingHandle);
@@ -480,7 +503,10 @@
       }
       const payload = await response.json();
       const status = payload.status;
-      setStatus(status, `Last update: ${new Date().toLocaleTimeString()}`);
+      setStatus(
+        status,
+        `Last update: ${new Date().toLocaleTimeString()}${summarizeTiming(payload)}`,
+      );
 
       if (status === "succeeded" || status === "failed" || status === "canceled") {
         stopPolling();
@@ -535,6 +561,18 @@
         timeout_sec: Number(timeoutInput.value || "600"),
       };
 
+      const runAtRaw = String(runAtInput.value || "").trim();
+      const scheduleRaw = String(scheduleInput.value || "").trim();
+      if (runAtRaw) {
+        body.run_at = runAtRaw;
+      }
+      if (scheduleRaw) {
+        body.schedule = scheduleRaw;
+      }
+      if (runAtRaw || scheduleRaw) {
+        body.trigger_source = "scheduled";
+      }
+
       const response = await fetch("/jobs", {
         method: "POST",
         headers: {
@@ -551,7 +589,7 @@
       const payload = await response.json();
       currentJobId = payload.job_id;
       jobIdEl.textContent = currentJobId;
-      setStatus(payload.status, "Job accepted");
+      setStatus(payload.status, `Job accepted${summarizeTiming(payload)}`);
       await fetchLogs(currentJobId);
 
       pollingHandle = window.setInterval(async () => {

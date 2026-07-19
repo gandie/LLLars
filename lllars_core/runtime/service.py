@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from threading import Lock, Thread
 
 from fastapi import HTTPException, status
@@ -23,6 +24,10 @@ from lllars_core.runtime.models import (
     JobStatus,
     RunResult,
 )
+from lllars_core.runtime.scheduler import (
+    RuntimeScheduler,
+    next_scheduled_time,
+)
 
 
 @dataclass
@@ -33,21 +38,59 @@ class RuntimeService:
     _threads_lock: Lock = field(default_factory=Lock)
     _cancel_requests: set[str] = field(default_factory=set)
     _cancel_lock: Lock = field(default_factory=Lock)
+    _scheduler: RuntimeScheduler | None = None
+
+    def __post_init__(self) -> None:
+        self._scheduler = RuntimeScheduler(
+            list_jobs=self.store.list,
+            is_job_active=self._is_job_active,
+            start_job=self._start_scheduled_job,
+        )
+        self._scheduler.start()
 
     def submit(self, spec: JobSpec) -> JobStatus:
-        record = self.store.create(spec)
+        next_run_at = self._initial_next_run_at(spec)
+        record = self.store.create(spec, next_run_at=next_run_at)
         self._clear_cancel_request(record.job_id)
+
+        if self._should_start_immediately(spec):
+            self._start_job_thread(record.job_id)
+
+        return record.as_status()
+
+    @staticmethod
+    def _should_start_immediately(spec: JobSpec) -> bool:
+        return spec.run_at is None and spec.schedule is None
+
+    def _initial_next_run_at(self, spec: JobSpec) -> datetime | None:
+        if spec.run_at is not None:
+            return spec.run_at
+        if spec.schedule is not None:
+            return next_scheduled_time(spec.schedule, now=datetime.now())
+        return None
+
+    def _start_job_thread(self, job_id: str) -> None:
+        record = self.store.get(job_id)
+        if record is None:
+            return
 
         thread = Thread(
             target=self._run_job,
-            args=(record.job_id, spec),
-            name=f"runtime-job-{record.job_id}",
+            args=(job_id, record.spec),
+            name=f"runtime-job-{job_id}",
             daemon=True,
         )
         with self._threads_lock:
-            self._threads[record.job_id] = thread
+            self._threads[job_id] = thread
         thread.start()
-        return record.as_status()
+
+    def _start_scheduled_job(self, job_id: str) -> None:
+        self._start_job_thread(job_id)
+
+    def _is_job_active(self, job_id: str) -> bool:
+        with self._threads_lock:
+            thread = self._threads.get(job_id)
+            return thread is not None and thread.is_alive()
 
     def status(self, job_id: str) -> JobStatus:
         record = self.store.get(job_id)
@@ -78,7 +121,7 @@ class RuntimeService:
 
     def _run_job(self, job_id: str, spec: JobSpec) -> None:
         try:
-            self.store.update(job_id, status="running")
+            self.store.mark_running(job_id, started_at=datetime.now())
         except InvalidTransitionError:
             self._cleanup_thread(job_id)
             return
@@ -97,8 +140,16 @@ class RuntimeService:
         except Exception as exc:
             handle_exception(self, job_id, exc)
         finally:
+            self._reschedule_if_recurring(job_id, spec)
             self._cleanup_thread(job_id)
             self._clear_cancel_request(job_id)
+
+    def _reschedule_if_recurring(self, job_id: str, spec: JobSpec) -> None:
+        if spec.schedule is None:
+            return
+
+        next_run_at = next_scheduled_time(spec.schedule, now=datetime.now())
+        self.store.reschedule_recurring(job_id, next_run_at=next_run_at)
 
     def _mark_cancel_requested(self, job_id: str) -> None:
         with self._cancel_lock:
