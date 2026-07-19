@@ -108,6 +108,49 @@ flowchart LR
   - MCP preflight
 - Per-job artifacts for post-mortem analysis.
 
+## Scheduling and Triggering Contract (Prep)
+This section defines schema-level contracts for upcoming scheduler work. It does not change current runtime behavior: submit requests without scheduling fields continue to execute immediately.
+
+### Lifecycle Terms
+- submitted: Request accepted by API or CLI and materialized as `JobSpec`.
+- queued: Job registered and waiting for execution.
+- running: Job is currently executing.
+- terminal: One of `succeeded`, `failed`, or `canceled`.
+
+Scheduling/triggering terms:
+- immediate: submit-now flow where no `run_at` or `schedule` is provided.
+- timed: one-shot delayed execution at `run_at`.
+- scheduled: policy-driven execution described by `schedule`.
+- trigger source: origin hint captured as `trigger_source`.
+
+### JobSpec Contract Fields
+- `deadline_at` (optional): latest acceptable execution time.
+- `run_at` (optional): one-shot planned execution time.
+- `schedule` (optional): opaque strategy selector/expression string.
+- `trigger_source` (required with default): origin marker; values: `submit`, `scheduled`, `manual`, `api`, `retry`, `external`.
+
+### Strategy-First Direction
+- `schedule` is intentionally strategy-oriented, not cron-oriented.
+- This runtime does not aim to reimplement cron infrastructure.
+- A cron-style strategy may exist later, but it is not the primary path.
+- External signals are first-class scheduling inputs via `trigger_source`.
+
+Example target pattern:
+- `schedule = "carbon-aware"`
+- `deadline_at = "2026-07-25T23:59:59"`
+- `trigger_source = "external"` where an external carbon-awareness signal chooses the actual run window before deadline.
+
+### Contract Invariants
+- `run_at` and `schedule` are mutually exclusive.
+- If both `run_at` and `deadline_at` are provided, `run_at <= deadline_at`.
+- If `schedule` is provided, `trigger_source` must be `scheduled`.
+- If `trigger_source` is `scheduled`, at least one of `run_at` or `schedule` must be present.
+
+### Immediate-Submit Compatibility
+- Existing submit payloads that only include `prompt`, `run`, `timeout_sec`, and `config_path` remain valid.
+- Runtime execution path remains submit-now unless future scheduler orchestration consumes `run_at` or `schedule`.
+- No endpoint additions are required for this contract-prep slice.
+
 ## Implementation Framework (Now Active)
 - Primary implementation agent: Friday.
 - Skills:

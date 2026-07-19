@@ -4,7 +4,9 @@ from typing import Any, Literal
 
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lllars_core.config import RunConfig
 
@@ -34,6 +36,16 @@ JobState = Literal[
 ]
 
 
+TriggerSource = Literal[
+    "submit",
+    "scheduled",
+    "manual",
+    "api",
+    "retry",
+    "external",
+]
+
+
 class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -43,6 +55,56 @@ class JobSpec(_StrictModel):
     run: RunConfig
     timeout_sec: int = Field(default=600, gt=0)
     config_path: str | None = None
+    deadline_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Latest acceptable completion/start boundary "
+            "for strategy scheduling."
+        ),
+    )
+    run_at: datetime | None = Field(
+        default=None,
+        description="One-shot planned execution time.",
+    )
+    schedule: str | None = Field(
+        default=None,
+        min_length=1,
+        description=(
+            "Opaque schedule strategy selector or expression "
+            "(for example, carbon-aware)."
+        ),
+    )
+    trigger_source: TriggerSource = "submit"
+
+    @model_validator(mode="after")
+    def validate_schedule_contract(self) -> JobSpec:
+        if self.schedule is not None and self.run_at is not None:
+            raise ValueError("run_at and schedule are mutually exclusive")
+
+        if (
+            self.deadline_at is not None
+            and self.run_at is not None
+            and self.run_at > self.deadline_at
+        ):
+            raise ValueError(
+                "run_at must be less than or equal to deadline_at"
+            )
+
+        if self.schedule is not None and self.trigger_source != "scheduled":
+            raise ValueError(
+                "trigger_source must be 'scheduled' when schedule is provided"
+            )
+
+        if (
+            self.trigger_source == "scheduled"
+            and self.schedule is None
+            and self.run_at is None
+        ):
+            raise ValueError(
+                "scheduled trigger_source requires schedule or run_at"
+            )
+
+        return self
 
 
 class RunResult(_StrictModel):
@@ -138,4 +200,5 @@ __all__ = [
     "RunCommandSettings",
     "RunResult",
     "ShellRuntimeTelemetry",
+    "TriggerSource",
 ]

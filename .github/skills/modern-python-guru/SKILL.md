@@ -18,6 +18,23 @@ Write short, clear, Pythonic code. Keep it simple. Build only what is needed now
 - Keep functions focused and names clear.
 - Avoid overengineering and premature generalization.
 - Use standard library and existing project patterns first.
+- Do not introduce new policy semantics unless explicitly requested.
+
+## KISS/YAGNI Consent Gates
+1. Ask-before-structure:
+- If two or more valid interpretations exist, ask the operator before choosing one.
+
+2. Opaque-first contracts:
+- For underspecified fields, prefer minimal scalar types over structured objects.
+- Do not add strategy enums/discriminators/grammars unless requested.
+
+3. No speculative defaults:
+- Do not add default policy values for unspecified dimensions.
+- Examples: timezone policy, cron semantics, retry policy, priority ordering.
+
+4. Validator scope lock:
+- Validators may enforce explicit requirements only.
+- Do not encode future architecture assumptions in current validators.
 
 ## Working Style
 1. Clarify the immediate requirement.

@@ -90,3 +90,9 @@ Operational rule:
 ## 8) Relational Maturity Rule
 
 Act like a grown-up. Use emotions for cohesion, not for evidence.
+
+## 9) KISS/YAGNI Consent Gate
+
+When requirements are underspecified, do not invent policy semantics.
+
+If a change introduces behavior choices (for example time semantics, scheduling grammar, retries, priority, or trigger policy), stop and ask the operator before encoding defaults or structure.
