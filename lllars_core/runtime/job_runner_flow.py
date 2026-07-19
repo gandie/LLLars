@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from lllars_core.config import HarnessConfig
+from lllars_core.runtime import final_result
 from lllars_core.runtime import results as runtime_results
 from lllars_core.runtime.models import JobSpec, RunResult
 from lllars_core.shell import ShellSelection
@@ -47,6 +48,58 @@ def canceled_result_or_none(
     )
 
 
+def timeout_result_or_none(
+    *,
+    start: float,
+    outcome: tuple[str, str, int, dict[str, object], list[str]],
+    selection: ShellSelection,
+    shell_mode: str,
+    shell_override: str | None,
+) -> RunResult | None:
+    stdout, stderr, returncode, telemetry, thought_trace = outcome
+    if int(returncode) != 124:
+        return None
+    return runtime_results.timeout_result(
+        start=start,
+        agent_stdout=stdout,
+        agent_stderr=stderr,
+        agent_rc=returncode,
+        thought_trace=thought_trace,
+        telemetry=telemetry,
+        selection=selection,
+        shell_mode=shell_mode,
+        shell_override=shell_override,
+    )
+
+
+def terminal_result_or_none(
+    *,
+    cancel_requested: Callable[[], bool] | None,
+    start: float,
+    outcome: tuple[str, str, int, dict[str, object], list[str]],
+    selection: ShellSelection,
+    shell_mode: str,
+    shell_override: str | None,
+) -> RunResult | None:
+    canceled = canceled_result_or_none(
+        cancel_requested=cancel_requested,
+        start=start,
+        outcome=outcome,
+        selection=selection,
+        shell_mode=shell_mode,
+        shell_override=shell_override,
+    )
+    if canceled is not None:
+        return canceled
+    return timeout_result_or_none(
+        start=start,
+        outcome=outcome,
+        selection=selection,
+        shell_mode=shell_mode,
+        shell_override=shell_override,
+    )
+
+
 def finalized_result(
     *,
     start: float,
@@ -65,7 +118,7 @@ def finalized_result(
         selection,
         emit_status,
     )
-    return runtime_results.finalized_result(
+    return final_result.finalized_result(
         start=start,
         agent_stdout=stdout,
         agent_stderr=stderr,
@@ -87,4 +140,6 @@ __all__ = [
     "canceled_result_or_none",
     "finalized_result",
     "resolve_run_context",
+    "terminal_result_or_none",
+    "timeout_result_or_none",
 ]

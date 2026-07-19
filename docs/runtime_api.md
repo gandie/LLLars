@@ -64,3 +64,8 @@ Runtime payload models live in `lllars_core/runtime/models.py`:
 - `RunResult`
 - `JobStatus`
 - `ErrorEnvelope`
+
+Scheduling datetime contract for `JobSpec`:
+
+- `deadline_at` and `run_at` use naive ISO datetime strings only (`YYYY-MM-DDTHH:MM:SS`).
+- Offset-bearing values (`Z`, `+HH:MM`, `-HH:MM`) are rejected.

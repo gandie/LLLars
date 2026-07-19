@@ -40,9 +40,23 @@ class RuntimeApiSubmissionTests(unittest.TestCase):
                     "prompt": "hello",
                     "run": extended_run_payload(),
                     "timeout_sec": 5,
+                    "deadline_at": "2030-01-01T00:00:00",
                 },
             )
         self.assertEqual(submit_resp.status_code, 202)
+
+    def test_submit_rejects_timezone_aware_deadline_field(self) -> None:
+        client = make_runtime_client()
+        submit_resp = client.post(
+            "/jobs",
+            json={
+                "prompt": "hello",
+                "run": extended_run_payload(),
+                "timeout_sec": 5,
+                "deadline_at": "2030-01-01T00:00:00+00:00",
+            },
+        )
+        self.assertEqual(submit_resp.status_code, 422)
 
     def test_submit_and_poll_until_terminal_state(self) -> None:
         client = make_runtime_client()

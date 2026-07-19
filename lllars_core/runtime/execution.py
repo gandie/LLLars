@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime
+from math import ceil
 from pathlib import Path
 
-from lllars_core.runtime.models import ShellRuntimeTelemetry
+from lllars_core.runtime.models import JobSpec, ShellRuntimeTelemetry
 from lllars_core.shell import ShellSelection
 
 
@@ -139,11 +141,68 @@ def build_runtime_telemetry(
     }
 
 
+def resolve_execution_timeout(
+    spec: JobSpec,
+) -> tuple[int, dict[str, object], bool]:
+    base_timeout_sec = int(spec.timeout_sec)
+    deadline_at = spec.deadline_at
+    if deadline_at is None:
+        return base_timeout_sec, {}, False
+
+    remaining_sec = (deadline_at - _naive_now()).total_seconds()
+    expired_before_start = remaining_sec <= 0
+    effective_timeout_sec = (
+        1
+        if expired_before_start
+        else max(1, min(base_timeout_sec, int(ceil(remaining_sec))))
+    )
+    telemetry = {
+        "deadline": {
+            "deadline_at": deadline_at.isoformat(),
+            "base_timeout_sec": base_timeout_sec,
+            "effective_timeout_sec": effective_timeout_sec,
+            "remaining_sec": round(remaining_sec, 3),
+            "deadline_limited": effective_timeout_sec < base_timeout_sec,
+            "expired_before_start": expired_before_start,
+            "reached": False,
+        }
+    }
+    return effective_timeout_sec, telemetry, expired_before_start
+
+
+def mark_deadline_reached(
+    telemetry: dict[str, object],
+    *,
+    returncode: int,
+) -> dict[str, object]:
+    deadline = telemetry.get("deadline")
+    if int(returncode) != 124 or not isinstance(deadline, dict):
+        return telemetry
+    if not bool(
+        deadline.get("deadline_limited")
+        or deadline.get("expired_before_start")
+    ):
+        return telemetry
+
+    updated = dict(telemetry)
+    updated_deadline = dict(deadline)
+    updated_deadline["reached"] = True
+    updated_deadline["termination"] = "deadline_reached"
+    updated["deadline"] = updated_deadline
+    return updated
+
+
+def _naive_now() -> datetime:
+    return datetime.now()
+
+
 __all__ = [
     "build_runtime_telemetry",
     "command_cwd",
+    "mark_deadline_reached",
     "resolve_shell_policy",
     "resolve_shell_selection",
+    "resolve_execution_timeout",
     "run_eval_with_selection",
     "run_tests_with_selection",
     "shell_invocation_mode",

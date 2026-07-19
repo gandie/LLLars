@@ -68,6 +68,7 @@ Use this prompt at the start of any task session:
 ```text
 Look at task.
 Understand task, preferring codebase MCP analysis tools over broad file-by-file reading.
+If requirements contain policy ambiguity with multiple valid semantics, run forcing-line-development and stop to ask before encoding behavior.
 Ask clarifying questions if needed.
 Proceed to implementation.
 ```

@@ -7,9 +7,9 @@ from lllars_core.config import HarnessConfig, load_config
 from lllars_core.runner import run_agent_with_timeout
 from lllars_core.runtime import execution, settings
 from lllars_core.runtime import results as runtime_results
-from lllars_core.runtime.job_runner_flow import canceled_result_or_none
 from lllars_core.runtime.job_runner_flow import finalized_result
 from lllars_core.runtime.job_runner_flow import resolve_run_context
+from lllars_core.runtime.job_runner_flow import terminal_result_or_none
 from lllars_core.runtime.models import JobSpec, RunResult
 from lllars_core.shell import (
     ShellSelection,
@@ -104,31 +104,53 @@ def _run_agent(
     show_progress: bool,
     cancel_requested: Callable[[], bool] | None,
 ) -> tuple[str, str, int, dict[str, object], list[str]]:
-    return run_agent_with_timeout(
+    timeout_sec, deadline_telemetry, expired_before_start = (
+        execution.resolve_execution_timeout(spec)
+    )
+    if expired_before_start:
+        return _expired_deadline_outcome(deadline_telemetry)
+
+    (
+        stdout,
+        stderr,
+        returncode,
+        telemetry,
+        thought_trace,
+    ) = run_agent_with_timeout(
         cfg=cfg,
         prompt_text=spec.prompt,
-        timeout_sec=spec.timeout_sec,
+        timeout_sec=timeout_sec,
         show_progress=show_progress,
         cancel_requested=cancel_requested,
     )
+    merged_telemetry = _merge_deadline_telemetry(
+        telemetry,
+        deadline_telemetry,
+        returncode,
+    )
+    return stdout, stderr, returncode, merged_telemetry, thought_trace
 
 
-def _resolve_canceled(
-    *,
-    cancel_requested: Callable[[], bool] | None,
-    start: float,
-    outcome: tuple[str, str, int, dict[str, object], list[str]],
-    selection: ShellSelection,
-    shell_mode: str,
-    shell_override: str | None,
-) -> RunResult | None:
-    return canceled_result_or_none(
-        cancel_requested=cancel_requested,
-        start=start,
-        outcome=outcome,
-        selection=selection,
-        shell_mode=shell_mode,
-        shell_override=shell_override,
+def _expired_deadline_outcome(
+    deadline_telemetry: dict[str, object],
+) -> tuple[str, str, int, dict[str, object], list[str]]:
+    telemetry = execution.mark_deadline_reached(
+        deadline_telemetry,
+        returncode=124,
+    )
+    return "", "[lllars] agent timed out", 124, telemetry, []
+
+
+def _merge_deadline_telemetry(
+    runtime_telemetry: dict[str, object],
+    deadline_telemetry: dict[str, object],
+    returncode: int,
+) -> dict[str, object]:
+    merged_telemetry = dict(runtime_telemetry)
+    merged_telemetry.update(deadline_telemetry)
+    return execution.mark_deadline_reached(
+        merged_telemetry,
+        returncode=returncode,
     )
 
 
@@ -159,7 +181,7 @@ def run_job(
     )
     start = time.time()
     outcome = _run_agent(effective_cfg, spec, show_progress, cancel_requested)
-    canceled = _resolve_canceled(
+    terminal_result = terminal_result_or_none(
         cancel_requested=cancel_requested,
         start=start,
         outcome=outcome,
@@ -167,8 +189,8 @@ def run_job(
         shell_mode=shell_mode,
         shell_override=shell_override,
     )
-    if canceled is not None:
-        return canceled
+    if terminal_result is not None:
+        return terminal_result
     return finalized_result(
         start=start,
         effective_cfg=effective_cfg,

@@ -115,6 +115,39 @@ class RuntimeApiFailureTests(unittest.TestCase):
         self.assertEqual(error_payload["details"]["eval_error"], "eval failed")
         self.assertIn("shell", error_payload["details"])
 
+    def test_deadline_timeout_telemetry_marker_is_preserved(self) -> None:
+        client = make_runtime_client()
+        with patch(
+            "lllars_core.runtime.service.run_job",
+            return_value=RunResult(
+                success=False,
+                agent_returncode=124,
+                elapsed_sec=0.01,
+                agent_stdout="",
+                agent_stderr="[lllars] agent timed out",
+                runtime_telemetry={
+                    "deadline": {
+                        "deadline_at": "2030-01-01T00:00:00",
+                        "base_timeout_sec": 42,
+                        "effective_timeout_sec": 3,
+                        "remaining_sec": 2.4,
+                        "deadline_limited": True,
+                        "expired_before_start": False,
+                        "reached": True,
+                        "termination": "deadline_reached",
+                    }
+                },
+                eval_error="timeout",
+            ),
+        ):
+            job_id = submit_job(client)
+            status_payload = wait_for_terminal_status(client, job_id)
+
+        self.assertEqual(status_payload["status"], "failed")
+        deadline = status_payload["result"]["runtime_telemetry"]["deadline"]
+        self.assertTrue(deadline["reached"])
+        self.assertEqual(deadline["termination"], "deadline_reached")
+
 
 if __name__ == "__main__":
     unittest.main()

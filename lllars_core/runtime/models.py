@@ -77,9 +77,15 @@ class JobSpec(_StrictModel):
     trigger_source: TriggerSource = "submit"
 
     @model_validator(mode="after")
-    def validate_schedule_contract(self) -> JobSpec:
-        if self.schedule is not None and self.run_at is not None:
-            raise ValueError("run_at and schedule are mutually exclusive")
+    def validate_datetime_contract(self) -> JobSpec:
+        if (
+            self.deadline_at is not None
+            and self.deadline_at.tzinfo is not None
+        ):
+            raise ValueError("deadline_at must be timezone-naive")
+
+        if self.run_at is not None and self.run_at.tzinfo is not None:
+            raise ValueError("run_at must be timezone-naive")
 
         if (
             self.deadline_at is not None
@@ -89,6 +95,13 @@ class JobSpec(_StrictModel):
             raise ValueError(
                 "run_at must be less than or equal to deadline_at"
             )
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_schedule_contract(self) -> JobSpec:
+        if self.schedule is not None and self.run_at is not None:
+            raise ValueError("run_at and schedule are mutually exclusive")
 
         if self.schedule is not None and self.trigger_source != "scheduled":
             raise ValueError(

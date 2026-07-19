@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from lllars_core.runtime.models import JobSpec
@@ -10,6 +11,7 @@ def basic_spec(
     *,
     timeout_sec: int = 5,
     config_path: str | None = None,
+    deadline_at: datetime | None = None,
     run_overrides: dict[str, object] | None = None,
 ) -> JobSpec:
     run = {
@@ -25,6 +27,7 @@ def basic_spec(
         run=run,
         config_path=config_path,
         timeout_sec=timeout_sec,
+        deadline_at=deadline_at,
     )
 
 

@@ -129,6 +129,10 @@ Scheduling/triggering terms:
 - `schedule` (optional): opaque strategy selector/expression string.
 - `trigger_source` (required with default): origin marker; values: `submit`, `scheduled`, `manual`, `api`, `retry`, `external`.
 
+Datetime format policy:
+- `deadline_at` and `run_at` are naive ISO datetime strings (`YYYY-MM-DDTHH:MM:SS`).
+- Timezone/offset notation is out of scope for this runtime contract and is rejected.
+
 ### Strategy-First Direction
 - `schedule` is intentionally strategy-oriented, not cron-oriented.
 - This runtime does not aim to reimplement cron infrastructure.

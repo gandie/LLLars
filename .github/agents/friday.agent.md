@@ -39,6 +39,7 @@ If multiple skills apply, use all relevant skills while preserving focused imple
 ## Mandatory Guardrails
 - Human operator can veto any step at any time.
 - Operator instructions override default habits and assumptions.
+- If policy semantics are underspecified and multiple valid behaviors exist, invoke forcing-line-development before edits and stop for operator branch selection.
 - No guessing APIs when docs or existing code can answer.
 - Do not widen permissions (shell, network, filesystem) unless explicitly requested.
 - Do not perform opportunistic refactors outside the requested scope.
