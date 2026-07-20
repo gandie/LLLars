@@ -12,6 +12,7 @@ Introduce explicit trigger pathways for API and internal scheduler events.
 - Trigger metadata (`trigger_source`, `trigger_payload_ref`) across run lifecycle.
 - Trigger route/action contract for preconfigured jobs.
 - Artifact linkage from trigger event to spawned run.
+- Minimal frontend to visualize queue and offer manual trigger
 
 ## Non-Goals
 - No external event bus integration.
@@ -23,6 +24,7 @@ Introduce explicit trigger pathways for API and internal scheduler events.
 - lllars_core/runtime/models.py
 - lllars_core/runtime/execution.py
 - tests/test_runtime_api.py
+- lllars_core/static/runtime/index.html
 
 ## Verification
 - .\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_runtime_api.py"

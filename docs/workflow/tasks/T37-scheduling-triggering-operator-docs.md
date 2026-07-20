@@ -14,7 +14,7 @@ Document timed, scheduled, recurring, and trigger flows for operators.
 - Smoke test scenarios aligned to docs.
 
 ## Non-Goals
-- No frontend scheduler UX.
+- No full flesehd frontend scheduler UX.
 - No benchmark claims.
 
 ## Target Files
