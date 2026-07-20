@@ -38,10 +38,20 @@ class RuntimeApiSurfaceTests(unittest.TestCase):
         client = TestClient(app)
         self.assertEqual(client.get("/jobs/missing-job").status_code, 404)
         self.assertEqual(
+            client.post("/jobs/missing-job/trigger", json={}).status_code,
+            404,
+        )
+        self.assertEqual(
             client.post("/jobs/missing-job/cancel").status_code,
             404,
         )
         self.assertEqual(client.get("/jobs/missing-job/logs").status_code, 404)
+
+    def test_jobs_list_endpoint_is_available(self) -> None:
+        client = make_runtime_client()
+        response = client.get("/jobs")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
 
     def test_health_exposes_clock_sync_fields(self) -> None:
         client = make_runtime_client(model="", provider_url="")

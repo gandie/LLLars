@@ -53,10 +53,16 @@ def _summary_payload(
     elapsed_sec: float,
     returncode: int | None,
     error: ErrorEnvelope | None,
+    trigger_source: str,
+    trigger_payload_ref: str | None,
 ) -> dict[str, Any]:
     return {
         "job_id": job_id,
         "status": status,
+        "trigger": {
+            "source": trigger_source,
+            "payload_ref": trigger_payload_ref,
+        },
         "success": success,
         "elapsed_sec": elapsed_sec,
         "agent_returncode": returncode,
@@ -89,6 +95,8 @@ def _write_summary_artifact(
     elapsed_sec: float,
     returncode: int | None,
     error: ErrorEnvelope | None,
+    trigger_source: str,
+    trigger_payload_ref: str | None,
 ) -> None:
     payload = _summary_payload(
         job_id=job_id,
@@ -97,6 +105,8 @@ def _write_summary_artifact(
         elapsed_sec=elapsed_sec,
         returncode=returncode,
         error=error,
+        trigger_source=trigger_source,
+        trigger_payload_ref=trigger_payload_ref,
     )
     (job_dir / "summary.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True),
@@ -104,17 +114,16 @@ def _write_summary_artifact(
     )
 
 
-def persist_job_artifacts(
+def _write_job_artifacts(
     *,
-    artifacts_root: Path,
+    job_dir: Path,
     job_id: str,
     status: str,
     result: RunResult | None,
     error: ErrorEnvelope | None,
-) -> dict[str, str]:
-    job_dir = artifacts_root / "artifacts" / job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
-
+    trigger_source: str,
+    trigger_payload_ref: str | None,
+) -> None:
     (
         stdout_text,
         stderr_text,
@@ -137,6 +146,32 @@ def persist_job_artifacts(
         elapsed_sec=elapsed_sec,
         returncode=returncode,
         error=error,
+        trigger_source=trigger_source,
+        trigger_payload_ref=trigger_payload_ref,
+    )
+
+
+def persist_job_artifacts(
+    *,
+    artifacts_root: Path,
+    job_id: str,
+    status: str,
+    result: RunResult | None,
+    error: ErrorEnvelope | None,
+    trigger_source: str,
+    trigger_payload_ref: str | None,
+) -> dict[str, str]:
+    job_dir = artifacts_root / "artifacts" / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    _write_job_artifacts(
+        job_dir=job_dir,
+        job_id=job_id,
+        status=status,
+        result=result,
+        error=error,
+        trigger_source=trigger_source,
+        trigger_payload_ref=trigger_payload_ref,
     )
     return _artifact_refs(job_id)
 
@@ -148,6 +183,8 @@ def persist_runtime_artifacts(
     status: str,
     result: RunResult | None,
     error: ErrorEnvelope | None,
+    trigger_source: str,
+    trigger_payload_ref: str | None,
 ) -> dict[str, str]:
     if artifacts_root is None:
         return {}
@@ -159,6 +196,8 @@ def persist_runtime_artifacts(
             status=status,
             result=result,
             error=error,
+            trigger_source=trigger_source,
+            trigger_payload_ref=trigger_payload_ref,
         )
     except Exception:
         return {}

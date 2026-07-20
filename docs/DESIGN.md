@@ -153,7 +153,8 @@ Example target pattern:
 ### Immediate-Submit Compatibility
 - Existing submit payloads that only include `prompt`, `run`, `timeout_sec`, and `config_path` remain valid.
 - Runtime execution path remains submit-now unless future scheduler orchestration consumes `run_at` or `schedule`.
-- No endpoint additions are required for this contract-prep slice.
+- Runtime now includes explicit trigger routes for queued jobs: `GET /jobs` (queue visibility) and `POST /jobs/{job_id}/trigger` (manual or caller-selected trigger source).
+- Trigger route defaults are intentionally minimal: `trigger_source = "manual"`, `trigger_payload_ref = null`.
 
 ## Implementation Framework (Now Active)
 - Primary implementation agent: Friday.

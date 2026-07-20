@@ -83,6 +83,33 @@
       font-size: 1.05rem;
     }
 
+    .queue-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .queue-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fafbfe;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .queue-meta {
+      font-size: 0.83rem;
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    .queue-trigger {
+      margin-top: 0;
+      max-width: 180px;
+      padding: 8px 10px;
+    }
+
     label {
       display: block;
       font-size: 0.86rem;
@@ -378,6 +405,12 @@
           <div class="hint" id="clockSync">Clock sync: loading...</div>
         </section>
 
+        <section class="card queue-card">
+          <h2>Queued Jobs</h2>
+          <div class="hint">Manual trigger uses defaults: trigger_source=manual, trigger_payload_ref=null.</div>
+          <div id="queueView" class="queue-list">(loading queue)</div>
+        </section>
+
         <section class="card logs-card">
           <h2>Logs</h2>
           <pre id="logsView">(no logs yet)</pre>
@@ -427,6 +460,7 @@
     const statusNoteEl = document.getElementById("statusNote");
     const clockSyncEl = document.getElementById("clockSync");
     const logsViewEl = document.getElementById("logsView");
+    const queueViewEl = document.getElementById("queueView");
 
     let pollingHandle = null;
     let currentJobId = null;
@@ -518,6 +552,105 @@
       }
     }
 
+    function queueSummary(payload) {
+      const chunks = [];
+      if (payload.next_run_at) {
+        chunks.push(`next: ${payload.next_run_at}`);
+      }
+      chunks.push(`trigger: ${payload.trigger_source}`);
+      if (payload.trigger_payload_ref) {
+        chunks.push(`ref: ${payload.trigger_payload_ref}`);
+      }
+      return chunks.join(" | ");
+    }
+
+    function renderQueue(payloads) {
+      const queued = payloads.filter((item) => item.status === "queued");
+      if (queued.length === 0) {
+        queueViewEl.textContent = "(no queued jobs)";
+        return;
+      }
+
+      queueViewEl.textContent = "";
+      for (const payload of queued) {
+        const item = document.createElement("div");
+        item.className = "queue-item";
+
+        const id = document.createElement("div");
+        id.textContent = payload.job_id;
+        item.appendChild(id);
+
+        const meta = document.createElement("div");
+        meta.className = "queue-meta";
+        meta.textContent = queueSummary(payload);
+        item.appendChild(meta);
+
+        const button = document.createElement("button");
+        button.className = "queue-trigger";
+        button.type = "button";
+        button.textContent = "Trigger now";
+        button.addEventListener("click", async () => {
+          try {
+            await triggerQueuedJob(payload.job_id);
+          } catch (error) {
+            logsViewEl.textContent = String(error);
+          }
+        });
+        item.appendChild(button);
+
+        queueViewEl.appendChild(item);
+      }
+    }
+
+    async function refreshQueue() {
+      try {
+        const response = await fetch("/jobs");
+        if (!response.ok) {
+          throw new Error(`Failed to load queue (${response.status})`);
+        }
+        const payloads = await response.json();
+        renderQueue(payloads);
+      } catch {
+        queueViewEl.textContent = "(queue unavailable)";
+      }
+    }
+
+    async function triggerQueuedJob(jobId) {
+      const response = await fetch(`/jobs/${jobId}/trigger`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          trigger_source: "manual",
+          trigger_payload_ref: null,
+        }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Trigger failed (${response.status}): ${text}`);
+      }
+
+      const payload = await response.json();
+      currentJobId = payload.job_id;
+      jobIdEl.textContent = currentJobId;
+      setStatus(payload.status, `Manual trigger accepted${summarizeTiming(payload)}`);
+      await fetchLogs(currentJobId);
+      await refreshQueue();
+
+      stopPolling();
+      pollingHandle = window.setInterval(async () => {
+        try {
+          await pollStatus(currentJobId);
+          await refreshQueue();
+        } catch (error) {
+          stopPolling();
+          setStatus("failed", "Polling failed");
+          logsViewEl.textContent = String(error);
+        }
+      }, 1000);
+    }
+
     async function fetchLogs(jobId) {
       const response = await fetch(`/jobs/${jobId}/logs`);
       if (!response.ok) {
@@ -547,6 +680,7 @@
         status,
         `Last update: ${new Date().toLocaleTimeString()}${summarizeTiming(payload)}`,
       );
+      await refreshQueue();
 
       if (status === "succeeded" || status === "failed" || status === "canceled") {
         stopPolling();
@@ -629,6 +763,7 @@
       jobIdEl.textContent = currentJobId;
       setStatus(payload.status, `Job accepted${summarizeTiming(payload)}`);
       await fetchLogs(currentJobId);
+      await refreshQueue();
 
       pollingHandle = window.setInterval(async () => {
         try {
@@ -661,10 +796,12 @@
       if (payload.status === "canceled") {
         stopPolling();
         await fetchLogs(currentJobId);
+        await refreshQueue();
         return;
       }
 
       await pollStatus(currentJobId);
+      await refreshQueue();
     }
 
     submitBtn.addEventListener("click", async () => {
@@ -687,7 +824,9 @@
     });
 
     refreshClockSync();
+    refreshQueue();
     window.setInterval(refreshClockSync, 1000);
+    window.setInterval(refreshQueue, 2000);
   </script>
 </body>
 </html>

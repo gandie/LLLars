@@ -41,6 +41,26 @@ def _blocking_cancelable_run_job(*args, **kwargs) -> RunResult:
 
 
 class RuntimeApiFailureTests(unittest.TestCase):
+    def test_trigger_rejects_non_queued_job(self) -> None:
+        client = make_runtime_client()
+        with patch(
+            "lllars_core.runtime.service.run_job",
+            return_value=RunResult(
+                success=True,
+                agent_returncode=0,
+                elapsed_sec=0.01,
+                agent_stdout="agent-out",
+                agent_stderr="",
+            ),
+        ):
+            job_id = submit_job(client)
+            wait_for_terminal_status(client, job_id)
+
+        trigger_resp = client.post(f"/jobs/{job_id}/trigger", json={})
+        self.assertEqual(trigger_resp.status_code, 409)
+        payload = trigger_resp.json()
+        self.assertEqual(payload["detail"]["code"], "invalid_state")
+
     def test_cancel_force_terminates_inflight_job(self) -> None:
         client = make_runtime_client()
         started = Event()

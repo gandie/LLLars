@@ -81,6 +81,8 @@ class InMemoryJobStoreTests(unittest.TestCase):
 
         self.assertEqual(created.job_id, "job-1")
         self.assertEqual(created.status, "queued")
+        self.assertEqual(created.trigger_source, "submit")
+        self.assertIsNone(created.trigger_payload_ref)
 
         fetched = store.get("job-1")
         self.assertIsNotNone(fetched)
@@ -184,6 +186,22 @@ class InMemoryJobStoreTests(unittest.TestCase):
         self.assertEqual(record.next_run_at, next_run_at)
         self.assertIsNone(record.result)
         self.assertIsNone(record.error)
+
+    def test_update_can_override_trigger_metadata(self) -> None:
+        store = InMemoryJobStore()
+        store.create(_job_spec(), job_id="job-1")
+
+        updated = store.update(
+            "job-1",
+            trigger_source="external",
+            trigger_payload_ref="evt-1",
+        )
+        self.assertEqual(updated.trigger_source, "external")
+        self.assertEqual(updated.trigger_payload_ref, "evt-1")
+
+        cleared = store.update("job-1", trigger_payload_ref=None)
+        self.assertEqual(cleared.trigger_source, "external")
+        self.assertIsNone(cleared.trigger_payload_ref)
 
 
 if __name__ == "__main__":

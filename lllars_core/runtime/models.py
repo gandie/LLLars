@@ -59,6 +59,7 @@ class JobSpec(_StrictModel):
         ),
     )
     trigger_source: TriggerSource = "submit"
+    trigger_payload_ref: str | None = None
 
     @model_validator(mode="after")
     def validate_datetime_contract(self) -> JobSpec:
@@ -126,9 +127,16 @@ class ErrorEnvelope(_StrictModel):
     details: dict[str, Any] | None = None
 
 
+class TriggerRequest(_StrictModel):
+    trigger_source: TriggerSource = "manual"
+    trigger_payload_ref: str | None = None
+
+
 class JobStatus(_StrictModel):
     job_id: str = Field(min_length=1)
     status: JobState
+    trigger_source: TriggerSource = "submit"
+    trigger_payload_ref: str | None = None
     run_at: datetime | None = None
     schedule: str | None = None
     next_run_at: datetime | None = None
@@ -203,5 +211,6 @@ __all__ = [
     "RunCommandSettings",
     "RunResult",
     "ShellRuntimeTelemetry",
+    "TriggerRequest",
     "TriggerSource",
 ]

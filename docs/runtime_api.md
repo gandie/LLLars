@@ -24,9 +24,11 @@ Serve mode exposes:
 - `GET /` (static operator frontend)
 - `GET /health`
 - `POST /jobs`
+- `GET /jobs`
 - `GET /jobs/{job_id}`
 - `GET /jobs/{job_id}/logs`
 - `POST /jobs/{job_id}/cancel`
+- `POST /jobs/{job_id}/trigger`
 
 ## Static Frontend
 
@@ -35,6 +37,8 @@ The runtime frontend at `GET /` supports:
 - submit prompt
 - poll lifecycle status
 - fetch job logs
+- visualize queued jobs
+- manually trigger queued jobs
 - terminal-state visibility (`succeeded`, `failed`, `canceled`)
 
 ## Manual Smoke
@@ -69,3 +73,11 @@ Scheduling datetime contract for `JobSpec`:
 
 - `deadline_at` and `run_at` use naive ISO datetime strings only (`YYYY-MM-DDTHH:MM:SS`).
 - Offset-bearing values (`Z`, `+HH:MM`, `-HH:MM`) are rejected.
+
+Trigger metadata contract:
+
+- `trigger_source` and `trigger_payload_ref` are accepted on submit payloads.
+- `POST /jobs/{job_id}/trigger` accepts:
+  - `trigger_source` (default: `manual`)
+  - `trigger_payload_ref` (default: `null`)
+- Trigger route applies to queued jobs and starts execution immediately.

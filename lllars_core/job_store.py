@@ -18,12 +18,50 @@ from lllars_core.job_store_record import (
 )
 from dataclasses import replace
 
+_UNSET = object()
+
+
+def _updated_record(
+    *,
+    current: JobRecord,
+    status: JobState,
+    result: RunResult | None,
+    error: ErrorEnvelope | None,
+    artifacts: Mapping[str, str] | None,
+    trigger_source: TriggerSource | None,
+    trigger_payload_ref: str | None | object,
+) -> JobRecord:
+    merged_artifacts = dict(current.artifacts)
+    if artifacts:
+        merged_artifacts.update(artifacts)
+
+    return replace(
+        current,
+        status=status,
+        result=result if result is not None else current.result,
+        error=error if error is not None else current.error,
+        artifacts=merged_artifacts,
+        trigger_source=(
+            current.trigger_source
+            if trigger_source is None
+            else trigger_source
+        ),
+        trigger_payload_ref=(
+            current.trigger_payload_ref
+            if trigger_payload_ref is _UNSET
+            else trigger_payload_ref
+        ),
+        updated_at=time(),
+    )
+
+
 if TYPE_CHECKING:
     from lllars_core.runtime.models import (
         ErrorEnvelope,
         JobSpec,
         JobState,
         RunResult,
+        TriggerSource,
     )
 
 
@@ -47,6 +85,8 @@ class InMemoryJobStore:
             status="queued",
             created_at=now,
             updated_at=now,
+            trigger_source=spec.trigger_source,
+            trigger_payload_ref=spec.trigger_payload_ref,
             next_run_at=next_run_at,
         )
         with self._lock:
@@ -75,6 +115,8 @@ class InMemoryJobStore:
         result: RunResult | None = None,
         error: ErrorEnvelope | None = None,
         artifacts: Mapping[str, str] | None = None,
+        trigger_source: TriggerSource | None = None,
+        trigger_payload_ref: str | None | object = _UNSET,
     ) -> JobRecord:
         with self._lock:
             current = self._require_job(job_id)
@@ -83,17 +125,14 @@ class InMemoryJobStore:
             if status is not None and status != current.status:
                 validate_transition(current.status, status)
             validate_payload(next_status, result, error, current)
-            merged_artifacts = dict(current.artifacts)
-            if artifacts:
-                merged_artifacts.update(artifacts)
-
-            updated = replace(
-                current,
+            updated = _updated_record(
+                current=current,
                 status=next_status,
-                result=result if result is not None else current.result,
-                error=error if error is not None else current.error,
-                artifacts=merged_artifacts,
-                updated_at=time(),
+                result=result,
+                error=error,
+                artifacts=artifacts,
+                trigger_source=trigger_source,
+                trigger_payload_ref=trigger_payload_ref,
             )
             self._jobs[job_id] = updated
             return clone_record(updated)

@@ -4,11 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Lock, Thread
 
-from fastapi import HTTPException, status
-
 from lllars_core.config import HarnessConfig
 from lllars_core.job_store import InMemoryJobStore, InvalidTransitionError
-from lllars_core.runtime.artifacts import persist_runtime_artifacts
 from lllars_core.runtime.service_execution import (
     execute_job,
     handle_exception,
@@ -23,6 +20,12 @@ from lllars_core.runtime.models import (
     JobSpec,
     JobStatus,
     RunResult,
+    TriggerSource,
+)
+from lllars_core.runtime.service_triggering import (
+    not_found,
+    persist_service_artifacts,
+    trigger_job,
 )
 from lllars_core.runtime.scheduler import (
     RuntimeScheduler,
@@ -52,11 +55,13 @@ class RuntimeService:
         next_run_at = self._initial_next_run_at(spec)
         record = self.store.create(spec, next_run_at=next_run_at)
         self._clear_cancel_request(record.job_id)
-
         if self._should_start_immediately(spec):
             self._start_job_thread(record.job_id)
 
         return record.as_status()
+
+    def list(self) -> list[JobStatus]:
+        return [record.as_status() for record in self.store.list()]
 
     @staticmethod
     def _should_start_immediately(spec: JobSpec) -> bool:
@@ -85,7 +90,16 @@ class RuntimeService:
         thread.start()
 
     def _start_scheduled_job(self, job_id: str) -> None:
-        self._start_job_thread(job_id)
+        try:
+            trigger_job(
+                self,
+                job_id,
+                trigger_source="scheduled",
+                trigger_payload_ref=None,
+                raise_on_invalid=False,
+            )
+        except InvalidTransitionError:
+            return
 
     def _is_job_active(self, job_id: str) -> bool:
         with self._threads_lock:
@@ -97,6 +111,21 @@ class RuntimeService:
         if record is None:
             raise not_found(job_id)
         return record.as_status()
+
+    def trigger(
+        self,
+        job_id: str,
+        *,
+        trigger_source: TriggerSource = "manual",
+        trigger_payload_ref: str | None = None,
+    ) -> JobStatus:
+        return trigger_job(
+            self,
+            job_id,
+            trigger_source=trigger_source,
+            trigger_payload_ref=trigger_payload_ref,
+            raise_on_invalid=True,
+        )
 
     def cancel(self, job_id: str) -> JobStatus:
         record = self.store.get(job_id)
@@ -147,7 +176,6 @@ class RuntimeService:
     def _reschedule_if_recurring(self, job_id: str, spec: JobSpec) -> None:
         if spec.schedule is None:
             return
-
         next_run_at = next_scheduled_time(spec.schedule, now=datetime.now())
         self.store.reschedule_recurring(job_id, next_run_at=next_run_at)
 
@@ -171,9 +199,8 @@ class RuntimeService:
         result: RunResult | None,
         error: ErrorEnvelope | None,
     ) -> dict[str, str]:
-        artifacts_root = getattr(self.cfg, "mount_artifacts_root", None)
-        return persist_runtime_artifacts(
-            artifacts_root=artifacts_root,
+        return persist_service_artifacts(
+            self,
             job_id=job_id,
             status=status,
             result=result,
@@ -183,16 +210,6 @@ class RuntimeService:
     def _cleanup_thread(self, job_id: str) -> None:
         with self._threads_lock:
             self._threads.pop(job_id, None)
-
-
-def not_found(job_id: str) -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=ErrorEnvelope(
-            code="not_found",
-            message=f"Unknown job_id: {job_id}",
-        ).model_dump(),
-    )
 
 
 __all__ = [

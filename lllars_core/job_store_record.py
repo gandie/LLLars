@@ -51,6 +51,8 @@ class JobRecord:
     result: RunResult | None = None
     error: ErrorEnvelope | None = None
     artifacts: dict[str, str] = field(default_factory=dict)
+    trigger_source: str = "submit"
+    trigger_payload_ref: str | None = None
     next_run_at: datetime | None = None
     last_run_at: datetime | None = None
     run_count: int = 0
@@ -61,6 +63,8 @@ class JobRecord:
         return JobStatus(
             job_id=self.job_id,
             status=self.status,
+            trigger_source=self.trigger_source,
+            trigger_payload_ref=self.trigger_payload_ref,
             run_at=self.spec.run_at,
             schedule=self.spec.schedule,
             next_run_at=self.next_run_at,
