@@ -375,6 +375,7 @@
           <div>Job ID: <span id="jobId">(none)</span></div>
           <div>Current status: <span id="jobStatus" class="status">idle</span></div>
           <div class="hint" id="statusNote">Submit a job to begin polling.</div>
+          <div class="hint" id="clockSync">Clock sync: loading...</div>
         </section>
 
         <section class="card logs-card">
@@ -424,6 +425,7 @@
     const jobIdEl = document.getElementById("jobId");
     const jobStatusEl = document.getElementById("jobStatus");
     const statusNoteEl = document.getElementById("statusNote");
+    const clockSyncEl = document.getElementById("clockSync");
     const logsViewEl = document.getElementById("logsView");
 
     let pollingHandle = null;
@@ -469,6 +471,44 @@
         return ` | run at: ${payload.run_at}`;
       }
       return "";
+    }
+
+    function formatClockSync(payload) {
+      if (!payload || typeof payload !== "object") {
+        return "Clock sync: unavailable";
+      }
+
+      const serverNowRaw = String(payload.server_now || "").trim();
+      const serverEpochMs = Number(payload.server_epoch_ms);
+      if (!serverNowRaw || Number.isNaN(serverEpochMs)) {
+        return "Clock sync: unavailable";
+      }
+
+      const clientNow = new Date();
+      const skewMs = Date.now() - serverEpochMs;
+      const skewSign = skewMs >= 0 ? "+" : "-";
+      const skewAbsSec = (Math.abs(skewMs) / 1000).toFixed(2);
+      return [
+        "Client now: ",
+        clientNow.toLocaleString(),
+        " | Server now: ",
+        serverNowRaw,
+        " | Skew (client-server): ",
+        `${skewSign}${skewAbsSec}s`,
+      ].join("");
+    }
+
+    async function refreshClockSync() {
+      try {
+        const response = await fetch("/health");
+        if (!response.ok) {
+          throw new Error(`Failed to load health (${response.status})`);
+        }
+        const payload = await response.json();
+        clockSyncEl.textContent = formatClockSync(payload);
+      } catch {
+        clockSyncEl.textContent = "Clock sync: unavailable";
+      }
     }
 
     function stopPolling() {
@@ -568,8 +608,6 @@
       }
       if (scheduleRaw) {
         body.schedule = scheduleRaw;
-      }
-      if (runAtRaw || scheduleRaw) {
         body.trigger_source = "scheduled";
       }
 
@@ -647,6 +685,9 @@
         logsViewEl.textContent = String(error);
       }
     });
+
+    refreshClockSync();
+    window.setInterval(refreshClockSync, 1000);
   </script>
 </body>
 </html>

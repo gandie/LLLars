@@ -43,6 +43,15 @@ class RuntimeApiSurfaceTests(unittest.TestCase):
         )
         self.assertEqual(client.get("/jobs/missing-job/logs").status_code, 404)
 
+    def test_health_exposes_clock_sync_fields(self) -> None:
+        client = make_runtime_client(model="", provider_url="")
+        response = client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["status"], "ok")
+        self.assertIn("server_now", payload)
+        self.assertIn("server_epoch_ms", payload)
+
     def test_runtime_frontend_fallback_when_static_missing(self) -> None:
         cfg = SimpleNamespace(model="", provider_url="")
         with patch(

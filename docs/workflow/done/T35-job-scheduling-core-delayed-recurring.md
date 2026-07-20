@@ -52,9 +52,12 @@ Scheduled and recurring execution tests passing.
 - Extended API status model to expose scheduling metadata and enforced schedule grammar validation in `JobSpec`.
 - Added minimal runtime frontend fields for `run_at` and `schedule`, and status note display for upcoming run timing.
 - Resolved runtime/job_store import cycle structurally by removing `runtime.models` import-time dependencies from job store modules (`job_store.py`, `job_store_record.py`) and restoring explicit eager exports in `lllars_core/runtime/__init__.py`.
+- Added visible clock-sync transparency without timezone conversion semantics: `/health` now returns `server_now` and `server_epoch_ms`, and runtime UI displays live client time, server time, and measured client-server skew.
 
 ## Validation Results
 - PASS `.\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_job_store.py"`
 - PASS `.\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_runtime_api_submission.py"`
 - PASS `.\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_refactor_boundaries.py"`
 - PASS `.\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\`
+- PASS `.\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_runtime_api_surface.py"`
+- PASS `.\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_runtime_api_smoke_test.py"`

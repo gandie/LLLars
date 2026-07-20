@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from time import time
+
 from fastapi import FastAPI, status
 
 from lllars_core.config import HarnessConfig
@@ -13,8 +16,12 @@ def register_runtime_routes(
     service: RuntimeService,
 ) -> None:
     @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok"}
+    def health() -> dict[str, object]:
+        return {
+            "status": "ok",
+            "server_now": datetime.now().isoformat(timespec="seconds"),
+            "server_epoch_ms": int(time() * 1000),
+        }
 
     @app.post(
         "/jobs",
