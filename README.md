@@ -62,6 +62,38 @@ Start serve mode:
 lllars serve --config .\playground.split.example.json --host 127.0.0.1 --port 8000
 ```
 
+## Runtime Scheduling and Triggering Flows
+
+The runtime supports four operator flows through `POST /jobs` and
+`POST /jobs/{job_id}/trigger`:
+
+- Immediate: no `run_at` and no `schedule`; job starts directly.
+- Timed: set `run_at` to queue now and execute when due.
+- Recurring: set `schedule` using `every:<int><unit>` (units: `s`, `m`, `h`,
+	`d`) with `trigger_source="scheduled"`.
+- Manual trigger: submit a queued job, then trigger it with
+	`POST /jobs/{job_id}/trigger`.
+
+Run mode smoke checks:
+
+```powershell
+.\venv\Scripts\python.exe .\runtime_api_smoke_test.py --run-mode immediate --prompt "immediate flow smoke"
+.\venv\Scripts\python.exe .\runtime_api_smoke_test.py --run-mode timed --run-at-delay-sec 2 --prompt "timed flow smoke"
+.\venv\Scripts\python.exe .\runtime_api_smoke_test.py --run-mode recurring --schedule "every:1s" --prompt "recurring flow smoke"
+.\venv\Scripts\python.exe .\runtime_api_smoke_test.py --run-mode trigger --run-at-delay-sec 90 --prompt "manual trigger smoke"
+```
+
+Failure and recovery quick guide:
+
+- `422` on submit means contract validation failed (for example timezone-aware
+	datetimes, invalid schedule grammar, or conflicting schedule fields); correct
+	payload and resubmit.
+- `409` on trigger means the job is not currently queued; inspect `GET /jobs`
+	and trigger only queued jobs.
+- `404` means unknown `job_id`; resubmit to obtain a valid id.
+- If a smoke run times out, use `GET /jobs/{job_id}` and `GET /jobs/{job_id}/logs`
+	to inspect current state, then either trigger (if queued) or resubmit.
+
 ## External Command Profiles
 
 Command profiles can be extended from local JSON or YAML without code edits.

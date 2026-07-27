@@ -5,6 +5,7 @@ import json
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timedelta
 from collections.abc import Callable
 from typing import Any
 
@@ -61,50 +62,93 @@ def run_smoke_test(
     expected_shells: tuple[str, ...],
     poll_interval_sec: float,
     timeout_sec: float,
+    run_mode: str = "immediate",
+    run_at_delay_sec: float = 2.0,
+    schedule: str = "every:1s",
+    trigger_source: str = "manual",
+    trigger_payload_ref: str | None = None,
     *,
     request_json: Callable[
         [str, str, dict[str, Any] | None],
         dict[str, Any],
     ] = _request_json,
+    now_fn: Callable[[], datetime] = datetime.now,
     monotonic: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
     base = base_url.rstrip("/")
+    supported_modes = {"immediate", "timed", "recurring", "trigger"}
+    if run_mode not in supported_modes:
+        raise ValueError(
+            f"Unsupported run mode {run_mode!r}; expected one of {supported_modes}"
+        )
 
     health = request_json("GET", f"{base}/health")
     print("health:")
     print(json.dumps(health, indent=2))
 
-    submit = request_json(
-        "POST",
-        f"{base}/jobs",
-        {
-            "prompt": prompt,
-            "run": {
-                "model": model,
-                "provider_url": provider_url,
-                "project_root": project_root,
-                "command_profile": command_profile,
-                "test_command": test_command,
-            },
+    submit_payload: dict[str, Any] = {
+        "prompt": prompt,
+        "run": {
+            "model": model,
+            "provider_url": provider_url,
+            "project_root": project_root,
+            "command_profile": command_profile,
+            "test_command": test_command,
         },
-    )
+    }
+
+    if run_mode in {"timed", "trigger"}:
+        run_at = now_fn() + timedelta(seconds=run_at_delay_sec)
+        submit_payload["run_at"] = run_at.isoformat(timespec="seconds")
+    elif run_mode == "recurring":
+        submit_payload["schedule"] = schedule
+        submit_payload["trigger_source"] = "scheduled"
+
+    submit = request_json("POST", f"{base}/jobs", submit_payload)
     job_id = str(submit.get("job_id", "")).strip()
     if not job_id:
         raise RuntimeError(f"Submit response missing job_id: {submit}")
 
     print(f"submitted job_id={job_id}")
 
+    if run_mode == "trigger":
+        trigger_payload: dict[str, Any] = {"trigger_source": trigger_source}
+        if trigger_payload_ref is not None:
+            trigger_payload["trigger_payload_ref"] = trigger_payload_ref
+        trigger_result = request_json(
+            "POST",
+            f"{base}/jobs/{job_id}/trigger",
+            trigger_payload,
+        )
+        print("trigger response:")
+        print(json.dumps(trigger_result, indent=2))
+
     terminal_states = {"succeeded", "failed", "canceled"}
     start = monotonic()
     last_status: dict[str, Any] = {}
+    recurring_cycle_observed = False
 
     while True:
         status = request_json("GET", f"{base}/jobs/{job_id}")
         state = str(status.get("status", "")).strip().lower()
         print(f"status={state}")
 
-        if state in terminal_states:
+        if run_mode == "recurring":
+            run_count = int(status.get("run_count", 0))
+            if (
+                state == "queued"
+                and run_count >= 1
+                and status.get("next_run_at") is not None
+            ):
+                last_status = status
+                recurring_cycle_observed = True
+                break
+
+            if state in {"failed", "canceled"}:
+                last_status = status
+                break
+        elif state in terminal_states:
             last_status = status
             break
 
@@ -125,8 +169,30 @@ def run_smoke_test(
     print("logs:")
     print(json.dumps(logs, indent=2))
 
+    if run_mode == "recurring":
+        if not recurring_cycle_observed:
+            print("recurring mode did not observe a completed requeue cycle")
+            return 1
+        return 0
+
     if str(last_status.get("status", "")).lower() != "succeeded":
         return 1
+
+    if run_mode == "trigger":
+        observed_source = str(last_status.get("trigger_source", "")).strip().lower()
+        if observed_source != trigger_source.strip().lower():
+            print(
+                "unexpected trigger_source "
+                f"{observed_source!r}; expected {trigger_source!r}"
+            )
+            return 1
+        observed_payload_ref = last_status.get("trigger_payload_ref")
+        if observed_payload_ref != trigger_payload_ref:
+            print(
+                "unexpected trigger_payload_ref "
+                f"{observed_payload_ref!r}; expected {trigger_payload_ref!r}"
+            )
+            return 1
 
     result = last_status.get("result")
     if not isinstance(result, dict):
@@ -194,6 +260,33 @@ def main() -> None:
     )
     parser.add_argument("--poll-interval-sec", type=float, default=0.3)
     parser.add_argument("--timeout-sec", type=float, default=120.0)
+    parser.add_argument(
+        "--run-mode",
+        choices=("immediate", "timed", "recurring", "trigger"),
+        default="immediate",
+        help="Smoke scenario to execute",
+    )
+    parser.add_argument(
+        "--run-at-delay-sec",
+        type=float,
+        default=2.0,
+        help="Delay applied when run mode requires run_at",
+    )
+    parser.add_argument(
+        "--schedule",
+        default="every:1s",
+        help="Schedule expression used in recurring mode",
+    )
+    parser.add_argument(
+        "--trigger-source",
+        default="manual",
+        help="Trigger source sent in trigger mode",
+    )
+    parser.add_argument(
+        "--trigger-payload-ref",
+        default=None,
+        help="Optional trigger payload reference sent in trigger mode",
+    )
     args = parser.parse_args()
 
     expected_shells = tuple(
@@ -203,6 +296,9 @@ def main() -> None:
     )
     if not expected_shells:
         raise SystemExit("--expected-shells must include at least one shell")
+
+    if args.run_mode == "recurring" and not args.schedule.strip():
+        raise SystemExit("--schedule must be non-empty in recurring mode")
 
     raise SystemExit(
         run_smoke_test(
@@ -216,6 +312,11 @@ def main() -> None:
             expected_shells=expected_shells,
             poll_interval_sec=args.poll_interval_sec,
             timeout_sec=args.timeout_sec,
+            run_mode=args.run_mode,
+            run_at_delay_sec=args.run_at_delay_sec,
+            schedule=args.schedule,
+            trigger_source=args.trigger_source,
+            trigger_payload_ref=args.trigger_payload_ref,
         )
     )
 

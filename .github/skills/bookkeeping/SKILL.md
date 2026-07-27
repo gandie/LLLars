@@ -25,6 +25,7 @@ Enforce low-ceremony, folder-driven bookkeeping so each task has a clear artifac
 - A task is not complete until full test suite passes via `.\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\`.
 - Folder location is the only status protocol (`tasks/` = active, `done/` = complete).
 - No protocol extension is allowed (no custom lifecycle metadata fields such as `Status` or `Priority` in task files).
+- Each done task file must include an operator-filled `agent_evaluation` YAML frontmatter block after it is moved into `docs/workflow/done/`.
 
 ## Mandatory Task Template
 
@@ -79,6 +80,10 @@ Every new task file must follow this template exactly (no additional lifecycle m
 - Ensure `Why Needed` remains accurate for the shipped change.
 - Update task metadata and completion notes.
 - Move the task file from docs/workflow/tasks/ to docs/workflow/done/.
+- Add or confirm `agent_evaluation` frontmatter at the top of the done task file.
+- Ensure split-score fields exist in two categories:
+  - outcome: `correctness`, `scope_discipline`, `validation_trust`
+  - collaboration: `ambiguity_handling`, `operator_load`, `trust_delta`
 
 ## Changelog Enforcement
 - Changelog is append-only.
@@ -90,6 +95,8 @@ Every new task file must follow this template exactly (no additional lifecycle m
   - .\\venv\\Scripts\\python.exe -m unittest discover .\\tests\\
 - Run markdown boundary validation when docs are touched:
   - .\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_markdown_boundaries.py"
+- Run done-task evaluation boundary validation when done-task files are touched:
+  - .\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test_done_task_evaluation_boundaries.py"
 - Run targeted or full tests for implementation changes per task verification section.
 
 ## Anti-Patterns
@@ -97,6 +104,7 @@ Every new task file must follow this template exactly (no additional lifecycle m
 - Closing a task without moving it to docs/workflow/done/.
 - Recording completion without test evidence.
 - Completing a task file without an explicit `Why Needed` section.
+- Moving a task to done without `agent_evaluation` frontmatter in the done file.
 - Using `Status`, `Priority`, or any custom lifecycle metadata in task files.
 - Reintroducing backlog or in-progress index ceremony.
 - Bundling multiple unrelated tasks into one task file.

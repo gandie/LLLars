@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "include": [
+    "docs/workflow/done/T*.md"
+  ],
+  "exclude": [],
+  "enforce_from_task_number": 74,
+  "required_fields": [
+    "agent_evaluation",
+    "agent_evaluation.version",
+    "agent_evaluation.evaluator",
+    "agent_evaluation.evaluated_at",
+    "agent_evaluation.verdict",
+    "agent_evaluation.would_delegate_similar_again",
+    "agent_evaluation.score_scale",
+    "agent_evaluation.score_scale.min",
+    "agent_evaluation.score_scale.max",
+    "agent_evaluation.score_scale.meaning",
+    "agent_evaluation.score_scale.meaning.1",
+    "agent_evaluation.score_scale.meaning.3",
+    "agent_evaluation.score_scale.meaning.5",
+    "agent_evaluation.outcome",
+    "agent_evaluation.outcome.correctness",
+    "agent_evaluation.outcome.scope_discipline",
+    "agent_evaluation.outcome.validation_trust",
+    "agent_evaluation.collaboration",
+    "agent_evaluation.collaboration.ambiguity_handling",
+    "agent_evaluation.collaboration.operator_load",
+    "agent_evaluation.collaboration.trust_delta",
+    "agent_evaluation.notes"
+  ]
+}
