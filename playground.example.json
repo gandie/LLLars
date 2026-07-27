@@ -17,6 +17,18 @@
     "commands": {},
     "command_profile": "playground-python",
     "command_profiles_path": "playground.command-profiles.yaml",
+    "tool_groups": {
+      "enabled": [
+        "native_files",
+        "native_shell",
+        "plugin_local",
+        "mcp_toolsets"
+      ],
+      "disabled": []
+    },
+    "tool_plugins": {
+      "paths": []
+    },
     "eval_expect_json": false,
     "eval_success_pass_rate": 100.0,
     "usage_request_limit": null,

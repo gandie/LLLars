@@ -115,6 +115,99 @@ Example run config fields:
 See `playground.example.json` and `playground.command-profiles.yaml` for a full
 working example.
 
+## Tool Registry and MCP Operator Guide
+
+The runtime supports configurable tool-group registration and capability-aware
+MCP startup/runtime behavior.
+
+### Copy-Paste Tooling Config
+
+```json
+{
+	"run": {
+		"tool_groups": {
+			"enabled": [
+				"native_files",
+				"native_shell",
+				"plugin_local",
+				"mcp_toolsets"
+			],
+			"disabled": []
+		},
+		"tool_plugins": {
+			"paths": [
+				"playground/plugins"
+			]
+		},
+		"mcp_enabled": true,
+		"mcp_config_path": "mcp.servers.json",
+		"mcp_init_timeout_sec": 60
+	}
+}
+```
+
+Tool-group behavior:
+
+- `native_files`: registers built-in file tools.
+- `native_shell`: registers shell policy tools.
+- `plugin_local`: loads local plugin tools from `run.tool_plugins.paths`.
+- `mcp_toolsets`: reserved MCP group identifier for registry symmetry; MCP
+	loading is currently gated by `run.mcp_enabled` and `mcp_config_path`.
+
+Validation rules:
+
+- Unknown tool groups fail config load.
+- Duplicate entries in `enabled`, `disabled`, or plugin `paths` fail config
+	load.
+- Overlap between `enabled` and `disabled` fails config load.
+
+### MCP Capability Troubleshooting Matrix
+
+Startup preflight emits MCP detail lines under `mcp_preflight.detail:`.
+
+- `healthy`: server launch contract is valid and connectivity probe succeeded.
+- `degraded`: server is parseable but has partial capability issues.
+- `unavailable`: launch contract is missing or connectivity failed.
+
+Operator playbook:
+
+- Symptom: `warning: unavailable MCP capability sets: ...`
+	- Cause: one or more servers cannot be launched or connected.
+	- Recovery: verify `command`/`args` or `url`, run server manually, then
+		rerun preflight.
+- Symptom: `warning: no healthy MCP capability sets; continuing with native/plugin tools only`
+	- Cause: all configured MCP servers are unavailable.
+	- Recovery: keep working with native/plugin tools, or disable MCP explicitly
+		(`mcp_enabled=false`) until servers recover.
+- Symptom: `warning: capability negotiation failed: ...` followed by
+	fallback warning.
+	- Cause: capability negotiation path raised an internal/runtime exception.
+	- Recovery: review subsequent legacy probe details and startup probe output,
+		then correct MCP config or server startup behavior.
+
+### Migration: Fixed Wiring to Configurable Registry
+
+Before:
+
+- Native groups were effectively fixed.
+- No plugin-path configuration surface.
+- MCP behavior was treated as all-or-nothing during startup.
+
+Now:
+
+- `run.tool_groups` controls active native/plugin group registration.
+- `run.tool_plugins.paths` defines local plugin load locations.
+- MCP startup/runtime uses degraded-continue behavior with explicit warnings
+	and healthy-subset continuation.
+
+Minimal migration path:
+
+1. Add `run.tool_groups` with at least `native_files` and `native_shell`.
+2. Add `plugin_local` only if you provide local plugin paths.
+3. Keep `mcp_enabled=true` only when your MCP servers are expected to be
+	 reachable.
+4. Run one startup smoke command and inspect `mcp_preflight.detail` lines.
+
 ## Provider-Aware Startup Preflight
 
 Startup preflight probes model endpoints using pydantic_ai-native provider
