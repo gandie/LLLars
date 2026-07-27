@@ -161,6 +161,21 @@ Validation rules:
 	load.
 - Overlap between `enabled` and `disabled` fails config load.
 
+### Local Plugin Example
+
+`playground.example.json` now wires local plugin paths with:
+
+```json
+"tool_plugins": {
+	"paths": ["plugins"]
+}
+```
+
+With `run.project_root` set to `playground`, this loads Python plugin modules
+from `playground/plugins/`. A minimal sample is included at
+`playground/plugins/sample_plugin.py` and registers `plugin_echo(message)` via
+`register_tools(agent, cfg, tool_error)`.
+
 ### MCP Capability Troubleshooting Matrix
 
 Startup preflight emits MCP detail lines under `mcp_preflight.detail:`.

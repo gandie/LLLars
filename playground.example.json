@@ -27,7 +27,9 @@
       "disabled": []
     },
     "tool_plugins": {
-      "paths": []
+      "paths": [
+        "plugins"
+      ]
     },
     "eval_expect_json": false,
     "eval_success_pass_rate": 100.0,

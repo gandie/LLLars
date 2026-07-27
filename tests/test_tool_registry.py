@@ -47,6 +47,39 @@ class RuntimeToolRegistrySelectionTests(unittest.TestCase):
         register_plugins.assert_not_called()
         register_shell.assert_called_once()
 
+    def test_register_runtime_tools_loads_local_plugin_group(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            plugin_file = root / "plugins" / "sample_plugin.py"
+            plugin_file.parent.mkdir(parents=True)
+            plugin_file.write_text(
+                "def register_tools(agent, cfg, tool_error):\n"
+                "    @agent.tool\n"
+                "    def hello_runtime_plugin(ctx):\n"
+                "        _ = (ctx, cfg, tool_error)\n"
+                "        return 'ok'\n",
+                encoding="utf-8",
+            )
+            cfg = SimpleNamespace(
+                enabled_tool_groups=("plugin_local",),
+                plugin_tool_paths=("plugins",),
+                project_root=root,
+                allowed_shell_commands=(),
+                test_command=None,
+                eval_command=None,
+            )
+            agent = _FakeAgent()
+
+            register_runtime_tools(
+                agent=agent,
+                cfg=cfg,
+                emit_thought=lambda _message: None,
+                tool_error=lambda _tool, message, _hint: message,
+                run_allowed_shell=lambda _cmd, _timeout: "{}",
+            )
+
+            self.assertIn("hello_runtime_plugin", agent.tools)
+
 
 class _FakeAgent:
     def __init__(self) -> None:
@@ -84,6 +117,35 @@ class LocalPluginToolLoadingTests(unittest.TestCase):
             )
 
             self.assertIn("hello_plugin", agent.tools)
+
+    def test_register_local_plugin_tools_registers_from_directory(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            plugin_file = root / "plugins" / "sample_plugin.py"
+            plugin_file.parent.mkdir(parents=True)
+            plugin_file.write_text(
+                "def register_tools(agent, cfg, tool_error):\n"
+                "    @agent.tool\n"
+                "    def hello_from_directory(ctx):\n"
+                "        _ = (ctx, cfg, tool_error)\n"
+                "        return 'ok'\n",
+                encoding="utf-8",
+            )
+            cfg = SimpleNamespace(
+                project_root=root,
+                plugin_tool_paths=("plugins",),
+            )
+            agent = _FakeAgent()
+
+            register_local_plugin_tools(
+                agent=agent,
+                cfg=cfg,
+                tool_error=lambda _tool, message, _hint: message,
+            )
+
+            self.assertIn("hello_from_directory", agent.tools)
 
     def test_register_local_plugin_tools_rejects_missing_path(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
