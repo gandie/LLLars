@@ -4,23 +4,25 @@ import tempfile
 from pathlib import Path
 
 from lllars_core.config import HarnessConfig
+from lllars_core.mcp.capabilities import (
+    ServerCapability,
+    capability_summary_lines,
+    healthy_server_names,
+    negotiate_server_capabilities,
+)
 from lllars_core.mcp.diagnostics import (
     preflight_initial_lines,
     preflight_probe_hints,
     startup_mcp_lines,
 )
-from lllars_core.mcp.loader import load_toolsets_from_mcp_config
 from lllars_core.mcp.model_probe import check_model_endpoint
 from lllars_core.mcp.runtime import (
     has_utf8_bom,
     probe_connectivity_with_hard_timeout,
+    probe_server_connectivity_with_hard_timeout,
     probe_stdio_startup_noise,
     read_servers,
 )
-
-
-def _check_model_endpoint(cfg: HarnessConfig) -> tuple[bool, list[str]]:
-    return check_model_endpoint(cfg)
 
 
 def _check_mount_writable(
@@ -56,7 +58,7 @@ def run_startup_preflight(
     ok = True
     lines: list[str] = []
 
-    model_ok, model_lines = _check_model_endpoint(cfg)
+    model_ok, model_lines = check_model_endpoint(cfg)
     ok = ok and model_ok
     lines.extend(model_lines)
 
@@ -76,23 +78,6 @@ def run_startup_preflight(
     ok = ok and mcp_ok
     lines.extend(startup_mcp_lines(mcp_ok, mcp_lines))
     return ok, lines
-
-
-def _load_toolsets_or_error(
-    cfg: HarnessConfig,
-    mcp_config_path: Path,
-) -> tuple[list[object] | None, str | None]:
-    try:
-        toolsets = load_toolsets_from_mcp_config(
-            mcp_config_path=mcp_config_path,
-            init_timeout_sec=cfg.mcp_init_timeout_sec,
-        )
-    except Exception as exc:
-        return None, f"Failed to load MCP toolsets: {exc}"
-
-    if not toolsets:
-        return None, "No MCP toolsets were loaded"
-    return toolsets, None
 
 
 def _append_connectivity_failure_details(
@@ -124,8 +109,7 @@ def _build_preflight_context(
     return mcp_config_path, hard_timeout_sec, lines
 
 
-def _load_servers_and_toolsets(
-    cfg: HarnessConfig,
+def _load_servers(
     mcp_config_path: Path,
     lines: list[str],
 ) -> tuple[dict[str, dict] | None, list[str]]:
@@ -134,36 +118,16 @@ def _load_servers_and_toolsets(
         lines.append(parse_error)
         return None, lines
     lines.append("servers=" + ", ".join(servers.keys()))
-
-    toolsets, toolset_error = _load_toolsets_or_error(cfg, mcp_config_path)
-    if toolset_error is not None:
-        lines.append(toolset_error)
-        return None, lines
-    lines.append(f"toolsets_loaded={len(toolsets or [])}")
     return servers, lines
 
 
-def run_mcp_preflight(
+def _run_legacy_preflight_fallback(
     cfg: HarnessConfig,
-    timeout_sec: float | None = None,
+    mcp_config_path: Path,
+    hard_timeout_sec: float,
+    servers: dict[str, dict],
+    lines: list[str],
 ) -> tuple[bool, list[str]]:
-    if not cfg.mcp_enabled:
-        return True, ["MCP disabled in config"]
-    if cfg.mcp_config_path is None:
-        return False, ["mcp_enabled=true but mcp_config_path is empty"]
-
-    mcp_config_path, hard_timeout_sec, lines = _build_preflight_context(
-        cfg,
-        timeout_sec,
-    )
-    servers, lines = _load_servers_and_toolsets(
-        cfg,
-        mcp_config_path,
-        lines,
-    )
-    if servers is None:
-        return False, lines
-
     ok, message = probe_connectivity_with_hard_timeout(
         mcp_config_path,
         cfg.mcp_init_timeout_sec,
@@ -175,3 +139,81 @@ def run_mcp_preflight(
 
     _append_connectivity_failure_details(lines, message, servers)
     return False, lines
+
+
+def _negotiate_capabilities(
+    cfg: HarnessConfig,
+    servers: dict[str, dict],
+    hard_timeout_sec: float,
+) -> tuple[list[ServerCapability] | None, str | None]:
+    try:
+        capabilities = negotiate_server_capabilities(
+            servers,
+            lambda name, server_cfg: (
+                probe_server_connectivity_with_hard_timeout(
+                    name,
+                    server_cfg,
+                    cfg.mcp_init_timeout_sec,
+                    hard_timeout_sec,
+                )
+            ),
+        )
+    except Exception as exc:
+        return None, str(exc)
+
+    return capabilities, None
+
+
+def _finalize_capability_mode(
+    lines: list[str],
+    capabilities: list[ServerCapability],
+) -> tuple[bool, list[str]]:
+    lines.extend(capability_summary_lines(capabilities))
+    if healthy_server_names(capabilities):
+        lines.append(
+            "mcp_degraded_mode: continuing with healthy MCP capability sets"
+        )
+        return True, lines
+
+    lines.append(
+        "warning: no healthy MCP capability sets; "
+        "continuing with native/plugin tools only"
+    )
+    return True, lines
+
+
+def run_mcp_preflight(
+    cfg: HarnessConfig,
+    timeout_sec: float | None = None,
+) -> tuple[bool, list[str]]:
+    if not cfg.mcp_enabled:
+        return True, ["MCP disabled in config"]
+    if cfg.mcp_config_path is None:
+        return False, ["mcp_enabled=true but mcp_config_path is empty"]
+    mcp_config_path, hard_timeout_sec, lines = _build_preflight_context(
+        cfg,
+        timeout_sec,
+    )
+    servers, lines = _load_servers(mcp_config_path, lines)
+    if servers is None:
+        return False, lines
+    capabilities, negotiation_error = _negotiate_capabilities(
+        cfg,
+        servers,
+        hard_timeout_sec,
+    )
+    if negotiation_error is not None or capabilities is None:
+        lines.append(
+            f"warning: capability negotiation failed: {negotiation_error}"
+        )
+        lines.append(
+            "warning: falling back to legacy MCP connectivity preflight"
+        )
+        return _run_legacy_preflight_fallback(
+            cfg,
+            mcp_config_path,
+            hard_timeout_sec,
+            servers,
+            lines,
+        )
+    return _finalize_capability_mode(lines, capabilities)

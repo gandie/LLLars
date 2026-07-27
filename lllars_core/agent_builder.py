@@ -16,7 +16,7 @@ from pydantic_ai.models import infer_model, infer_provider_class
 from pydantic_ai_todo import TodoCapability
 
 from lllars_core.config import HarnessConfig, canonicalize_shell_command
-from lllars_core.mcp import load_toolsets_from_mcp_config
+from lllars_core.mcp.runtime_capability import load_runtime_mcp_toolsets
 from lllars_core.shell import detect_shell, run_shell
 from lllars_core.skills import load_markdown_skill_capabilities
 from lllars_core.tools import (
@@ -103,16 +103,17 @@ def _build_capabilities(cfg: HarnessConfig) -> list[object]:
     return capabilities
 
 
-def _load_mcp_toolsets(cfg: HarnessConfig) -> list[object]:
-    if not cfg.mcp_enabled or cfg.mcp_config_path is None:
-        return []
-    return load_toolsets_from_mcp_config(
-        mcp_config_path=cfg.mcp_config_path,
-        init_timeout_sec=cfg.mcp_init_timeout_sec,
-    )
+def _load_mcp_toolsets(
+    cfg: HarnessConfig,
+    emit_thought: Callable[[str], None],
+) -> list[object]:
+    return load_runtime_mcp_toolsets(cfg, emit_thought)
 
 
-def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
+def _build_agent_instance(
+    cfg: HarnessConfig,
+    emit_thought: Callable[[str], None],
+) -> Agent[AgentDeps, str]:
     model_obj, provider_name = _infer_runtime_model(cfg)
 
     agent = Agent[AgentDeps, str](
@@ -132,7 +133,7 @@ def _build_agent_instance(cfg: HarnessConfig) -> Agent[AgentDeps, str]:
             "project_root": str(cfg.project_root),
         },
         capabilities=_build_capabilities(cfg),
-        toolsets=_load_mcp_toolsets(cfg),
+        toolsets=_load_mcp_toolsets(cfg, emit_thought),
     )
 
     if cfg.instrumentation_enabled:
@@ -200,7 +201,7 @@ def build_agent(
         emit_thought(payload)
         return payload
 
-    agent = _build_agent_instance(cfg)
+    agent = _build_agent_instance(cfg, emit_thought)
 
     @agent.instructions
     def runtime_tooling_instructions(ctx: RunContext[AgentDeps]) -> str:

@@ -5,10 +5,12 @@ import json
 import multiprocessing as mp
 from pathlib import Path
 import subprocess
+import tempfile
 import time
 from typing import Literal
 
 from lllars_core.asyncio_compat import configure_windows_event_loop_policy
+from lllars_core.mcp.capabilities import classify_server_launch_contract
 from lllars_core.mcp.loader import load_toolsets_from_mcp_config
 
 CapabilityState = Literal["healthy", "degraded", "unavailable"]
@@ -16,15 +18,7 @@ CapabilityState = Literal["healthy", "degraded", "unavailable"]
 
 def draft_server_capability_state(server_cfg: dict) -> CapabilityState:
     """Classify a server config for T40 capability-layer planning."""
-    command_raw = server_cfg.get("command")
-    if not isinstance(command_raw, str) or not command_raw.strip():
-        return "unavailable"
-
-    args_raw = server_cfg.get("args", [])
-    if not isinstance(args_raw, list):
-        return "degraded"
-
-    return "healthy"
+    return classify_server_launch_contract("server", server_cfg).state
 
 
 def draft_capability_matrix(
@@ -193,3 +187,32 @@ def probe_connectivity_with_hard_timeout(
         )
 
     return bool(ok), str(message)
+
+
+def probe_server_connectivity_with_hard_timeout(
+    server_name: str,
+    server_cfg: dict,
+    init_timeout_sec: float,
+    timeout_sec: float,
+) -> tuple[bool, str]:
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            suffix=".json",
+            prefix="lllars-mcp-server-",
+            delete=False,
+        ) as tmp:
+            json.dump({"mcpServers": {server_name: server_cfg}}, tmp)
+            tmp_path = Path(tmp.name)
+    except Exception as exc:
+        return False, f"failed to stage server config: {exc}"
+
+    try:
+        return probe_connectivity_with_hard_timeout(
+            mcp_config_path=tmp_path,
+            init_timeout_sec=init_timeout_sec,
+            timeout_sec=timeout_sec,
+        )
+    finally:
+        tmp_path.unlink(missing_ok=True)
