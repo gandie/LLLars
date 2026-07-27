@@ -10,6 +10,8 @@ from lllars_core.config.runtime_section import resolve_shell_policy
 from lllars_core.config.runtime_values import load_service_settings
 from lllars_core.config.tools_section import build_default_tool_policy
 from lllars_core.config.tools_section import collect_allowed_shell_commands
+from lllars_core.config.tools_section import resolve_enabled_tool_groups
+from lllars_core.config.tools_section import resolve_plugin_tool_paths
 from lllars_core.config.tools_section import resolve_command_profile
 
 
@@ -20,6 +22,8 @@ class RuntimeInputs:
     command_profile: str
     shell_settings: tuple[str, str | None]
     allowed_shell_commands: tuple[str, ...]
+    enabled_tool_groups: tuple[str, ...]
+    plugin_tool_paths: tuple[str, ...]
     system_prompt: str
     tool_policy: str
     eval_expect_json: bool
@@ -41,16 +45,49 @@ def runtime_inputs(
     *,
     config_root: Path | None = None,
 ) -> RuntimeInputs:
-    test_command, eval_command, command_profile, profile_commands, shell_settings = _command_inputs(
+    return _runtime_inputs_from_cfg(cfg, config_root=config_root)
+
+
+def _runtime_inputs_from_cfg(
+    cfg: dict,
+    *,
+    config_root: Path | None,
+) -> RuntimeInputs:
+    (
+        test_command,
+        eval_command,
+        command_profile,
+        profile_commands,
+        shell_settings,
+    ) = _command_inputs(
         cfg,
         config_root=config_root,
     )
-    allowed_shell_commands = collect_allowed_shell_commands(
+    return _runtime_inputs_from_command_values(
+        cfg,
+        test_command,
+        eval_command,
+        command_profile,
+        profile_commands,
+        shell_settings,
+    )
+
+
+def _runtime_inputs_from_command_values(
+    cfg: dict,
+    test_command: str | None,
+    eval_command: str | None,
+    command_profile: str,
+    profile_commands: tuple[str, ...],
+    shell_settings: tuple[str, str | None],
+) -> RuntimeInputs:
+    allowed_shell_commands, enabled_tool_groups, plugin_tool_paths = _tooling_inputs(
+        cfg,
         test_command,
         eval_command,
         profile_commands,
     )
-    system_prompt, tool_policy, eval_expect_json, eval_success_pass_rate = runtime_text_fields(
+    text_fields = runtime_text_fields(
         cfg,
         test_command,
         eval_command,
@@ -62,10 +99,32 @@ def runtime_inputs(
         command_profile=command_profile,
         shell_settings=shell_settings,
         allowed_shell_commands=allowed_shell_commands,
-        system_prompt=system_prompt,
-        tool_policy=tool_policy,
-        eval_expect_json=eval_expect_json,
-        eval_success_pass_rate=eval_success_pass_rate,
+        enabled_tool_groups=enabled_tool_groups,
+        plugin_tool_paths=plugin_tool_paths,
+        system_prompt=text_fields[0],
+        tool_policy=text_fields[1],
+        eval_expect_json=text_fields[2],
+        eval_success_pass_rate=text_fields[3],
+    )
+
+
+def _tooling_inputs(
+    cfg: dict,
+    test_command: str | None,
+    eval_command: str | None,
+    profile_commands: tuple[str, ...],
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    allowed_shell_commands = collect_allowed_shell_commands(
+        test_command,
+        eval_command,
+        profile_commands,
+    )
+    enabled_tool_groups = resolve_enabled_tool_groups(cfg)
+    plugin_tool_paths = resolve_plugin_tool_paths(cfg)
+    return (
+        allowed_shell_commands,
+        enabled_tool_groups,
+        plugin_tool_paths,
     )
 
 

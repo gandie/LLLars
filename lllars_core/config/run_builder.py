@@ -119,8 +119,7 @@ def _shell_kwargs(settings: tuple[str, str | None]) -> dict[str, object]:
     }
 
 
-def build_run_config(
-    cfg: dict,
+def _run_core_kwargs(
     *,
     model: str,
     provider_url: str,
@@ -128,26 +127,71 @@ def build_run_config(
     test_command: str | None,
     eval_command: str | None,
     command_profile: str,
-    system_prompt: str,
-    tool_policy: str,
+    enabled_tool_groups: tuple[str, ...],
+    plugin_tool_paths: tuple[str, ...],
     eval_expect_json: bool,
     eval_success_pass_rate: float,
+    system_prompt: str,
+    tool_policy: str,
+) -> dict[str, object]:
+    return {
+        "model": model,
+        "provider_url": provider_url,
+        "project_root": project_root,
+        "commands": _command_map(test_command, eval_command),
+        "test_command": test_command,
+        "eval_command": eval_command,
+        "command_profile": command_profile,
+        "enabled_tool_groups": enabled_tool_groups,
+        "plugin_tool_paths": plugin_tool_paths,
+        "eval_expect_json": eval_expect_json,
+        "eval_success_pass_rate": eval_success_pass_rate,
+        "system_prompt": system_prompt,
+        "tool_policy": tool_policy,
+    }
+
+
+def _run_core_from_inputs(
+    *,
+    model: str,
+    provider_url: str,
+    project_root: Path,
+    test_command: str | None,
+    eval_command: str | None,
+    command_profile: str,
+    enabled_tool_groups: tuple[str, ...],
+    plugin_tool_paths: tuple[str, ...],
+    eval_expect_json: bool,
+    eval_success_pass_rate: float,
+    system_prompt: str,
+    tool_policy: str,
+) -> dict[str, object]:
+    return _run_core_kwargs(
+        model=model,
+        provider_url=provider_url,
+        project_root=project_root,
+        test_command=test_command,
+        eval_command=eval_command,
+        command_profile=command_profile,
+        enabled_tool_groups=enabled_tool_groups,
+        plugin_tool_paths=plugin_tool_paths,
+        eval_expect_json=eval_expect_json,
+        eval_success_pass_rate=eval_success_pass_rate,
+        system_prompt=system_prompt,
+        tool_policy=tool_policy,
+    )
+
+
+def build_run_config(
+    cfg: dict,
+    *,
+    core_fields: dict[str, object],
     skills_settings: tuple[bool, str, bool, bool],
     mcp_settings: tuple[bool, Path | None, float],
     shell_settings: tuple[str, str | None],
 ) -> RunConfig:
     return RunConfig(
-        model=model,
-        provider_url=provider_url,
-        project_root=project_root,
-        commands=_command_map(test_command, eval_command),
-        test_command=test_command,
-        eval_command=eval_command,
-        command_profile=command_profile,
-        eval_expect_json=eval_expect_json,
-        eval_success_pass_rate=eval_success_pass_rate,
-        system_prompt=system_prompt,
-        tool_policy=tool_policy,
+        **core_fields,
         **_skills_kwargs(skills_settings),
         **_mcp_kwargs(mcp_settings),
         **_shell_kwargs(shell_settings),

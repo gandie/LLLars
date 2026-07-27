@@ -19,6 +19,7 @@ DEFAULT_QUEUE_BACKEND = "inmemory"
 DEFAULT_NETWORK_POLICY = "inherit"
 DEFAULT_COMMAND_PROFILE = "none"
 DEFAULT_SHELL_MODE = "auto"
+DEFAULT_ENABLED_TOOL_GROUPS = ("native_files", "native_shell")
 
 VALID_SERVICE_MODES = frozenset({"oneshot", "serve"})
 VALID_QUEUE_BACKENDS = frozenset({"inmemory", "redis"})
@@ -76,6 +77,8 @@ class RunConfig:
     mcp_init_timeout_sec: float | None = None
     shell_mode: str = DEFAULT_SHELL_MODE
     shell_override: str | None = None
+    enabled_tool_groups: tuple[str, ...] = DEFAULT_ENABLED_TOOL_GROUPS
+    plugin_tool_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -111,6 +114,8 @@ class HarnessConfig:
     mcp_init_timeout_sec: float
     shell_mode: str
     shell_override: str | None
+    enabled_tool_groups: tuple[str, ...]
+    plugin_tool_paths: tuple[str, ...]
     service_mode: str
     service_host: str
     service_port: int

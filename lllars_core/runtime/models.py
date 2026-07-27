@@ -172,6 +172,8 @@ RUN_CFG_OVERRIDE_FIELDS: tuple[str, ...] = (
     "mcp_init_timeout_sec",
     "shell_mode",
     "shell_override",
+    "enabled_tool_groups",
+    "plugin_tool_paths",
 )
 
 HARNESS_RUN_SYNC_FIELDS: tuple[str, ...] = (
@@ -199,6 +201,8 @@ HARNESS_RUN_SYNC_FIELDS: tuple[str, ...] = (
     "mcp_init_timeout_sec",
     "shell_mode",
     "shell_override",
+    "enabled_tool_groups",
+    "plugin_tool_paths",
 )
 
 __all__ = [

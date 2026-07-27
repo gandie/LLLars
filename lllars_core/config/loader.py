@@ -26,12 +26,12 @@ from lllars_core.config.runtime_values import (
     load_mcp_settings,
     load_skills_settings,
 )
+from lllars_core.config.run_builder import _run_core_from_inputs
 
 
 def _load_config_object(config_path: Path) -> dict:
     if not config_path.exists():
         raise FileNotFoundError(f"Missing config file: {config_path}")
-
     cfg = json.loads(config_path.read_text(encoding="utf-8"))
     if not isinstance(cfg, dict):
         raise ValueError("Top-level config must be a JSON object")
@@ -45,7 +45,6 @@ def _load_service_env_layer(
     env_file_raw = str(raw_cfg.get("env_file", "")).strip()
     if not env_file_raw:
         return {}
-
     env_file_path = Path(env_file_raw)
     if not env_file_path.is_absolute():
         env_file_path = (config_root / env_file_path).resolve()
@@ -107,7 +106,6 @@ def _split_cfg(
     config_root = config_path.parent.resolve()
     run_cfg = _section(raw_cfg, "run")
     service_cfg = _service_flat(_section(raw_cfg, "service"))
-
     if overrides:
         service_cfg.update(
             {
@@ -123,21 +121,11 @@ def _split_cfg(
                 if key not in SERVICE_KEY_MAP.values()
             }
         )
-
     # env_file has highest precedence for service settings.
     service_cfg.update(_load_service_env_layer(config_root, raw_cfg))
     service_cfg = {**_defaults(), **service_cfg}
     run_cfg = {**_defaults(), **run_cfg}
     return service_cfg, run_cfg, config_root
-
-
-def _service_mode(service_cfg: dict) -> str:
-    return validate_choice(
-        service_cfg,
-        "service_mode",
-        default=DEFAULT_SERVICE_MODE,
-        valid_values=VALID_SERVICE_MODES,
-    )
 
 
 def _build_configs(
@@ -178,18 +166,23 @@ def _run_cfg(
     provider_url: str,
     project_root: Path,
 ) -> RunConfig:
-    return build_run_config(
-        run_cfg,
+    core_fields = _run_core_from_inputs(
         model=model,
         provider_url=provider_url,
         project_root=project_root,
         test_command=runtime.test_command,
         eval_command=runtime.eval_command,
         command_profile=runtime.command_profile,
-        system_prompt=runtime.system_prompt,
-        tool_policy=runtime.tool_policy,
+        enabled_tool_groups=runtime.enabled_tool_groups,
+        plugin_tool_paths=runtime.plugin_tool_paths,
         eval_expect_json=runtime.eval_expect_json,
         eval_success_pass_rate=runtime.eval_success_pass_rate,
+        system_prompt=runtime.system_prompt,
+        tool_policy=runtime.tool_policy,
+    )
+    return build_run_config(
+        run_cfg,
+        core_fields=core_fields,
         skills_settings=load_skills_settings(run_cfg),
         mcp_settings=load_mcp_settings(run_cfg),
         shell_settings=runtime.shell_settings,
@@ -202,10 +195,16 @@ def load_config(
     overrides: dict[str, object] | None = None,
 ) -> HarnessConfig:
     service_cfg, run_cfg, config_root = _split_cfg(config_path, overrides)
+    service_mode = validate_choice(
+        service_cfg,
+        "service_mode",
+        default=DEFAULT_SERVICE_MODE,
+        valid_values=VALID_SERVICE_MODES,
+    )
     runtime, service_cfg, run_cfg = _build_configs(
         service_cfg,
         run_cfg,
-        service_mode=_service_mode(service_cfg),
+        service_mode=service_mode,
         config_root=config_root,
         config_path=config_path,
     )
@@ -215,5 +214,7 @@ def load_config(
         allowed_shell_commands=runtime.allowed_shell_commands,
         system_prompt=runtime.system_prompt,
         tool_policy=runtime.tool_policy,
+        enabled_tool_groups=runtime.enabled_tool_groups,
+        plugin_tool_paths=runtime.plugin_tool_paths,
         command_profile=runtime.command_profile,
     )

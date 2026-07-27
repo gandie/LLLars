@@ -8,6 +8,8 @@ def _harness_core_kwargs(
     allowed_shell_commands: tuple[str, ...],
     system_prompt: str,
     tool_policy: str,
+    enabled_tool_groups: tuple[str, ...],
+    plugin_tool_paths: tuple[str, ...],
 ) -> dict[str, object]:
     return {
         "model": run_cfg.model,
@@ -20,6 +22,8 @@ def _harness_core_kwargs(
         "allowed_shell_commands": allowed_shell_commands,
         "system_prompt": system_prompt,
         "tool_policy": tool_policy,
+        "enabled_tool_groups": enabled_tool_groups,
+        "plugin_tool_paths": plugin_tool_paths,
     }
 
 
@@ -77,6 +81,8 @@ def _harness_kwargs(
     allowed_shell_commands: tuple[str, ...],
     system_prompt: str,
     tool_policy: str,
+    enabled_tool_groups: tuple[str, ...],
+    plugin_tool_paths: tuple[str, ...],
     command_profile: str,
 ) -> dict[str, object]:
     kwargs = _harness_core_kwargs(
@@ -84,6 +90,8 @@ def _harness_kwargs(
         allowed_shell_commands,
         system_prompt,
         tool_policy,
+        enabled_tool_groups,
+        plugin_tool_paths,
     )
     kwargs.update(_harness_usage_kwargs(run_cfg))
     kwargs.update(_harness_service_kwargs(service_cfg, command_profile))
@@ -99,6 +107,8 @@ def build_harness_config(
     allowed_shell_commands: tuple[str, ...],
     system_prompt: str,
     tool_policy: str,
+    enabled_tool_groups: tuple[str, ...],
+    plugin_tool_paths: tuple[str, ...],
     command_profile: str,
 ) -> HarnessConfig:
     return HarnessConfig(
@@ -108,6 +118,8 @@ def build_harness_config(
             allowed_shell_commands,
             system_prompt,
             tool_policy,
+            enabled_tool_groups,
+            plugin_tool_paths,
             command_profile,
         )
     )
