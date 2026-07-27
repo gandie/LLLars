@@ -85,6 +85,40 @@ Every new task file must follow this template exactly (no additional lifecycle m
   - outcome: `correctness`, `scope_discipline`, `validation_trust`
   - collaboration: `ambiguity_handling`, `operator_load`, `trust_delta`
 
+Use this exact template for the `agent_evaluation` frontmatter block in done task files. Do not dare to fill any score values or notes in the template; those are for the human operator to fill after task completion.
+
+```yaml
+---
+agent_evaluation:
+  version: 1
+  evaluator: human_operator
+  evaluated_at: YYYY-MM-DD
+  verdict: accepted
+  would_delegate_similar_again: true
+
+  score_scale:
+    min: 1
+    max: 5
+    meaning:
+      1: poor
+      3: acceptable
+      5: excellent
+
+  outcome:
+    correctness:
+    scope_discipline:
+    validation_trust:
+
+  collaboration:
+    ambiguity_handling:
+    operator_load:
+    trust_delta:
+
+  notes: >
+    HUMAN NOTES
+---
+```
+
 ## Changelog Enforcement
 - Changelog is append-only.
 - One completion event per entry.
@@ -104,7 +138,8 @@ Every new task file must follow this template exactly (no additional lifecycle m
 - Closing a task without moving it to docs/workflow/done/.
 - Recording completion without test evidence.
 - Completing a task file without an explicit `Why Needed` section.
-- Moving a task to done without `agent_evaluation` frontmatter in the done file.
+- Leaving a task in done folder without `agent_evaluation` frontmatter in the file.
+- Creating invalid YAML frontmatter in task files.
 - Using `Status`, `Priority`, or any custom lifecycle metadata in task files.
 - Reintroducing backlog or in-progress index ceremony.
 - Bundling multiple unrelated tasks into one task file.
