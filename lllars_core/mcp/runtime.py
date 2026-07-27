@@ -6,9 +6,34 @@ import multiprocessing as mp
 from pathlib import Path
 import subprocess
 import time
+from typing import Literal
 
 from lllars_core.asyncio_compat import configure_windows_event_loop_policy
 from lllars_core.mcp.loader import load_toolsets_from_mcp_config
+
+CapabilityState = Literal["healthy", "degraded", "unavailable"]
+
+
+def draft_server_capability_state(server_cfg: dict) -> CapabilityState:
+    """Classify a server config for T40 capability-layer planning."""
+    command_raw = server_cfg.get("command")
+    if not isinstance(command_raw, str) or not command_raw.strip():
+        return "unavailable"
+
+    args_raw = server_cfg.get("args", [])
+    if not isinstance(args_raw, list):
+        return "degraded"
+
+    return "healthy"
+
+
+def draft_capability_matrix(
+    servers: dict[str, dict],
+) -> dict[str, CapabilityState]:
+    return {
+        server_name: draft_server_capability_state(server_cfg)
+        for server_name, server_cfg in servers.items()
+    }
 
 
 def read_servers(mcp_config_path: Path) -> tuple[dict[str, dict], str | None]:

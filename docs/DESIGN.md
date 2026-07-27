@@ -199,6 +199,42 @@ Example target pattern:
   - Modern Python Guru
 - Task-oriented implementation workflow is managed through docs/workflow/README.md and task files under docs/workflow/tasks/.
 
+## Tool Extensibility and MCP Capability Design Prep (T38)
+This section defines minimal draft contracts for T39 and T40 while preserving current runtime behavior.
+
+### Tool Taxonomy and Execution Boundaries
+- `native_files`: built-in local file tools (`list_files`, `read_file`, `write_file`) scoped to `project_root`.
+- `native_shell`: built-in policy-gated shell tools (test/eval/allowlisted shell execution).
+- `plugin_local`: local repository plugin tools loaded from configured local paths only.
+- `mcp_toolsets`: remote MCP-backed tools loaded from configured MCP servers.
+- Native groups remain baseline and preserve current safety policies.
+- Plugin tools are local-path only; no network marketplace, no dynamic download.
+- MCP toolsets remain externally hosted and transport-bound (stdio-first in current implementation).
+- Group selection only controls registration; it does not widen filesystem/network policy.
+
+### Tool-Group Config Schema Draft
+```json
+{"run": {"tool_groups": {"enabled": ["native_files", "native_shell", "plugin_local", "mcp_toolsets"], "disabled": []}}}
+```
+
+Draft validation rules for T39:
+- Unknown group names are configuration errors.
+- Duplicate values within one list are configuration errors.
+- If the same group appears in both `enabled` and `disabled`, configuration is rejected (conflict error).
+- Omitted `tool_groups` preserves current behavior (fixed native groups plus MCP only when `mcp_enabled=true`).
+
+### MCP Capability Matrix and Fallback Policy Draft
+Capability states:
+- `healthy`: required server fields are present and connectivity probe succeeds.
+- `degraded`: configuration is parseable but one or more capability checks fail.
+- `unavailable`: required server launch contract is missing or connectivity cannot be established.
+
+Fallback policy for T40:
+- Default policy is degraded-continue.
+- If at least one configured MCP server is healthy, runtime continues with healthy capabilities and warns for degraded/unavailable servers.
+- If no configured MCP servers are healthy, MCP capability is unavailable and runtime falls back to native/plugin groups only.
+- Startup diagnostics must include per-server capability state and operator-facing recovery hints.
+
 ## Success Criteria
 - Reproducible runs from API payloads.
 - Strong filesystem safety boundaries in containerized execution.
