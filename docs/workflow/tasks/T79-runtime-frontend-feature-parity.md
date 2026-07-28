@@ -20,6 +20,7 @@ Update the runtime frontend to support all currently available runtime features 
 ## Non-Goals
 - No backend contract expansion in this task.
 - No styling-overhaul effort beyond required usability updates.
+- Change of current field default values! These are adjusted by humans!
 
 ## Target Files
 - lllars_core/static/runtime/index.html
