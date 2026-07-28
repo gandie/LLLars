@@ -17,6 +17,7 @@ Add native local websearch/webfetch tooling using pydantic-oriented capabilities
 - Integrate with existing network policy and runtime guardrails.
 - Add tests for enabled, disabled, and offline behavior.
 - Document operator usage and safety boundaries.
+- Add example to playground config
 
 ## Non-Goals
 - No broad crawling framework.
