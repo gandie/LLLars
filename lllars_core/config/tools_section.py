@@ -6,6 +6,9 @@ from pathlib import Path
 import yaml
 
 from lllars_core.config.models import DEFAULT_COMMAND_PROFILE
+from lllars_core.config.web_research_section import (
+    resolve_web_research_settings,
+)
 from lllars_core.config.tool_registry_section import (
     resolve_enabled_tool_groups,
     resolve_plugin_tool_paths,

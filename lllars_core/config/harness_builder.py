@@ -24,6 +24,12 @@ def _harness_core_kwargs(
         "tool_policy": tool_policy,
         "enabled_tool_groups": enabled_tool_groups,
         "plugin_tool_paths": plugin_tool_paths,
+        "web_research_domain_policy": run_cfg.web_research_domain_policy,
+        "web_research_allowed_domains": run_cfg.web_research_allowed_domains,
+        "web_research_blocked_domains": run_cfg.web_research_blocked_domains,
+        "web_research_local_fallback": bool(
+            run_cfg.web_research_local_fallback
+        ),
     }
 
 

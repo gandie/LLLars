@@ -22,10 +22,20 @@
         "native_file_read",
         "native_file_write",
         "native_shell",
+        "native_web_research",
         "plugin_local",
         "mcp_toolsets"
       ],
       "disabled": []
+    },
+    "web_research": {
+      "domain_policy": "allowlist",
+      "allowed_domains": [
+        "docs.pydantic.dev",
+        "pydantic.dev"
+      ],
+      "blocked_domains": [],
+      "local_fallback": true
     },
     "tool_plugins": {
       "paths": [

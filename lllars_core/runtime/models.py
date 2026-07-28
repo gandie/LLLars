@@ -5,6 +5,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from lllars_core.config import RunConfig
+from lllars_core.runtime.override_fields import (
+    HARNESS_RUN_SYNC_FIELDS,
+    RUN_CFG_OVERRIDE_FIELDS,
+)
 from lllars_core.runtime.scheduler import parse_interval_schedule
 
 
@@ -145,65 +149,6 @@ class JobStatus(_StrictModel):
     result: RunResult | None = None
     error: ErrorEnvelope | None = None
 
-
-RUN_CFG_OVERRIDE_FIELDS: tuple[str, ...] = (
-    "eval_expect_json",
-    "eval_success_pass_rate",
-    "system_prompt",
-    "tool_policy",
-    "usage_request_limit",
-    "usage_tool_calls_limit",
-    "usage_input_tokens_limit",
-    "usage_output_tokens_limit",
-    "usage_total_tokens_limit",
-    "usage_count_tokens_before_request",
-    "agent_retries_tools",
-    "agent_retries_output",
-    "tool_timeout_sec",
-    "max_concurrency",
-    "instrumentation_enabled",
-    "instrumentation_include_content",
-    "skills_enabled",
-    "skills_glob",
-    "skills_defer_loading",
-    "skills_require_description",
-    "mcp_enabled",
-    "mcp_config_path",
-    "mcp_init_timeout_sec",
-    "shell_mode",
-    "shell_override",
-    "enabled_tool_groups",
-    "plugin_tool_paths",
-)
-
-HARNESS_RUN_SYNC_FIELDS: tuple[str, ...] = (
-    "eval_expect_json",
-    "eval_success_pass_rate",
-    "system_prompt",
-    "tool_policy",
-    "usage_request_limit",
-    "usage_tool_calls_limit",
-    "usage_input_tokens_limit",
-    "usage_output_tokens_limit",
-    "usage_total_tokens_limit",
-    "usage_count_tokens_before_request",
-    "agent_retries_tools",
-    "agent_retries_output",
-    "tool_timeout_sec",
-    "max_concurrency",
-    "instrumentation_enabled",
-    "instrumentation_include_content",
-    "skills_enabled",
-    "skills_glob",
-    "skills_defer_loading",
-    "skills_require_description",
-    "mcp_enabled",
-    "mcp_init_timeout_sec",
-    "shell_mode",
-    "shell_override",
-    "enabled_tool_groups",
-    "plugin_tool_paths",
-)
 
 __all__ = [
     "ErrorEnvelope",

@@ -17,6 +17,8 @@ DEFAULT_SERVICE_PORT = 8000
 DEFAULT_SERVICE_WORKERS = 1
 DEFAULT_QUEUE_BACKEND = "inmemory"
 DEFAULT_NETWORK_POLICY = "inherit"
+DEFAULT_WEB_RESEARCH_DOMAIN_POLICY = "none"
+DEFAULT_WEB_RESEARCH_LOCAL_FALLBACK = True
 DEFAULT_COMMAND_PROFILE = "none"
 DEFAULT_SHELL_MODE = "auto"
 DEFAULT_ENABLED_TOOL_GROUPS = ("native_files", "native_shell")
@@ -24,6 +26,9 @@ DEFAULT_ENABLED_TOOL_GROUPS = ("native_files", "native_shell")
 VALID_SERVICE_MODES = frozenset({"oneshot", "serve"})
 VALID_QUEUE_BACKENDS = frozenset({"inmemory", "redis"})
 VALID_NETWORK_POLICIES = frozenset({"inherit", "offline"})
+VALID_WEB_RESEARCH_DOMAIN_POLICIES = frozenset(
+    {"none", "allowlist", "denylist"}
+)
 VALID_SHELL_MODES = frozenset({"auto", "override"})
 WINDOWS_SHELLS = ("pwsh", "powershell", "cmd")
 POSIX_SHELLS = ("bash", "sh")
@@ -79,6 +84,10 @@ class RunConfig:
     shell_override: str | None = None
     enabled_tool_groups: tuple[str, ...] = DEFAULT_ENABLED_TOOL_GROUPS
     plugin_tool_paths: tuple[str, ...] = ()
+    web_research_domain_policy: str = DEFAULT_WEB_RESEARCH_DOMAIN_POLICY
+    web_research_allowed_domains: tuple[str, ...] = ()
+    web_research_blocked_domains: tuple[str, ...] = ()
+    web_research_local_fallback: bool = DEFAULT_WEB_RESEARCH_LOCAL_FALLBACK
 
 
 @dataclass(frozen=True)
@@ -116,6 +125,10 @@ class HarnessConfig:
     shell_override: str | None
     enabled_tool_groups: tuple[str, ...]
     plugin_tool_paths: tuple[str, ...]
+    web_research_domain_policy: str
+    web_research_allowed_domains: tuple[str, ...]
+    web_research_blocked_domains: tuple[str, ...]
+    web_research_local_fallback: bool
     service_mode: str
     service_host: str
     service_port: int

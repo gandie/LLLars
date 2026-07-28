@@ -21,6 +21,7 @@ ToolGroupName = Literal[
     "native_file_read",
     "native_file_write",
     "native_shell",
+    "native_web_research",
     "plugin_local",
     "mcp_toolsets",
 ]
@@ -35,6 +36,7 @@ KNOWN_TOOL_GROUPS: tuple[ToolGroupName, ...] = (
     "native_file_read",
     "native_file_write",
     "native_shell",
+    "native_web_research",
     "plugin_local",
     "mcp_toolsets",
 )
@@ -85,6 +87,10 @@ def _register_non_file_group(
 
     if group_name == "mcp_toolsets":
         # MCP tools are loaded as toolsets during agent construction.
+        return
+
+    if group_name == "native_web_research":
+        # Web research capabilities are attached during agent construction.
         return
 
     raise ValueError(f"Unknown enabled tool group: {group_name}")

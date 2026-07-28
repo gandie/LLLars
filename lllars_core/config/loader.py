@@ -3,13 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from lllars_core.config.builders import build_harness_config, build_run_config
+from lllars_core.config.builders import build_harness_config
 from lllars_core.config.env_layer import build_service_env_layer
 from lllars_core.config.env_layer import parse_env_file
 from lllars_core.config.loader_steps import resolve_run_inputs
 from lllars_core.config.loader_steps import RuntimeInputs
 from lllars_core.config.loader_steps import runtime_inputs
-from lllars_core.config.loader_steps import service_config
+from lllars_core.config.service_section import service_config
+from lllars_core.config.run_cfg_loader import build_run_cfg
 from lllars_core.config.models import (
     DEFAULT_COMMAND_PROFILE,
     DEFAULT_QUEUE_BACKEND,
@@ -22,11 +23,6 @@ from lllars_core.config.models import (
 from lllars_core.config.runtime_section import (
     validate_choice,
 )
-from lllars_core.config.runtime_values import (
-    load_mcp_settings,
-    load_skills_settings,
-)
-from lllars_core.config.run_builder import _run_core_from_inputs
 
 
 def _load_config_object(config_path: Path) -> dict:
@@ -148,7 +144,7 @@ def _build_configs(
         config_path=config_path,
         project_root_raw=project_root_raw,
     )
-    run_cfg = _run_cfg(
+    run_cfg = build_run_cfg(
         run_cfg,
         runtime=runtime,
         model=model,
@@ -156,37 +152,6 @@ def _build_configs(
         project_root=project_root,
     )
     return runtime, service_cfg, run_cfg
-
-
-def _run_cfg(
-    run_cfg: dict,
-    *,
-    runtime: RuntimeInputs,
-    model: str,
-    provider_url: str,
-    project_root: Path,
-) -> RunConfig:
-    core_fields = _run_core_from_inputs(
-        model=model,
-        provider_url=provider_url,
-        project_root=project_root,
-        test_command=runtime.test_command,
-        eval_command=runtime.eval_command,
-        command_profile=runtime.command_profile,
-        enabled_tool_groups=runtime.enabled_tool_groups,
-        plugin_tool_paths=runtime.plugin_tool_paths,
-        eval_expect_json=runtime.eval_expect_json,
-        eval_success_pass_rate=runtime.eval_success_pass_rate,
-        system_prompt=runtime.system_prompt,
-        tool_policy=runtime.tool_policy,
-    )
-    return build_run_config(
-        run_cfg,
-        core_fields=core_fields,
-        skills_settings=load_skills_settings(run_cfg),
-        mcp_settings=load_mcp_settings(run_cfg),
-        shell_settings=runtime.shell_settings,
-    )
 
 
 def load_config(

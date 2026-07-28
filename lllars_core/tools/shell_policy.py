@@ -13,6 +13,20 @@ if TYPE_CHECKING:
     from lllars_core.config import HarnessConfig
 
 
+def _web_research_instruction(cfg: "HarnessConfig") -> str | None:
+    if "native_web_research" not in set(cfg.enabled_tool_groups):
+        return None
+    if cfg.network_policy == "offline":
+        return (
+            "- Web research is configured but disabled because "
+            "network_policy=offline."
+        )
+    return (
+        "- Web research is available with domain_policy="
+        f"{cfg.web_research_domain_policy}."
+    )
+
+
 def runtime_tooling_instructions(
     cfg: "HarnessConfig",
     deps: "AgentDeps",
@@ -44,6 +58,9 @@ def runtime_tooling_instructions(
             "- No shell command tool is available in "
             "this configuration."
         )
+    web_research_line = _web_research_instruction(cfg)
+    if web_research_line is not None:
+        lines.append(web_research_line)
     return "\n".join(lines)
 
 

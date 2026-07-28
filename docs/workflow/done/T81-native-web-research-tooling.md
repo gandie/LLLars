@@ -1,12 +1,42 @@
+---
+agent_evaluation:
+  version: 1
+  evaluator: human_operator
+  evaluated_at: YYYY-MM-DD
+  verdict: accepted
+  would_delegate_similar_again: true
+
+  score_scale:
+    min: 1
+    max: 5
+    meaning:
+      1: poor
+      3: acceptable
+      5: excellent
+
+  outcome:
+    correctness:
+    scope_discipline:
+    validation_trust:
+
+  collaboration:
+    ambiguity_handling:
+    operator_load:
+    trust_delta:
+
+  notes: >
+    HUMAN NOTES
+---
+
 # T81 Native Web Research Tooling
 
 ## Metadata
 - Owner: unassigned
 - Created: 2026-07-27
-- Updated: 2026-07-27
+- Updated: 2026-07-28
 
 ## Why Needed
-The runtime lacks first-class web research tools, limiting research-heavy operator workflows.
+The runtime lacked first-class web research tooling, limiting research-heavy operator workflows.
 
 ## Objective
 Add native local websearch/webfetch tooling using pydantic-oriented capabilities with explicit policy controls and test coverage.
@@ -17,7 +47,7 @@ Add native local websearch/webfetch tooling using pydantic-oriented capabilities
 - Integrate with existing network policy and runtime guardrails.
 - Add tests for enabled, disabled, and offline behavior.
 - Document operator usage and safety boundaries.
-- Add example to playground config
+- Add example to playground config.
 
 ## Non-Goals
 - No broad crawling framework.
@@ -28,6 +58,12 @@ Add native local websearch/webfetch tooling using pydantic-oriented capabilities
 - Offline policy: confirm expected tool behavior when network_policy=offline.
 - Content limits: confirm response-size and truncation policy.
 - Error policy: confirm whether external fetch errors surface raw or normalized.
+
+## Ambiguity Resolutions
+- Domain policy default: `none`.
+- Offline behavior: skip registering web tools when `network_policy=offline`.
+- Content limits: use provider defaults (no extra LLLars truncation layer).
+- Error policy: normalized runtime tool-error envelopes.
 
 ## Target Files
 - lllars_core/tools/
@@ -45,3 +81,6 @@ Disable/remove web tooling group and revert config/docs/test additions.
 
 ## Completion Artifact
 Web research tools are configurable, policy-bound, test-covered, and documented.
+
+## Validation Evidence
+- PASS `.\venv\Scripts\python.exe -m unittest discover .\tests\`.

@@ -3,16 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from lllars_core.config.models import ServiceConfig
-from lllars_core.config.runtime_section import as_bool
+from lllars_core.config.runtime_text_fields import runtime_text_fields
 from lllars_core.config.runtime_section import load_commands
 from lllars_core.config.runtime_section import resolve_shell_policy
-from lllars_core.config.runtime_values import load_service_settings
-from lllars_core.config.tools_section import build_default_tool_policy
 from lllars_core.config.tools_section import collect_allowed_shell_commands
 from lllars_core.config.tools_section import resolve_enabled_tool_groups
 from lllars_core.config.tools_section import resolve_plugin_tool_paths
 from lllars_core.config.tools_section import resolve_command_profile
+from lllars_core.config.tools_section import resolve_web_research_settings
 
 
 @dataclass(frozen=True)
@@ -24,6 +22,10 @@ class RuntimeInputs:
     allowed_shell_commands: tuple[str, ...]
     enabled_tool_groups: tuple[str, ...]
     plugin_tool_paths: tuple[str, ...]
+    web_research_domain_policy: str
+    web_research_allowed_domains: tuple[str, ...]
+    web_research_blocked_domains: tuple[str, ...]
+    web_research_local_fallback: bool
     system_prompt: str
     tool_policy: str
     eval_expect_json: bool
@@ -81,17 +83,45 @@ def _runtime_inputs_from_command_values(
     profile_commands: tuple[str, ...],
     shell_settings: tuple[str, str | None],
 ) -> RuntimeInputs:
-    allowed_shell_commands, enabled_tool_groups, plugin_tool_paths = _tooling_inputs(
+    tooling_fields = _tooling_inputs(
         cfg,
         test_command,
         eval_command,
         profile_commands,
     )
+    allowed_shell_commands = tooling_fields[0]
     text_fields = runtime_text_fields(
         cfg,
         test_command,
         eval_command,
         allowed_shell_commands,
+    )
+    return _build_runtime_inputs(
+        test_command=test_command,
+        eval_command=eval_command,
+        command_profile=command_profile,
+        shell_settings=shell_settings,
+        tooling_fields=tooling_fields,
+        text_fields=text_fields,
+    )
+
+
+def _build_runtime_inputs(
+    *,
+    test_command: str | None,
+    eval_command: str | None,
+    command_profile: str,
+    shell_settings: tuple[str, str | None],
+    tooling_fields: tuple[
+        tuple[str, ...],
+        tuple[str, ...],
+        tuple[str, ...],
+        tuple[str, tuple[str, ...], tuple[str, ...], bool],
+    ],
+    text_fields: tuple[str, str, bool, float],
+) -> RuntimeInputs:
+    allowed_shell_commands, enabled_tool_groups, plugin_tool_paths, web = (
+        tooling_fields
     )
     return RuntimeInputs(
         test_command=test_command,
@@ -101,6 +131,10 @@ def _runtime_inputs_from_command_values(
         allowed_shell_commands=allowed_shell_commands,
         enabled_tool_groups=enabled_tool_groups,
         plugin_tool_paths=plugin_tool_paths,
+        web_research_domain_policy=web[0],
+        web_research_allowed_domains=web[1],
+        web_research_blocked_domains=web[2],
+        web_research_local_fallback=web[3],
         system_prompt=text_fields[0],
         tool_policy=text_fields[1],
         eval_expect_json=text_fields[2],
@@ -113,7 +147,12 @@ def _tooling_inputs(
     test_command: str | None,
     eval_command: str | None,
     profile_commands: tuple[str, ...],
-) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+) -> tuple[
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[str, tuple[str, ...], tuple[str, ...], bool],
+]:
     allowed_shell_commands = collect_allowed_shell_commands(
         test_command,
         eval_command,
@@ -121,10 +160,12 @@ def _tooling_inputs(
     )
     enabled_tool_groups = resolve_enabled_tool_groups(cfg)
     plugin_tool_paths = resolve_plugin_tool_paths(cfg)
+    web_research_settings = resolve_web_research_settings(cfg)
     return (
         allowed_shell_commands,
         enabled_tool_groups,
         plugin_tool_paths,
+        web_research_settings,
     )
 
 
@@ -154,59 +195,8 @@ def _command_inputs(
     )
 
 
-def runtime_text_fields(
-    cfg: dict,
-    test_command: str | None,
-    eval_command: str | None,
-    allowed_shell_commands: tuple[str, ...],
-) -> tuple[str, str, bool, float]:
-    system_prompt = str(cfg.get("system_prompt", "")).strip()
-    if not system_prompt:
-        system_prompt = "You are a coding agent."
-
-    tool_policy = str(cfg.get("tool_policy", "")).strip()
-    if not tool_policy:
-        tool_policy = build_default_tool_policy(
-            test_command=test_command,
-            eval_command=eval_command,
-            allowed_shell_commands=allowed_shell_commands,
-        )
-
-    eval_expect_json = as_bool(cfg.get("eval_expect_json", True), True)
-    eval_success_pass_rate = float(cfg.get("eval_success_pass_rate", 100.0))
-    return (
-        system_prompt,
-        tool_policy,
-        eval_expect_json,
-        eval_success_pass_rate,
-    )
 
 
-def service_config(
-    cfg: dict,
-    *,
-    service_mode: str,
-    config_root: Path,
-    config_path: Path,
-    project_root_raw: str,
-) -> tuple[ServiceConfig, Path]:
-    service_values = load_service_settings(
-        cfg,
-        config_root=config_root,
-        config_path=config_path,
-        project_root_raw=project_root_raw,
-    )
-    return (
-        ServiceConfig(
-            mode=service_mode,
-            host=service_values[0],
-            port=service_values[1],
-            workers=service_values[2],
-            mount_work_root=service_values[3],
-            mount_config_root=service_values[4],
-            mount_artifacts_root=service_values[5],
-            queue_backend=service_values[6],
-            network_policy=service_values[7],
-        ),
-        service_values[8],
-    )
+
+
+

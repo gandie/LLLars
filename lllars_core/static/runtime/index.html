@@ -412,6 +412,26 @@
           <textarea id="pluginToolPaths" placeholder="plugins"></textarea>
         </div>
         <div>
+          <label for="webResearchDomainPolicy">Web Research Domain Policy</label>
+          <select id="webResearchDomainPolicy">
+            <option value="none" selected>none</option>
+            <option value="allowlist">allowlist</option>
+            <option value="denylist">denylist</option>
+          </select>
+        </div>
+        <div>
+          <label for="webResearchAllowedDomains">Web Research Allowed Domains (comma/newline separated)</label>
+          <textarea id="webResearchAllowedDomains" placeholder="docs.pydantic.dev"></textarea>
+        </div>
+        <div>
+          <label for="webResearchBlockedDomains">Web Research Blocked Domains (comma/newline separated)</label>
+          <textarea id="webResearchBlockedDomains" placeholder="example.com"></textarea>
+        </div>
+        <div>
+          <label for="webResearchLocalFallback">Web Research Local Fallback</label>
+          <input id="webResearchLocalFallback" type="checkbox" checked />
+        </div>
+        <div>
           <label for="testCommand">Commands.test (optional)</label>
           <input id="testCommand" placeholder="python test.py" />
         </div>
@@ -500,6 +520,10 @@
     const shellOverrideInput = document.getElementById("shellOverride");
     const enabledToolGroupsInput = document.getElementById("enabledToolGroups");
     const pluginToolPathsInput = document.getElementById("pluginToolPaths");
+    const webResearchDomainPolicyInput = document.getElementById("webResearchDomainPolicy");
+    const webResearchAllowedDomainsInput = document.getElementById("webResearchAllowedDomains");
+    const webResearchBlockedDomainsInput = document.getElementById("webResearchBlockedDomains");
+    const webResearchLocalFallbackInput = document.getElementById("webResearchLocalFallback");
     const testCommandInput = document.getElementById("testCommand");
     const evalCommandInput = document.getElementById("evalCommand");
     const systemPromptInput = document.getElementById("systemPrompt");
@@ -798,6 +822,10 @@
           shell_override: parseOptionalText(shellOverrideInput.value),
           enabled_tool_groups: parseStringList(enabledToolGroupsInput.value),
           plugin_tool_paths: parseStringList(pluginToolPathsInput.value),
+          web_research_domain_policy: webResearchDomainPolicyInput.value,
+          web_research_allowed_domains: parseStringList(webResearchAllowedDomainsInput.value),
+          web_research_blocked_domains: parseStringList(webResearchBlockedDomainsInput.value),
+          web_research_local_fallback: webResearchLocalFallbackInput.checked,
           system_prompt: systemPromptInput.value,
           tool_policy: toolPolicyInput.value,
         },

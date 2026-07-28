@@ -12,7 +12,9 @@ authors = [{ name = "LLLars Contributors" }]
 dependencies = [
   "pydantic-ai>=0.0.20",
   "pydantic-ai-todo",
+  "ddgs>=9.6.1",
   "fastapi>=0.110.0",
+  "markdownify>=1.2.0",
   "PyYAML>=6.0",
   "uvicorn>=0.30.0",
 ]

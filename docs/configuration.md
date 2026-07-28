@@ -101,6 +101,7 @@ Supported group names:
   (`list_files`, `read_file`)
 - `native_file_write`: registers native file write tool (`write_file`)
 - `native_shell`: policy-gated shell tools
+- `native_web_research`: provider-adaptive web search/fetch capabilities
 - `plugin_local`: local repository plugin tools
 - `mcp_toolsets`: MCP-backed toolsets loaded during agent construction
 
@@ -108,6 +109,55 @@ Defaults remain unchanged when `run.tool_groups` is omitted:
 
 - `native_files`
 - `native_shell`
+
+## Web Research Controls
+
+Use `run.web_research` to configure domain filtering and local fallback behavior
+for `native_web_research`.
+
+Default behavior:
+
+- `domain_policy`: `none`
+- `allowed_domains`: empty
+- `blocked_domains`: empty
+- `local_fallback`: `true`
+
+Policy semantics:
+
+- `none`: both domain lists must be empty.
+- `allowlist`: `allowed_domains` is required and `blocked_domains` must be empty.
+- `denylist`: `blocked_domains` is required and `allowed_domains` must be empty.
+
+Offline behavior:
+
+- When `service.network_policy` is `offline`, web research capabilities are not
+  registered even if `native_web_research` is enabled.
+
+Safety boundaries:
+
+- Content-size behavior uses provider defaults; LLLars does not apply an extra
+  truncation policy layer for web research capability outputs.
+- Web tooling failures are surfaced through normalized runtime tool-error
+  envelopes.
+
+Example:
+
+```json
+{
+  "run": {
+    "tool_groups": {
+      "enabled": ["native_file_read", "native_shell", "native_web_research"],
+      "disabled": []
+    },
+    "web_research": {
+      "domain_policy": "allowlist",
+      "allowed_domains": ["docs.pydantic.dev", "pydantic.dev"],
+      "blocked_domains": [],
+      "local_fallback": true
+    }
+  }
+}
+```
 
 ### Native Shell Retry Semantics
 

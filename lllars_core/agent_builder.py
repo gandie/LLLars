@@ -26,6 +26,7 @@ from lllars_core.tools import (
     resolve_under as resolve_under_policy,
     runtime_tooling_instructions as runtime_tooling_instructions_policy,
 )
+from lllars_core.tools.web_research import build_web_research_capabilities
 
 
 def make_agent_deps(cfg: HarnessConfig) -> AgentDeps:
@@ -97,6 +98,7 @@ def resolve_under(root: Path, user_path: str) -> Path:
 
 def _build_capabilities(cfg: HarnessConfig) -> list[object]:
     capabilities = [TodoCapability(enable_subtasks=True)]
+    capabilities.extend(build_web_research_capabilities(cfg))
     capabilities.extend(load_markdown_skill_capabilities(cfg))
     return capabilities
 

@@ -44,10 +44,18 @@ class RuntimeApiSurfaceTests(unittest.TestCase):
         self.assertIn('id="shellOverride"', response.text)
         self.assertIn('id="enabledToolGroups"', response.text)
         self.assertIn('id="pluginToolPaths"', response.text)
+        self.assertIn('id="webResearchDomainPolicy"', response.text)
+        self.assertIn('id="webResearchAllowedDomains"', response.text)
+        self.assertIn('id="webResearchBlockedDomains"', response.text)
+        self.assertIn('id="webResearchLocalFallback"', response.text)
         self.assertIn("config_path", response.text)
         self.assertIn("trigger_payload_ref", response.text)
         self.assertIn("enabled_tool_groups", response.text)
         self.assertIn("plugin_tool_paths", response.text)
+        self.assertIn("web_research_domain_policy", response.text)
+        self.assertIn("web_research_allowed_domains", response.text)
+        self.assertIn("web_research_blocked_domains", response.text)
+        self.assertIn("web_research_local_fallback", response.text)
 
     def test_unknown_job_returns_not_found(self) -> None:
         cfg = SimpleNamespace()
