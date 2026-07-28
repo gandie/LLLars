@@ -83,18 +83,30 @@ def build_event_stream_handler(
     return _event_stream_handler
 
 
+def extract_used_skill_id_from_thought(message: str) -> str | None:
+    text = message.strip()
+    prefix = "skills-used:"
+    if not text.startswith(prefix):
+        return None
+    skill_id = text[len(prefix) :].strip()
+    if not skill_id:
+        return None
+    return skill_id
+
+
 def drain_agent_events(
     event_queue: Any,
     latest_thought: str,
     payload: dict[str, Any] | None,
-) -> tuple[str, dict[str, Any] | None]:
+) -> tuple[str, dict[str, Any] | None, list[str]]:
+    thought_events: list[str] = []
     while True:
         try:
             event = event_queue.get_nowait()
         except Empty:
-            return latest_thought, payload
+            return latest_thought, payload, thought_events
         except Exception:
-            return latest_thought, payload
+            return latest_thought, payload, thought_events
 
         if not isinstance(event, dict):
             continue
@@ -103,6 +115,7 @@ def drain_agent_events(
         if event_type == "thought":
             message = str(event.get("message", "")).strip()
             if message:
+                thought_events.append(message)
                 latest_thought = truncate(message, 90)
             continue
 

@@ -112,7 +112,11 @@ def _agent_state(
     live_trace: list[str] = []
     telemetry_timeline: list[dict[str, Any]] = []
     configured_skill_ids = configured_markdown_skill_ids(cfg)
-    used_skill_ids: list[str] = []
+    used_skill_ids: list[str] = (
+        list(configured_skill_ids)
+        if configured_skill_ids and not cfg.skills_defer_loading
+        else []
+    )
     emit = _build_emit(thought_log_path, emit_thought)
     handler = build_event_stream_handler(
         event_start=time.time(),
@@ -120,7 +124,7 @@ def _agent_state(
         live_trace=live_trace,
         telemetry_timeline=telemetry_timeline,
         used_skill_ids=used_skill_ids,
-        used_skill_id_set=set(),
+        used_skill_id_set=set(used_skill_ids),
     )
     return {
         "emit": emit,

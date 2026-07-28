@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "factorio-mcp": {
+      "url": "http://localhost:9000/mcp"
+    }
+  }
+}

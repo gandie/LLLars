@@ -11,7 +11,7 @@
     "network_policy": "inherit"
   },
   "run": {
-    "model": "ollama:rafw007/qwen35-claude-coder:9b",
+    "model": "ollama:factorio-agent:latest",
     "provider_url": "http://localhost:11434",
     "project_root": "playground",
     "commands": {},
@@ -19,22 +19,18 @@
     "command_profiles_path": "playground.command-profiles.yaml",
     "tool_groups": {
       "enabled": [
-        "native_files",
-        "native_shell",
-        "plugin_local",
         "mcp_toolsets"
       ],
       "disabled": []
     },
     "tool_plugins": {
       "paths": [
-        "plugins"
       ]
     },
     "eval_expect_json": false,
     "eval_success_pass_rate": 100.0,
     "usage_request_limit": null,
-    "usage_tool_calls_limit": 100,
+    "usage_tool_calls_limit": null,
     "usage_input_tokens_limit": null,
     "usage_output_tokens_limit": null,
     "usage_total_tokens_limit": null,
@@ -46,13 +42,13 @@
     "instrumentation_enabled": false,
     "instrumentation_include_content": false,
     "skills_enabled": true,
-    "skills_glob": "skills/python-*.md",
+    "skills_glob": "skills/factorio_agent.md",
     "skills_defer_loading": false,
     "skills_require_description": true,
     "mcp_enabled": true,
-    "mcp_config_path": "mcp.servers.json",
+    "mcp_config_path": "factorio_mcp.servers.json",
     "mcp_init_timeout_sec": 60,
-    "system_prompt": "You are senior Python developer. You have access to tools for file operations and running shell commands. Remember to adhere to the tool usage policies and constraints provided.",
-    "tool_policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- For shell execution, call list_allowed_shell_commands first, then run_allowlisted_shell(command_id=...).\n- Stay within configured native usage limits and retries."
+    "system_prompt": "You are a factorio bot. Play the game with the tools you have.",
+    "tool_policy": ""
   }
 }

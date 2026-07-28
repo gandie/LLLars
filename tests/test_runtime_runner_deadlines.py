@@ -6,6 +6,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from lllars_core.runtime.job_runner import run_job
+from lllars_core.runtime.runner_orchestrator import (
+    _drain_state,
+    _initial_loop_state,
+)
 
 from runtime_runner_test_support import basic_spec, powershell_selection
 
@@ -64,6 +68,48 @@ class RuntimeRunnerDeadlineTests(unittest.TestCase):
         deadline = result.runtime_telemetry["deadline"]
         self.assertTrue(deadline["deadline_limited"])
         self.assertTrue(deadline["reached"])
+
+    def test_initial_loop_state_seeds_configured_skills(self) -> None:
+        cfg = SimpleNamespace(
+            skills_enabled=True,
+            skills_defer_loading=False,
+        )
+        with patch(
+            "lllars_core.runtime.runner_orchestrator"
+            ".configured_markdown_skill_ids",
+            return_value=("factorio-agent",),
+        ):
+            state = _initial_loop_state(cfg)
+
+        telemetry = state["latest_telemetry"]
+        self.assertEqual(telemetry["skills_loaded_count"], 1)
+        self.assertEqual(telemetry["skills_loaded_ids"], ["factorio-agent"])
+        self.assertEqual(telemetry["skills_used_count"], 1)
+        self.assertEqual(telemetry["skills_used_ids"], ["factorio-agent"])
+
+    def test_drain_state_records_streamed_skills_for_timeout(self) -> None:
+        state = {
+            "latest_thought": "",
+            "payload": None,
+            "used_skill_id_set": set(),
+            "latest_telemetry": {
+                "skills_used_ids": [],
+                "skills_used_count": 0,
+            },
+        }
+        with patch(
+            "lllars_core.runtime.runner_orchestrator.drain_agent_events",
+            return_value=(
+                "skills-used: factorio-agent",
+                None,
+                ["skills-used: factorio-agent"],
+            ),
+        ):
+            _drain_state(object(), state)
+
+        telemetry = state["latest_telemetry"]
+        self.assertEqual(telemetry["skills_used_count"], 1)
+        self.assertEqual(telemetry["skills_used_ids"], ["factorio-agent"])
 
 
 if __name__ == "__main__":
