@@ -57,6 +57,67 @@ class ConfigToolRegistrySettingsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unknown tool group"):
                 load_config(write_config(root, payload))
 
+    def test_granular_file_tool_groups_support_read_only_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = _workspace_root(temp_dir)
+            payload = base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            payload["run"]["tool_groups"] = {
+                "enabled": ["native_file_read", "native_shell"],
+                "disabled": [],
+            }
+            cfg = load_config(write_config(root, payload))
+            self.assertEqual(
+                cfg.enabled_tool_groups,
+                ("native_file_read", "native_shell"),
+            )
+
+    def test_granular_file_tool_groups_support_write_enabled_mode(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = _workspace_root(temp_dir)
+            payload = base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            payload["run"]["tool_groups"] = {
+                "enabled": [
+                    "native_file_read",
+                    "native_file_write",
+                    "native_shell",
+                ],
+                "disabled": [],
+            }
+            cfg = load_config(write_config(root, payload))
+            self.assertEqual(
+                cfg.enabled_tool_groups,
+                (
+                    "native_file_read",
+                    "native_file_write",
+                    "native_shell",
+                ),
+            )
+
+    def test_native_files_group_remains_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = _workspace_root(temp_dir)
+            payload = base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            payload["run"]["tool_groups"] = {
+                "enabled": ["native_files", "native_shell"],
+                "disabled": [],
+            }
+            cfg = load_config(write_config(root, payload))
+            self.assertEqual(
+                cfg.enabled_tool_groups,
+                ("native_files", "native_shell"),
+            )
+
     def test_duplicate_plugin_tool_path_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = _workspace_root(temp_dir)

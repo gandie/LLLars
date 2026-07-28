@@ -13,8 +13,8 @@ from lllars_core.tools.registry import register_runtime_tools
 
 
 class RuntimeToolRegistrySelectionTests(unittest.TestCase):
-    def test_register_runtime_tools_respects_enabled_groups(self) -> None:
-        cfg = SimpleNamespace(
+    def _shell_only_cfg(self) -> SimpleNamespace:
+        return SimpleNamespace(
             enabled_tool_groups=("native_shell",),
             plugin_tool_paths=(),
             project_root=Path("."),
@@ -22,12 +22,18 @@ class RuntimeToolRegistrySelectionTests(unittest.TestCase):
             test_command=None,
             eval_command=None,
         )
+
+    def test_register_runtime_tools_respects_enabled_groups(self) -> None:
+        cfg = self._shell_only_cfg()
         agent: Agent[object, str] = Agent("test")
 
         with (
             patch(
-                "lllars_core.tools.registry.register_file_tools"
-            ) as register_files,
+                "lllars_core.tools.registry.register_file_read_tools"
+            ) as register_files_read,
+            patch(
+                "lllars_core.tools.registry.register_file_write_tools"
+            ) as register_files_write,
             patch(
                 "lllars_core.tools.registry.register_shell_tools"
             ) as register_shell,
@@ -43,7 +49,8 @@ class RuntimeToolRegistrySelectionTests(unittest.TestCase):
                 run_allowed_shell=lambda _cmd, _timeout: "{}",
             )
 
-        register_files.assert_not_called()
+        register_files_read.assert_not_called()
+        register_files_write.assert_not_called()
         register_plugins.assert_not_called()
         register_shell.assert_called_once()
 

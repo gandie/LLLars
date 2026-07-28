@@ -4,6 +4,8 @@ from lllars_core.config.models import DEFAULT_ENABLED_TOOL_GROUPS
 
 KNOWN_TOOL_GROUPS: tuple[str, ...] = (
     "native_files",
+    "native_file_read",
+    "native_file_write",
     "native_shell",
     "plugin_local",
     "mcp_toolsets",

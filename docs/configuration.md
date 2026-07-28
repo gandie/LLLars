@@ -76,6 +76,39 @@ Native runtime controls are configured through these keys:
 - `queue_backend`
 - `network_policy`
 
+## Tool Group Controls
+
+Use `run.tool_groups` to control which runtime tool groups are registered.
+
+Example:
+
+```json
+{
+  "run": {
+    "tool_groups": {
+      "enabled": ["native_file_read", "native_shell"],
+      "disabled": []
+    }
+  }
+}
+```
+
+Supported group names:
+
+- `native_files`: backward-compatible alias for full native file access
+  (`list_files`, `read_file`, `write_file`)
+- `native_file_read`: registers read-only native file tools
+  (`list_files`, `read_file`)
+- `native_file_write`: registers native file write tool (`write_file`)
+- `native_shell`: policy-gated shell tools
+- `plugin_local`: local repository plugin tools
+- `mcp_toolsets`: MCP-backed toolsets loaded during agent construction
+
+Defaults remain unchanged when `run.tool_groups` is omitted:
+
+- `native_files`
+- `native_shell`
+
 ## Startup Preflight Model Probe
 
 Startup preflight now delegates provider parsing to pydantic_ai native model

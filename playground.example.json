@@ -19,7 +19,8 @@
     "command_profiles_path": "playground.command-profiles.yaml",
     "tool_groups": {
       "enabled": [
-        "native_files",
+        "native_file_read",
+        "native_file_write",
         "native_shell",
         "plugin_local",
         "mcp_toolsets"

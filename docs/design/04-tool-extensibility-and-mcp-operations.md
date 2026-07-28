@@ -4,8 +4,12 @@ This chapter describes shipped operator semantics for configurable tool
 registration and capability-aware MCP behavior.
 
 ## Tool Taxonomy and Execution Boundaries
-- `native_files`: built-in local file tools (`list_files`, `read_file`,
-  `write_file`) scoped to `project_root`.
+- `native_files`: backward-compatible alias for full built-in local file tools
+  (`list_files`, `read_file`, `write_file`) scoped to `project_root`.
+- `native_file_read`: built-in read-only local file tools
+  (`list_files`, `read_file`) scoped to `project_root`.
+- `native_file_write`: built-in local file write tool (`write_file`) scoped to
+  `project_root`.
 - `native_shell`: built-in policy-gated shell tools (test/eval/allowlisted
   shell execution).
 - `plugin_local`: local repository plugin tools loaded from configured local
@@ -15,7 +19,7 @@ registration and capability-aware MCP behavior.
 
 ## Tool-Group Config Schema
 ```json
-{"run": {"tool_groups": {"enabled": ["native_files", "native_shell", "plugin_local", "mcp_toolsets"], "disabled": []}}}
+{"run": {"tool_groups": {"enabled": ["native_file_read", "native_shell", "plugin_local", "mcp_toolsets"], "disabled": []}}}
 ```
 
 Validation rules:
@@ -24,6 +28,7 @@ Validation rules:
 - If the same group appears in both `enabled` and `disabled`, configuration is
   rejected (conflict error).
 - Omitted `tool_groups` defaults to `native_files` + `native_shell`.
+- `native_files` remains supported as a migration-safe compatibility alias.
 - Plugin sources are configured via `run.tool_plugins.paths` (local paths
   only).
 

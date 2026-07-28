@@ -135,6 +135,23 @@ def register_file_tools(
     cfg: "HarnessConfig",
     tool_error: Callable[[str, str, str | None], str],
 ) -> None:
+    """Backward-compatible registration for full native file access."""
+    register_file_read_tools(agent, cfg, tool_error)
+    register_file_write_tools(agent, cfg, tool_error)
+
+
+def register_file_read_tools(
+    agent: "Agent[AgentDeps, str]",
+    cfg: "HarnessConfig",
+    tool_error: Callable[[str, str, str | None], str],
+) -> None:
     _register_list_files_tool(agent, cfg, tool_error)
     _register_read_file_tool(agent, cfg, tool_error)
+
+
+def register_file_write_tools(
+    agent: "Agent[AgentDeps, str]",
+    cfg: "HarnessConfig",
+    tool_error: Callable[[str, str, str | None], str],
+) -> None:
     _register_write_file_tool(agent, cfg, tool_error)
