@@ -6,7 +6,8 @@ and project governance.
 ## Start Here
 
 - `../README.md`: project-level quick start
-- `DESIGN.md`: design baseline and truth hierarchy
+- `DESIGN.md`: design hub and truth hierarchy
+- `design/`: chapterized design references
 
 ## Runtime Guides
 
