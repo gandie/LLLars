@@ -2,7 +2,7 @@
 agent_evaluation:
   version: 1
   evaluator: human_operator
-  evaluated_at: YYYY-MM-DD
+  evaluated_at: 2026-07-28
   verdict: accepted
   would_delegate_similar_again: true
 
@@ -15,17 +15,17 @@ agent_evaluation:
       5: excellent
 
   outcome:
-    correctness:
-    scope_discipline:
-    validation_trust:
+    correctness: 4
+    scope_discipline: 4
+    validation_trust: 3
 
   collaboration:
-    ambiguity_handling:
-    operator_load:
-    trust_delta:
+    ambiguity_handling: 4
+    operator_load: 3
+    trust_delta: 4
 
   notes: >
-    HUMAN NOTES
+    Many files needed to be touched. Worried about boundary ping-pong might harm code quality
 ---
 
 # T81 Native Web Research Tooling
