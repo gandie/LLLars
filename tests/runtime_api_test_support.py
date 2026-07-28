@@ -117,6 +117,10 @@ def extended_run_payload() -> dict[str, Any]:
         "mcp_enabled": False,
         "mcp_config_path": None,
         "mcp_init_timeout_sec": 60,
+        "shell_mode": "auto",
+        "shell_override": None,
+        "enabled_tool_groups": ["native_files", "native_shell"],
+        "plugin_tool_paths": [],
         "system_prompt": "You are senior Python developer.",
         "tool_policy": "Tool policy",
     }

@@ -59,10 +59,16 @@ class RuntimeApiSubmissionTests(unittest.TestCase):
                     "prompt": "hello",
                     "run": extended_run_payload(),
                     "timeout_sec": 5,
+                    "config_path": "playground.example.json",
                     "deadline_at": "2030-01-01T00:00:00",
+                    "trigger_source": "external",
+                    "trigger_payload_ref": "event-42",
                 },
             )
         self.assertEqual(submit_resp.status_code, 202)
+        payload = submit_resp.json()
+        self.assertEqual(payload["trigger_source"], "external")
+        self.assertEqual(payload["trigger_payload_ref"], "event-42")
 
     def test_submit_rejects_timezone_aware_deadline_field(self) -> None:
         client = make_runtime_client()

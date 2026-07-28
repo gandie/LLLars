@@ -32,6 +32,23 @@ class RuntimeApiSurfaceTests(unittest.TestCase):
         self.assertIn("failed", response.text)
         self.assertIn("canceled", response.text)
 
+    def test_runtime_frontend_exposes_extended_payload_controls(self) -> None:
+        client = make_runtime_client(model="", provider_url="")
+        response = client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="configPath"', response.text)
+        self.assertIn('id="deadlineAt"', response.text)
+        self.assertIn('id="triggerSource"', response.text)
+        self.assertIn('id="triggerPayloadRef"', response.text)
+        self.assertIn('id="shellMode"', response.text)
+        self.assertIn('id="shellOverride"', response.text)
+        self.assertIn('id="enabledToolGroups"', response.text)
+        self.assertIn('id="pluginToolPaths"', response.text)
+        self.assertIn("config_path", response.text)
+        self.assertIn("trigger_payload_ref", response.text)
+        self.assertIn("enabled_tool_groups", response.text)
+        self.assertIn("plugin_tool_paths", response.text)
+
     def test_unknown_job_returns_not_found(self) -> None:
         cfg = SimpleNamespace()
         app = create_runtime_app(cfg)

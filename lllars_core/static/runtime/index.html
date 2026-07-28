@@ -118,6 +118,7 @@
     }
 
     input,
+    select,
     textarea,
     button {
       width: 100%;
@@ -277,12 +278,35 @@
           <input id="timeoutSec" type="number" min="1" value="600" />
         </div>
         <div>
+          <label for="configPath">Config Path (optional)</label>
+          <input id="configPath" placeholder="playground.example.json" />
+        </div>
+        <div>
+          <label for="deadlineAt">Deadline At (optional)</label>
+          <input id="deadlineAt" type="datetime-local" />
+        </div>
+        <div>
           <label for="runAt">Run At (optional)</label>
           <input id="runAt" type="datetime-local" />
         </div>
         <div>
           <label for="schedule">Schedule (optional)</label>
           <input id="schedule" placeholder="every:15m" />
+        </div>
+        <div>
+          <label for="triggerSource">Trigger Source</label>
+          <select id="triggerSource">
+            <option value="submit" selected>submit</option>
+            <option value="scheduled">scheduled</option>
+            <option value="manual">manual</option>
+            <option value="api">api</option>
+            <option value="retry">retry</option>
+            <option value="external">external</option>
+          </select>
+        </div>
+        <div>
+          <label for="triggerPayloadRef">Trigger Payload Ref (optional)</label>
+          <input id="triggerPayloadRef" placeholder="event-42" />
         </div>
         <div>
           <label for="evalExpectJson">Eval Expect JSON</label>
@@ -369,6 +393,25 @@
           <input id="mcpInitTimeoutSec" type="number" step="0.1" value="60" />
         </div>
         <div>
+          <label for="shellMode">Shell Mode</label>
+          <select id="shellMode">
+            <option value="auto" selected>auto</option>
+            <option value="override">override</option>
+          </select>
+        </div>
+        <div>
+          <label for="shellOverride">Shell Override (optional)</label>
+          <input id="shellOverride" placeholder="powershell" />
+        </div>
+        <div>
+          <label for="enabledToolGroups">Enabled Tool Groups (comma/newline separated)</label>
+          <textarea id="enabledToolGroups">native_files, native_shell</textarea>
+        </div>
+        <div>
+          <label for="pluginToolPaths">Plugin Tool Paths (comma/newline separated)</label>
+          <textarea id="pluginToolPaths" placeholder="plugins"></textarea>
+        </div>
+        <div>
           <label for="testCommand">Commands.test (optional)</label>
           <input id="testCommand" placeholder="python test.py" />
         </div>
@@ -426,8 +469,12 @@
     const projectRootInput = document.getElementById("projectRoot");
     const commandProfileInput = document.getElementById("commandProfile");
     const timeoutInput = document.getElementById("timeoutSec");
+    const configPathInput = document.getElementById("configPath");
+    const deadlineAtInput = document.getElementById("deadlineAt");
     const runAtInput = document.getElementById("runAt");
     const scheduleInput = document.getElementById("schedule");
+    const triggerSourceInput = document.getElementById("triggerSource");
+    const triggerPayloadRefInput = document.getElementById("triggerPayloadRef");
     const evalExpectJsonInput = document.getElementById("evalExpectJson");
     const evalSuccessPassRateInput = document.getElementById("evalSuccessPassRate");
     const usageRequestLimitInput = document.getElementById("usageRequestLimit");
@@ -449,6 +496,10 @@
     const mcpEnabledInput = document.getElementById("mcpEnabled");
     const mcpConfigPathInput = document.getElementById("mcpConfigPath");
     const mcpInitTimeoutSecInput = document.getElementById("mcpInitTimeoutSec");
+    const shellModeInput = document.getElementById("shellMode");
+    const shellOverrideInput = document.getElementById("shellOverride");
+    const enabledToolGroupsInput = document.getElementById("enabledToolGroups");
+    const pluginToolPathsInput = document.getElementById("pluginToolPaths");
     const testCommandInput = document.getElementById("testCommand");
     const evalCommandInput = document.getElementById("evalCommand");
     const systemPromptInput = document.getElementById("systemPrompt");
@@ -485,6 +536,18 @@
         return null;
       }
       return Number(raw);
+    }
+
+    function parseStringList(value) {
+      return String(value || "")
+        .split(/[\n,]/)
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+    }
+
+    function parseOptionalText(value) {
+      const raw = String(value || "").trim();
+      return raw || null;
     }
 
     function setStatus(status, note) {
@@ -703,6 +766,8 @@
           model: modelInput.value,
           provider_url: providerUrlInput.value,
           project_root: projectRootInput.value,
+          test_command: parseOptionalText(testCommandInput.value),
+          eval_command: parseOptionalText(evalCommandInput.value),
           commands: {
             ...(testCommandInput.value.trim() ? { test: testCommandInput.value.trim() } : {}),
             ...(evalCommandInput.value.trim() ? { eval: evalCommandInput.value.trim() } : {}),
@@ -729,20 +794,33 @@
           mcp_enabled: mcpEnabledInput.checked,
           mcp_config_path: mcpConfigPathInput.value.trim() || null,
           mcp_init_timeout_sec: Number(mcpInitTimeoutSecInput.value || "60"),
+          shell_mode: shellModeInput.value,
+          shell_override: parseOptionalText(shellOverrideInput.value),
+          enabled_tool_groups: parseStringList(enabledToolGroupsInput.value),
+          plugin_tool_paths: parseStringList(pluginToolPathsInput.value),
           system_prompt: systemPromptInput.value,
           tool_policy: toolPolicyInput.value,
         },
         timeout_sec: Number(timeoutInput.value || "600"),
+        config_path: parseOptionalText(configPathInput.value),
+        trigger_source: triggerSourceInput.value || "submit",
+        trigger_payload_ref: parseOptionalText(triggerPayloadRefInput.value),
       };
 
+      const deadlineAtRaw = String(deadlineAtInput.value || "").trim();
       const runAtRaw = String(runAtInput.value || "").trim();
       const scheduleRaw = String(scheduleInput.value || "").trim();
+      if (deadlineAtRaw) {
+        body.deadline_at = deadlineAtRaw;
+      }
       if (runAtRaw) {
         body.run_at = runAtRaw;
       }
       if (scheduleRaw) {
         body.schedule = scheduleRaw;
-        body.trigger_source = "scheduled";
+        if (body.trigger_source !== "scheduled") {
+          body.trigger_source = "scheduled";
+        }
       }
 
       const response = await fetch("/jobs", {

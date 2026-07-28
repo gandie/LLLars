@@ -39,6 +39,9 @@ The runtime frontend at `GET /` supports:
 - fetch job logs
 - visualize queued jobs
 - manually trigger queued jobs
+- configure submit-time trigger metadata (`trigger_source`, `trigger_payload_ref`)
+- configure scheduling/deadline/config-path fields (`run_at`, `schedule`, `deadline_at`, `config_path`)
+- configure runtime shell/tool registry knobs (`shell_mode`, `shell_override`, `enabled_tool_groups`, `plugin_tool_paths`)
 - terminal-state visibility (`succeeded`, `failed`, `canceled`)
 
 ## Manual Smoke
@@ -81,3 +84,10 @@ Trigger metadata contract:
   - `trigger_source` (default: `manual`)
   - `trigger_payload_ref` (default: `null`)
 - Trigger route applies to queued jobs and starts execution immediately.
+
+Run payload parity notes (`JobSpec.run`):
+
+- Frontend submit payload now maps all runtime override knobs used by API models, including:
+  - shell controls: `shell_mode`, `shell_override`
+  - tool registry controls: `enabled_tool_groups`, `plugin_tool_paths`
+  - command compatibility fields: `test_command`, `eval_command` plus `commands.test`/`commands.eval`
