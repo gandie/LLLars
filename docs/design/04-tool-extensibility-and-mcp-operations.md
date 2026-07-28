@@ -60,3 +60,11 @@ Fallback policy:
   capability-aware MCP degraded continuation.
 - Operators can disable MCP fully with `mcp_enabled=false` while retaining
   native/plugin functionality.
+
+## Native Retry Signaling
+- Shell-tool recoverable input errors use pydantic_ai-native `ModelRetry`
+  signaling instead of converting every failure into terminal tool-error
+  strings.
+- Current shipped case: `run_allowlisted_shell` invalid `command_id` raises
+  `ModelRetry`, enabling model self-correction loops under configured retry
+  budgets.

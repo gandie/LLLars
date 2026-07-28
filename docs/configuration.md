@@ -109,6 +109,17 @@ Defaults remain unchanged when `run.tool_groups` is omitted:
 - `native_files`
 - `native_shell`
 
+### Native Shell Retry Semantics
+
+When `native_shell` is enabled, recoverable shell-tool input issues use
+pydantic_ai-native retry signaling:
+
+- `run_allowlisted_shell` raises `ModelRetry` for invalid `command_id` values
+  so the model can self-correct by calling `list_allowed_shell_commands` and
+  retrying.
+- Runtime shell tool failures that are not recoverable continue to return
+  structured `[tool-error:...]` messages.
+
 ## Startup Preflight Model Probe
 
 Startup preflight now delegates provider parsing to pydantic_ai native model

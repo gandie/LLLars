@@ -22,9 +22,7 @@ from lllars_core.skills import load_markdown_skill_capabilities
 from lllars_core.tools import (
     AgentDeps,
     make_allowed_shell_runner as make_allowed_shell_runner_policy,
-    register_file_tools as register_file_tools_policy,
     register_runtime_tools,
-    register_shell_tools as register_shell_tools_policy,
     resolve_under as resolve_under_policy,
     runtime_tooling_instructions as runtime_tooling_instructions_policy,
 )
@@ -158,30 +156,6 @@ def _make_allowed_shell_runner(
         cfg,
         canonicalize_shell_command,
         lambda **kwargs: run_shell(**kwargs),
-    )
-
-
-def _register_file_tools(
-    agent: Agent[AgentDeps, str],
-    cfg: HarnessConfig,
-    tool_error: Callable[[str, str, str | None], str],
-) -> None:
-    register_file_tools_policy(agent, cfg, tool_error)
-
-
-def _register_shell_tools(
-    agent: Agent[AgentDeps, str],
-    cfg: HarnessConfig,
-    emit_thought: Callable[[str], None],
-    tool_error: Callable[[str, str, str | None], str],
-    run_allowed_shell: Callable[[str, int], str],
-) -> None:
-    register_shell_tools_policy(
-        agent=agent,
-        cfg=cfg,
-        emit_thought=emit_thought,
-        tool_error=tool_error,
-        run_allowed_shell=run_allowed_shell,
     )
 
 

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from pydantic_ai import Agent
+from pydantic_ai import ModelRetry
 
 from lllars_core.agent_builder import (
     _make_allowed_shell_runner,
@@ -101,6 +102,62 @@ class AgentBuilderToolRegistrationRegressionTests(unittest.TestCase):
             tool_error=lambda _tool, message, _hint: message,
             run_allowed_shell=lambda _cmd, _timeout: "{}",
         )
+
+
+class _ToolCaptureAgent:
+    def __init__(self) -> None:
+        self.tools: dict[str, object] = {}
+
+    def tool(self, fn):
+        self.tools[fn.__name__] = fn
+        return fn
+
+
+class ShellToolRetryPropagationTests(unittest.TestCase):
+    def test_run_allowlisted_shell_invalid_id_raises_model_retry(self) -> None:
+        cfg = SimpleNamespace(
+            allowed_shell_commands=("echo ok",),
+            test_command=None,
+            eval_command=None,
+        )
+        agent = _ToolCaptureAgent()
+        errors: list[str] = []
+
+        register_shell_tools(
+            agent=agent,
+            cfg=cfg,
+            emit_thought=lambda _message: None,
+            tool_error=lambda _tool, message, _hint: errors.append(message)
+            or message,
+            run_allowed_shell=lambda _cmd, _timeout: "{}",
+        )
+
+        tool = agent.tools["run_allowlisted_shell"]
+        with self.assertRaises(ModelRetry):
+            tool(None, command_id=2)
+        self.assertEqual(errors, [])
+
+    def test_run_test_command_propagates_model_retry(self) -> None:
+        cfg = SimpleNamespace(
+            allowed_shell_commands=(),
+            test_command="echo ok",
+            eval_command=None,
+        )
+        agent = _ToolCaptureAgent()
+
+        register_shell_tools(
+            agent=agent,
+            cfg=cfg,
+            emit_thought=lambda _message: None,
+            tool_error=lambda _tool, message, _hint: message,
+            run_allowed_shell=lambda _cmd, _timeout: (_ for _ in ()).throw(
+                ModelRetry("Please retry")
+            ),
+        )
+
+        tool = agent.tools["run_test_command"]
+        with self.assertRaises(ModelRetry):
+            tool(None)
 
 
 class AgentBuilderModelSpecResolutionTests(unittest.TestCase):

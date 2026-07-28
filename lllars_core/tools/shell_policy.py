@@ -91,6 +91,19 @@ def _register_allowlisted_shell_tools(
         )
 
 
+def _resolve_allowlisted_command(
+    cfg: "HarnessConfig",
+    command_id: int,
+) -> str:
+    if command_id < 1 or command_id > len(cfg.allowed_shell_commands):
+        raise ModelRetry(
+            "Invalid command_id. Call "
+            "list_allowed_shell_commands and use "
+            "a listed ID."
+        )
+    return cfg.allowed_shell_commands[command_id - 1]
+
+
 def _register_run_allowlisted_shell_tool(
     agent: "Agent[AgentDeps, str]",
     cfg: "HarnessConfig",
@@ -112,14 +125,11 @@ def _register_run_allowlisted_shell_tool(
         _ = ctx
         emit_thought("tool: run_allowlisted_shell")
         try:
-            if command_id < 1 or command_id > len(cfg.allowed_shell_commands):
-                raise ModelRetry(
-                    "Invalid command_id. Call "
-                    "list_allowed_shell_commands and use "
-                    "a listed ID."
-                )
-            command = cfg.allowed_shell_commands[command_id - 1]
+            command = _resolve_allowlisted_command(cfg, command_id)
             return run_allowed_shell(command, timeout_sec)
+        except ModelRetry:
+            # Preserve pydantic_ai-native retry signaling.
+            raise
         except Exception as exc:
             return tool_error(
                 "run_allowlisted_shell",
@@ -142,6 +152,8 @@ def _register_test_tool(
         emit_thought("tool: run_test_command")
         try:
             return run_allowed_shell(cfg.test_command, 90)
+        except ModelRetry:
+            raise
         except Exception as exc:
             return tool_error("run_test_command", str(exc), None)
 
@@ -160,6 +172,8 @@ def _register_eval_tool(
         emit_thought("tool: run_eval_command")
         try:
             return run_allowed_shell(cfg.eval_command, 90)
+        except ModelRetry:
+            raise
         except Exception as exc:
             return tool_error("run_eval_command", str(exc), None)
 
