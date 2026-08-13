@@ -64,6 +64,9 @@ Every new task file must follow this template exactly (no additional lifecycle m
 <What proves completion>
 ```
 
+## Task Numbering
+Task files use sequential T-prefixed numbers without leading zeros (T1, T2, T17, T87, T88, etc.). To find the next task number, scan `docs/workflow/done/` for the highest numbered task file and increment by one.
+
 ## Task Handling Protocol
 1. Before implementation:
 - Ensure the task file exists in docs/workflow/tasks/.
