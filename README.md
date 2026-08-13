@@ -150,9 +150,20 @@ Tool-group behavior:
 
 - `native_files`: registers built-in file tools.
 - `native_shell`: registers shell policy tools.
+- `native_shell_yolo`: registers unrestricted shell tool wrapper.
 - `plugin_local`: loads local plugin tools from `run.tool_plugins.paths`.
 - `mcp_toolsets`: reserved MCP group identifier for registry symmetry; MCP
 	loading is currently gated by `run.mcp_enabled` and `mcp_config_path`.
+
+Native shell details:
+
+- `run_allowlisted_shell` accepts either `command` or `command_id`.
+- Allowlist entries support a simple `*` wildcard with prefix semantics.
+- Matching is deterministic: first matching allowlist entry wins.
+- Any text after the first `*` in an allowlist entry is ignored during
+	normalization (for example `python *.py` becomes `python *`).
+- `native_shell_yolo` bypasses allowlist mechanics and enables
+	`run_unrestricted_shell(command=...)`.
 
 Validation rules:
 
@@ -222,6 +233,9 @@ Minimal migration path:
 3. Keep `mcp_enabled=true` only when your MCP servers are expected to be
 	 reachable.
 4. Run one startup smoke command and inspect `mcp_preflight.detail` lines.
+
+If you need unrestricted shell access for a controlled environment, replace
+`native_shell` with `native_shell_yolo` in `run.tool_groups.enabled`.
 
 ## Provider-Aware Startup Preflight
 

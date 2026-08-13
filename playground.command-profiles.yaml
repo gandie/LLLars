@@ -2,3 +2,5 @@ profiles:
   playground-python:
     - python main.py
     - python test.py
+  unrestricted-python:
+    - python *

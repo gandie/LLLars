@@ -11,7 +11,7 @@
     "network_policy": "inherit"
   },
   "run": {
-    "model": "ollama:factorio-agent:latest",
+    "model": "ollama:gemma4:latest",
     "provider_url": "http://localhost:11434",
     "project_root": "playground",
     "commands": {},
@@ -19,8 +19,7 @@
     "command_profiles_path": "playground.command-profiles.yaml",
     "tool_groups": {
       "enabled": [
-        "mcp_toolsets",
-        "native_web_research"
+        "mcp_toolsets"
       ],
       "disabled": []
     },
@@ -42,8 +41,8 @@
     "usage_output_tokens_limit": null,
     "usage_total_tokens_limit": null,
     "usage_count_tokens_before_request": false,
-    "agent_retries_tools": 1,
-    "agent_retries_output": 1,
+    "agent_retries_tools": null,
+    "agent_retries_output": null,
     "tool_timeout_sec": 90,
     "max_concurrency": null,
     "instrumentation_enabled": false,
@@ -55,7 +54,8 @@
     "mcp_enabled": true,
     "mcp_config_path": "factorio_mcp.servers.json",
     "mcp_init_timeout_sec": 60,
+    "todo_capability_enabled": true,
     "system_prompt": "You are a factorio bot. Play the game with the tools you have.",
-    "tool_policy": "Use web research to find guidance on how to play factorio."
+    "tool_policy": "Use skills to find guidance on how to play factorio."
   }
 }

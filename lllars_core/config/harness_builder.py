@@ -43,8 +43,8 @@ def _harness_usage_kwargs(run_cfg: RunConfig) -> dict[str, object]:
         "usage_count_tokens_before_request": bool(
             run_cfg.usage_count_tokens_before_request
         ),
-        "agent_retries_tools": int(run_cfg.agent_retries_tools),
-        "agent_retries_output": int(run_cfg.agent_retries_output),
+        "agent_retries_tools": int(run_cfg.agent_retries_tools) if run_cfg.agent_retries_tools is not None else None,
+        "agent_retries_output": int(run_cfg.agent_retries_output) if run_cfg.agent_retries_output is not None else None,
         "tool_timeout_sec": run_cfg.tool_timeout_sec,
         "max_concurrency": run_cfg.max_concurrency,
         "instrumentation_enabled": bool(run_cfg.instrumentation_enabled),
@@ -58,6 +58,7 @@ def _harness_usage_kwargs(run_cfg: RunConfig) -> dict[str, object]:
         "mcp_enabled": bool(run_cfg.mcp_enabled),
         "mcp_config_path": run_cfg.mcp_config_path,
         "mcp_init_timeout_sec": float(run_cfg.mcp_init_timeout_sec),
+        "todo_capability_enabled": bool(run_cfg.todo_capability_enabled),
         "shell_mode": run_cfg.shell_mode,
         "shell_override": run_cfg.shell_override,
     }
@@ -66,6 +67,7 @@ def _harness_usage_kwargs(run_cfg: RunConfig) -> dict[str, object]:
 def _harness_service_kwargs(
     service_cfg: ServiceConfig,
     command_profile: str,
+    command_profiles: tuple[tuple[str, tuple[str, ...]], ...],
 ) -> dict[str, object]:
     return {
         "service_mode": service_cfg.mode,
@@ -78,6 +80,7 @@ def _harness_service_kwargs(
         "queue_backend": service_cfg.queue_backend,
         "network_policy": service_cfg.network_policy,
         "command_profile": command_profile,
+        "command_profiles": command_profiles,
     }
 
 
@@ -90,6 +93,7 @@ def _harness_kwargs(
     enabled_tool_groups: tuple[str, ...],
     plugin_tool_paths: tuple[str, ...],
     command_profile: str,
+    command_profiles: tuple[tuple[str, tuple[str, ...]], ...],
 ) -> dict[str, object]:
     kwargs = _harness_core_kwargs(
         run_cfg,
@@ -100,7 +104,13 @@ def _harness_kwargs(
         plugin_tool_paths,
     )
     kwargs.update(_harness_usage_kwargs(run_cfg))
-    kwargs.update(_harness_service_kwargs(service_cfg, command_profile))
+    kwargs.update(
+        _harness_service_kwargs(
+            service_cfg,
+            command_profile,
+            command_profiles,
+        )
+    )
     kwargs["run"] = run_cfg
     kwargs["service"] = service_cfg
     return kwargs
@@ -116,6 +126,7 @@ def build_harness_config(
     enabled_tool_groups: tuple[str, ...],
     plugin_tool_paths: tuple[str, ...],
     command_profile: str,
+    command_profiles: tuple[tuple[str, tuple[str, ...]], ...],
 ) -> HarnessConfig:
     return HarnessConfig(
         **_harness_kwargs(
@@ -127,5 +138,6 @@ def build_harness_config(
             enabled_tool_groups,
             plugin_tool_paths,
             command_profile,
+            command_profiles,
         )
     )

@@ -6,6 +6,7 @@ from lllars_core.config.models import (
     DEFAULT_AGENT_RETRIES_OUTPUT,
     DEFAULT_AGENT_RETRIES_TOOLS,
     DEFAULT_TOOL_TIMEOUT_SEC,
+    DEFAULT_TODO_CAPABILITY_ENABLED,
     DEFAULT_USAGE_TOOL_CALLS_LIMIT,
     RunConfig,
 )
@@ -49,7 +50,7 @@ def _run_usage_kwargs(cfg: dict) -> dict[str, object]:
 
 def _run_retry_and_runtime_kwargs(cfg: dict) -> dict[str, object]:
     return {
-        "agent_retries_tools": non_negative_int(
+        "agent_retries_tools": optional_int(
             cfg,
             "agent_retries_tools",
             DEFAULT_AGENT_RETRIES_TOOLS,
@@ -119,6 +120,15 @@ def _shell_kwargs(settings: tuple[str, str | None]) -> dict[str, object]:
     }
 
 
+def _todo_kwargs(cfg: dict) -> dict[str, object]:
+    return {
+        "todo_capability_enabled": as_bool(
+            cfg.get("todo_capability_enabled", DEFAULT_TODO_CAPABILITY_ENABLED),
+            DEFAULT_TODO_CAPABILITY_ENABLED,
+        ),
+    }
+
+
 def build_run_config(
     cfg: dict,
     *,
@@ -132,6 +142,7 @@ def build_run_config(
         **_skills_kwargs(skills_settings),
         **_mcp_kwargs(mcp_settings),
         **_shell_kwargs(shell_settings),
+        **_todo_kwargs(cfg),
         **_run_usage_kwargs(cfg),
         **_run_retry_and_runtime_kwargs(cfg),
     )

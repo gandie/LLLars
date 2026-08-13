@@ -86,6 +86,25 @@ class ConfigCommandProfileTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "command_profiles_path"):
                 load_config(write_config(root, payload))
 
+    def test_external_profile_wildcards_are_truncated_at_first_star(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = _workspace_root(temp_dir)
+            (root / "profiles.yaml").write_text(
+                "profiles:\n"
+                "  wildcard:\n"
+                "    - python *.py\n"
+                "    - ./tools/*\n",
+                encoding="utf-8",
+            )
+            payload = _profile_payload(root, "profiles.yaml", "wildcard")
+            cfg = load_config(write_config(root, payload))
+            self.assertEqual(
+                cfg.allowed_shell_commands,
+                ("python *", "./tools/*"),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,6 +28,7 @@ class AgentBuilderWebResearchCapabilityTests(unittest.TestCase):
             web_research_allowed_domains=allowed_domains,
             web_research_blocked_domains=blocked_domains,
             web_research_local_fallback=local_fallback,
+            todo_capability_enabled=False,
             skills_enabled=False,
             skills_glob="",
             skills_defer_loading=False,

@@ -118,6 +118,23 @@ class ConfigToolRegistrySettingsTests(unittest.TestCase):
                 ("native_files", "native_shell"),
             )
 
+    def test_native_shell_yolo_group_is_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = _workspace_root(temp_dir)
+            payload = base_config(
+                project_root="workspace/project",
+                mount_work_root="workspace",
+            )
+            payload["run"]["tool_groups"] = {
+                "enabled": ["native_files", "native_shell_yolo"],
+                "disabled": [],
+            }
+            cfg = load_config(write_config(root, payload))
+            self.assertEqual(
+                cfg.enabled_tool_groups,
+                ("native_files", "native_shell_yolo"),
+            )
+
     def test_duplicate_plugin_tool_path_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = _workspace_root(temp_dir)
@@ -157,7 +174,6 @@ class ConfigToolRegistrySettingsTests(unittest.TestCase):
                 cfg.plugin_tool_paths,
                 ("workspace/project/plugins",),
             )
-
 
 
 if __name__ == "__main__":

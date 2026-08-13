@@ -50,7 +50,11 @@ def _setup_external_profile_fixture(root: Path) -> tuple[Path, object]:
     workspace = root / "workspace"
     (workspace / "proj").mkdir(parents=True)
     (root / "profiles.yaml").write_text(
-        "profiles:\n  lint-only:\n    - python -m pytest -q\n",
+        "profiles:\n"
+        "  default-shell:\n"
+        "    - python /tmp/default.py\n"
+        "  lint-only:\n"
+        "    - python -m pytest -q\n",
         encoding="utf-8",
     )
     config = {
@@ -67,7 +71,39 @@ def _setup_external_profile_fixture(root: Path) -> tuple[Path, object]:
             "provider_url": "http://localhost:11434",
             "project_root": "workspace/proj",
             "commands": {},
-            "command_profile": "lint-only",
+            "command_profile": "default-shell",
+            "command_profiles_path": "profiles.yaml",
+        },
+    }
+    config_path = root / "config.json"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    return config_path, load_config(config_path)
+
+
+def _setup_wildcard_profile_fixture(root: Path) -> tuple[Path, object]:
+    workspace = root / "workspace"
+    (workspace / "proj").mkdir(parents=True)
+    (root / "profiles.yaml").write_text(
+        "profiles:\n"
+        "  wildcard:\n"
+        "    - python *.py\n",
+        encoding="utf-8",
+    )
+    config = {
+        "service": {
+            "mode": "serve",
+            "mount_work_root": "workspace",
+            "mount_config_root": ".",
+            "mount_artifacts_root": ".",
+            "queue_backend": "inmemory",
+            "network_policy": "inherit",
+        },
+        "run": {
+            "model": "test-model",
+            "provider_url": "http://localhost:11434",
+            "project_root": "workspace/proj",
+            "commands": {},
+            "command_profile": "wildcard",
             "command_profiles_path": "profiles.yaml",
         },
     }
@@ -130,7 +166,7 @@ class RuntimeRunnerOverrideTests(unittest.TestCase):
             self.assertEqual(effective_cfg.project_root, proj_b.resolve())
             self.assertFalse(effective_cfg.skills_enabled)
 
-    def test_run_job_accepts_external_command_profile_from_loaded_config(
+    def test_run_job_overrides_to_external_profile_from_loaded_map(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -149,6 +185,25 @@ class RuntimeRunnerOverrideTests(unittest.TestCase):
             self.assertEqual(
                 effective_cfg.allowed_shell_commands,
                 ("python -m pytest -q",),
+            )
+
+    def test_run_job_preserves_wildcard_profile_command_patterns(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_path, cfg = _setup_wildcard_profile_fixture(root)
+            spec = basic_spec(
+                config_path=str(config_path),
+                run_overrides={
+                    "project_root": "proj",
+                    "commands": {},
+                    "command_profile": "wildcard",
+                },
+            )
+            effective_cfg = _run_job_with_patched_agent(spec, cfg)
+            self.assertEqual(effective_cfg.command_profile, "wildcard")
+            self.assertEqual(
+                effective_cfg.allowed_shell_commands,
+                ("python *",),
             )
 
 

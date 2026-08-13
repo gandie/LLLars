@@ -22,6 +22,7 @@ DEFAULT_WEB_RESEARCH_LOCAL_FALLBACK = True
 DEFAULT_COMMAND_PROFILE = "none"
 DEFAULT_SHELL_MODE = "auto"
 DEFAULT_ENABLED_TOOL_GROUPS = ("native_files", "native_shell")
+DEFAULT_TODO_CAPABILITY_ENABLED = False
 
 VALID_SERVICE_MODES = frozenset({"oneshot", "serve"})
 VALID_QUEUE_BACKENDS = frozenset({"inmemory", "redis"})
@@ -80,6 +81,7 @@ class RunConfig:
     mcp_enabled: bool | None = None
     mcp_config_path: Path | None = None
     mcp_init_timeout_sec: float | None = None
+    todo_capability_enabled: bool | None = None
     shell_mode: str = DEFAULT_SHELL_MODE
     shell_override: str | None = None
     enabled_tool_groups: tuple[str, ...] = DEFAULT_ENABLED_TOOL_GROUPS
@@ -121,6 +123,7 @@ class HarnessConfig:
     mcp_enabled: bool
     mcp_config_path: Path | None
     mcp_init_timeout_sec: float
+    todo_capability_enabled: bool
     shell_mode: str
     shell_override: str | None
     enabled_tool_groups: tuple[str, ...]
@@ -139,5 +142,6 @@ class HarnessConfig:
     queue_backend: str
     network_policy: str
     command_profile: str
+    command_profiles: tuple[tuple[str, tuple[str, ...]], ...]
     service: ServiceConfig
     run: RunConfig

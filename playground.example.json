@@ -15,7 +15,7 @@
     "provider_url": "http://localhost:11434",
     "project_root": "playground",
     "commands": {},
-    "command_profile": "playground-python",
+    "command_profile": "unrestricted-python",
     "command_profiles_path": "playground.command-profiles.yaml",
     "tool_groups": {
       "enabled": [
@@ -63,6 +63,7 @@
     "mcp_enabled": true,
     "mcp_config_path": "mcp.servers.json",
     "mcp_init_timeout_sec": 60,
+    "todo_capability_enabled": true,
     "system_prompt": "You are senior Python developer. You have access to tools for file operations and running shell commands. Remember to adhere to the tool usage policies and constraints provided.",
     "tool_policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- For shell execution, call list_allowed_shell_commands first, then run_allowlisted_shell(command_id=...).\n- Stay within configured native usage limits and retries."
   }

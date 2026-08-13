@@ -182,4 +182,5 @@ def load_config(
         enabled_tool_groups=runtime.enabled_tool_groups,
         plugin_tool_paths=runtime.plugin_tool_paths,
         command_profile=runtime.command_profile,
+        command_profiles=runtime.command_profiles,
     )

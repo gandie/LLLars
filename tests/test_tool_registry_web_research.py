@@ -34,10 +34,10 @@ class RuntimeWebResearchToolGroupTests(unittest.TestCase):
                 "lllars_core.tools.registry.register_file_write_tools"
             ) as register_files_write,
             patch(
-                "lllars_core.tools.registry.register_shell_tools"
+                "lllars_core.tools.registry_shell_groups.register_shell_tools"
             ) as register_shell,
             patch(
-                "lllars_core.tools.registry.register_local_plugin_tools"
+                "lllars_core.tools.registry_shell_groups.register_local_plugin_tools"
             ) as register_plugins,
         ):
             register_runtime_tools(

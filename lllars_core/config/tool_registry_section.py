@@ -9,6 +9,7 @@ KNOWN_TOOL_GROUPS: tuple[str, ...] = (
     "native_file_read",
     "native_file_write",
     "native_shell",
+    "native_shell_yolo",
     "native_web_research",
     "plugin_local",
     "mcp_toolsets",

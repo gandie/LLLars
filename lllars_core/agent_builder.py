@@ -22,6 +22,7 @@ from lllars_core.skills import load_markdown_skill_capabilities
 from lllars_core.tools import (
     AgentDeps,
     make_allowed_shell_runner as make_allowed_shell_runner_policy,
+    make_unrestricted_shell_runner as make_unrestricted_shell_runner_policy,
     register_runtime_tools,
     resolve_under as resolve_under_policy,
     runtime_tooling_instructions as runtime_tooling_instructions_policy,
@@ -97,7 +98,9 @@ def resolve_under(root: Path, user_path: str) -> Path:
 
 
 def _build_capabilities(cfg: HarnessConfig) -> list[object]:
-    capabilities = [TodoCapability(enable_subtasks=True)]
+    capabilities: list[object] = []
+    if cfg.todo_capability_enabled:
+        capabilities.append(TodoCapability(enable_subtasks=True))
     capabilities.extend(build_web_research_capabilities(cfg))
     capabilities.extend(load_markdown_skill_capabilities(cfg))
     return capabilities
@@ -161,6 +164,15 @@ def _make_allowed_shell_runner(
     )
 
 
+def _make_unrestricted_shell_runner(
+    cfg: HarnessConfig,
+) -> Callable[[str, int], str]:
+    return make_unrestricted_shell_runner_policy(
+        cfg,
+        lambda **kwargs: run_shell(**kwargs),
+    )
+
+
 def build_agent(
     cfg: HarnessConfig,
     emit_thought: Callable[[str], None],
@@ -184,12 +196,14 @@ def build_agent(
         return _runtime_tooling_instructions(cfg, ctx.deps)
 
     run_allowed_shell = _make_allowed_shell_runner(cfg)
+    run_unrestricted_shell = _make_unrestricted_shell_runner(cfg)
     register_runtime_tools(
         agent=agent,
         cfg=cfg,
         emit_thought=emit_thought,
         tool_error=_tool_error,
         run_allowed_shell=run_allowed_shell,
+        run_unrestricted_shell=run_unrestricted_shell,
     )
 
     return agent

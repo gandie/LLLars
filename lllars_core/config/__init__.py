@@ -38,6 +38,7 @@ from lllars_core.config.tools_section import (
     COMMAND_PROFILE_REGISTRY,
     build_default_tool_policy,
     canonicalize_shell_command,
+    canonicalize_shell_pattern,
 )
 
 __all__ = [
@@ -73,6 +74,7 @@ __all__ = [
     "WINDOWS_SHELLS",
     "build_default_tool_policy",
     "canonicalize_shell_command",
+    "canonicalize_shell_pattern",
     "load_config",
     "platform",
 ]

@@ -101,6 +101,7 @@ Supported group names:
   (`list_files`, `read_file`)
 - `native_file_write`: registers native file write tool (`write_file`)
 - `native_shell`: policy-gated shell tools
+- `native_shell_yolo`: unrestricted shell execution tool (no allowlist)
 - `native_web_research`: provider-adaptive web search/fetch capabilities
 - `plugin_local`: local repository plugin tools
 - `mcp_toolsets`: MCP-backed toolsets loaded during agent construction
@@ -164,11 +165,32 @@ Example:
 When `native_shell` is enabled, recoverable shell-tool input issues use
 pydantic_ai-native retry signaling:
 
-- `run_allowlisted_shell` raises `ModelRetry` for invalid `command_id` values
-  so the model can self-correct by calling `list_allowed_shell_commands` and
-  retrying.
+- `run_allowlisted_shell` accepts either `command` or `command_id`.
+- `run_allowlisted_shell` raises `ModelRetry` for invalid input (for example,
+  missing `command` and `command_id`, invalid `command_id`, or empty
+  `command`) so the model can self-correct.
 - Runtime shell tool failures that are not recoverable continue to return
   structured `[tool-error:...]` messages.
+
+### Native Shell Wildcards
+
+Allowlisted shell commands support one simple wildcard marker, `*`, with
+prefix semantics:
+
+- Matching is prefix-based and deterministic (first match wins).
+- Any text after the first `*` in the configured allowlist entry is ignored.
+- Examples:
+  - `python *.py` normalizes to `python *`
+  - `./tools/*` stays `./tools/*`
+
+This allows constrained dynamic command execution while preserving explicit
+allowlist boundaries.
+
+### Native Shell Yolo Mode
+
+When `native_shell_yolo` is enabled, `run_unrestricted_shell(command=...)`
+is registered and skips allowlist checks entirely while still using the runtime
+shell adapter (`shell_mode` and `shell_override`).
 
 ## Startup Preflight Model Probe
 

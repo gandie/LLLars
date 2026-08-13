@@ -126,6 +126,18 @@ def canonicalize_shell_command(command: str) -> str:
     return normalized
 
 
+def canonicalize_shell_pattern(command: str) -> str:
+    normalized = canonicalize_shell_command(command)
+    wildcard_idx = normalized.find("*")
+    if wildcard_idx < 0:
+        return normalized
+
+    prefix = normalized[:wildcard_idx]
+    if wildcard_idx > 0 and normalized[wildcard_idx - 1].isspace():
+        return f"{prefix.rstrip()} *"
+    return f"{prefix}*"
+
+
 def collect_allowed_shell_commands(
     test_command: str | None,
     eval_command: str | None,
@@ -135,7 +147,7 @@ def collect_allowed_shell_commands(
     seen_allowed_commands: set[str] = set()
 
     def append_allowed(raw_command: str) -> None:
-        canonical = canonicalize_shell_command(raw_command)
+        canonical = canonicalize_shell_pattern(raw_command)
         if canonical and canonical not in seen_allowed_commands:
             seen_allowed_commands.add(canonical)
             allowed_shell_commands.append(canonical)

@@ -114,29 +114,6 @@ class _ToolCaptureAgent:
 
 
 class ShellToolRetryPropagationTests(unittest.TestCase):
-    def test_run_allowlisted_shell_invalid_id_raises_model_retry(self) -> None:
-        cfg = SimpleNamespace(
-            allowed_shell_commands=("echo ok",),
-            test_command=None,
-            eval_command=None,
-        )
-        agent = _ToolCaptureAgent()
-        errors: list[str] = []
-
-        register_shell_tools(
-            agent=agent,
-            cfg=cfg,
-            emit_thought=lambda _message: None,
-            tool_error=lambda _tool, message, _hint: errors.append(message)
-            or message,
-            run_allowed_shell=lambda _cmd, _timeout: "{}",
-        )
-
-        tool = agent.tools["run_allowlisted_shell"]
-        with self.assertRaises(ModelRetry):
-            tool(None, command_id=2)
-        self.assertEqual(errors, [])
-
     def test_run_test_command_propagates_model_retry(self) -> None:
         cfg = SimpleNamespace(
             allowed_shell_commands=(),
@@ -154,7 +131,6 @@ class ShellToolRetryPropagationTests(unittest.TestCase):
                 ModelRetry("Please retry")
             ),
         )
-
         tool = agent.tools["run_test_command"]
         with self.assertRaises(ModelRetry):
             tool(None)

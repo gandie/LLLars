@@ -2,3 +2,5 @@ profiles:
   playground-python:
     - python /opt/lllars/playground/main.py
     - python /opt/lllars/playground/test.py
+  unrestricted-python:
+    - python *
