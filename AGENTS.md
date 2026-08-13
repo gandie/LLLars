@@ -26,7 +26,15 @@ Before any edit or command, run this stop-check:
 2. Is scope minimal and explicit?
 3. Is verification defined before execution?
 
+Before the first edit or command, emit one explicit stop-check verdict line with:
+operation_correct=yes/no, scope_minimal=yes/no, verification_defined=yes/no.
+If any value is no, stop and ask the operator before proceeding.
+
 If any answer is no, stop and fix the plan first.
+
+Boundary anti-ping-pong rule:
+If a boundary failure appears in a task, commit to one extraction direction.
+Do not relocate the same symbol twice in the same task.
 
 ## 4) Hierarchy of Truth
 When truth conflicts, resolve in this order:
@@ -96,3 +104,5 @@ Act like a grown-up. Use emotions for cohesion, not for evidence.
 When requirements are underspecified, do not invent policy semantics.
 
 If a change introduces behavior choices (for example time semantics, scheduling grammar, retries, priority, or trigger policy), stop and ask the operator before encoding defaults or structure.
+
+At the first boundary conflict or policy-interpretation branch, invoke forcing-line and resolve the branch before implementation continues.
