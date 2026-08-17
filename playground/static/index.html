@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku</title>
+<style>
+  :root { color-scheme: light; font-family: system-ui, sans-serif; }
+  body { display: flex; justify-content: center; padding: 2rem 0; }
+  .card { width: 340px; }
+  h1 { font-size: 1.3rem; margin: 0 0 1rem; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 2px;
+    background: #888;
+    border: 3px solid #333;
+  }
+  input {
+    width: 100%; aspect-ratio: 1;
+    border: 0;
+    padding: 0;
+    font: 1.15rem/2.6rem monospace;  /* centers single digit */
+    text-align: center;
+    background: #fff;
+    box-sizing: border-box;
+  }
+  input:focus { outline: 2px solid #2563eb; outline-offset: -2px; }
+  input:disabled { color: #555; background: #eef2ff; }
+  .status { min-height: 1.4rem; margin-top: .7rem; font-size: .9rem; }
+  .error { color: #b91c1c; }
+  .ok { color: #15803d; }
+  .row { display: flex; gap: .5rem; margin-top: .75rem; }
+  button {
+    flex: 1;
+    padding: .5rem 0;
+    font: 1rem inherit;
+    border: 1px solid #999;
+    border-radius: 6px;
+    background: #f3f4f6;
+    cursor: pointer;
+  }
+  button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Sudoku</h1>
+  <div class="grid" id="grid"></div>
+  <div class="status" id="status"></div>
+  <div class="row">
+    <button class="primary" id="solve">Solve</button>
+    <button id="clear">Clear</button>
+  </div>
+</div>
+<script>
+const gridEl = document.getElementById('grid');
+const statusEl = document.getElementById('status');
+const inputs = [];
+
+for (let r = 0; r < 9; r++) {
+  for (let c = 0; c < 9; c++) {
+    const inp = document.createElement('input');
+    inp.inputMode = 'numeric';
+    inp.maxLength = 1;
+    inp.autocomplete = 'off';
+    inp.spellcheck = false;
+    // thicken inner 3x3 borders
+    if (c === 2 || c === 5) inp.style.borderRight = '3px solid #9a9a9a';
+    if (r === 2 || r === 5) inp.style.borderBottom = '3px solid #9a9a9a';
+    inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/[^1-9]/g, '').slice(-1);
+    });
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') inputs[(r * 9 + c + 1) % 81].focus();
+      if (e.key === 'ArrowLeft') inputs[(r * 9 + c + 80) % 81].focus();
+      if (e.key === 'ArrowDown') inputs[((r + 1) * 9 + c) % 81].focus();
+      if (e.key === 'ArrowUp') inputs[((r + 8) * 9 + c) % 81].focus();
+    });
+    gridEl.appendChild(inp);
+    inputs.push(inp);
+  }
+}
+
+function setStatus(msg, isError = false) {
+  statusEl.textContent = msg;
+  statusEl.className = 'status ' + (isError ? 'error' : 'ok');
+}
+
+document.getElementById('clear').onclick = () => {
+  inputs.forEach((i) => { i.value = ''; i.disabled = false; });
+  setStatus('');
+};
+
+document.getElementById('solve').onclick = async () => {
+  const grid = inputs.map((i) => i.value || '.').join('');
+  setStatus('solving...');
+  try {
+    const res = await fetch('/solve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grid }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setStatus(data.detail || res.statusText, true);
+      return;
+    }
+    inputs.forEach((inp, i) => { inp.value = data.solution[i]; inp.disabled = true; });
+    setStatus('solved in ' + data.elapsed_ms + ' ms');
+  } catch (err) {
+    setStatus(String(err), true);
+  }
+};
+</script>
+</body>
+</html>

@@ -24,7 +24,6 @@ def _propagate(clauses, assignment):
     Returns ``(conflicted, clauses, assignment)`` where ``conflicted`` is
     True when the remaining constraints are contradictory.
     """
-
     def reduce(clause):
         for lit in clause:
             if assignment.get(abs(lit)) is (lit > 0):
@@ -69,12 +68,12 @@ def _search(clauses, assignment):
     if not clauses:
         return dict(assignment)
     var = _pick(clauses)
+    # Each branch works on its own copy of the assignment, so a failed
+    # branch can never leak partial state into the other branch.
     for value in (True, False):
-        assignment[var] = value
-        result = _search(clauses, assignment)
+        result = _search(clauses, {**assignment, var: value})
         if result is not None:
             return result
-    del assignment[var]
     return None
 
 

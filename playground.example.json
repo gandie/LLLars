@@ -11,7 +11,7 @@
     "network_policy": "inherit"
   },
   "run": {
-    "model": "ollama:rafw007/qwen35-claude-coder:9b",
+    "model": "ollama:lllars-qwen3.8:latest",
     "provider_url": "http://localhost:11434",
     "project_root": "playground",
     "commands": {},
