@@ -6,8 +6,8 @@
 <title>Sudoku</title>
 <style>
   :root { color-scheme: light; font-family: system-ui, sans-serif; }
-  body { display: flex; justify-content: center; padding: 2rem 0; }
-  .card { width: 340px; }
+  body { display: flex; justify-content: center; padding: 2rem 1rem; }
+  .card { width: min(520px, 92vw); }
   h1 { font-size: 1.3rem; margin: 0 0 1rem; }
   .grid {
     display: grid;
@@ -17,19 +17,33 @@
     border: 3px solid #333;
   }
   input {
+    appearance: none;
     width: 100%; aspect-ratio: 1;
-    border: 0;
-    padding: 0;
-    font: 1.15rem/2.6rem monospace;  /* centers single digit */
-    text-align: center;
+    border: 0; padding: 0;
+    display: flex; align-items: center; justify-content: center; /* centers text at any cell size */
+    font: 600 1.4rem/1 ui-monospace, monospace;
     background: #fff;
     box-sizing: border-box;
   }
   input:focus { outline: 2px solid #2563eb; outline-offset: -2px; }
   input:disabled { color: #555; background: #eef2ff; }
+
+  /* reveal: new digits pop in along a diagonal wave (delay set inline) */
+  input.pop { animation: pop .55s cubic-bezier(.34, 1.56, .64, 1) both; }
+  @keyframes pop {
+    0%   { transform: scale(.3); opacity: 0; background: #fff7ed; }
+    55%  { transform: scale(1.15); opacity: 1; background: #bfdbfe;
+           box-shadow: 0 0 .6rem 2px rgba(37, 99, 235, .45); }
+    100% { transform: scale(1); background: #eef2ff; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    input.pop { animation: none; }
+  }
+
   .status { min-height: 1.4rem; margin-top: .7rem; font-size: .9rem; }
+  .status.ok:not(:empty) { animation: fadein .4s ease both; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } }
   .error { color: #b91c1c; }
-  .ok { color: #15803d; }
   .row { display: flex; gap: .5rem; margin-top: .75rem; }
   button {
     flex: 1;
@@ -88,9 +102,25 @@ function setStatus(msg, isError = false) {
 }
 
 document.getElementById('clear').onclick = () => {
-  inputs.forEach((i) => { i.value = ''; i.disabled = false; });
+  inputs.forEach((i) => { i.value = ''; i.disabled = false; i.classList.remove('pop'); });
   setStatus('');
 };
+
+// Staggered diagonal wave across the grid for freshly filled digits.
+function reveal(solution) {
+  solution.split('').forEach((d, i) => {
+    const inp = inputs[i];
+    const isNew = d !== '.' && inp.value === '';
+    inp.value = d === '.' ? '' : d;
+    inp.disabled = true;
+    if (isNew) {
+      inp.classList.remove('pop');
+      void inp.offsetWidth; // restart animation on re-solve
+      inp.style.animationDelay = ((Math.floor(i / 9) + i % 9) * 55) + 'ms';
+      inp.classList.add('pop');
+    }
+  });
+}
 
 document.getElementById('solve').onclick = async () => {
   const grid = inputs.map((i) => i.value || '.').join('');
@@ -106,7 +136,7 @@ document.getElementById('solve').onclick = async () => {
       setStatus(data.detail || res.statusText, true);
       return;
     }
-    inputs.forEach((inp, i) => { inp.value = data.solution[i]; inp.disabled = true; });
+    reveal(data.solution);
     setStatus('solved in ' + data.elapsed_ms + ' ms');
   } catch (err) {
     setStatus(String(err), true);
