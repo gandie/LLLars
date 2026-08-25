@@ -5,18 +5,13 @@ import inspect
 from pathlib import Path
 import platform
 
-from pydantic_ai import (
-    Agent,
-    InstrumentationSettings,
-    ModelSettings,
-    RunContext,
-)
+from pydantic_ai import Agent, InstrumentationSettings, ModelSettings, RunContext
 from pydantic_ai.models import infer_model, infer_provider_class
-
 from pydantic_ai_todo import TodoCapability
 
 from lllars_core.config import HarnessConfig, canonicalize_shell_command
 from lllars_core.mcp.runtime_capability import load_runtime_mcp_toolsets
+from lllars_core.openai_compat import enforce_strict_openai_profile
 from lllars_core.shell import detect_shell, run_shell
 from lllars_core.skills import load_markdown_skill_capabilities
 from lllars_core.tools import (
@@ -90,7 +85,13 @@ def _infer_runtime_model(cfg: HarnessConfig) -> tuple[object, str]:
 
     model_obj = infer_model(model_spec, provider_factory=_provider_factory)
     provider_name = model_spec.split(":", 1)[0]
+    if provider_name == "openai":
+        _enforce_strict_openai_profile(model_obj)
     return model_obj, provider_name
+
+
+def _enforce_strict_openai_profile(model_obj: object) -> None:
+    enforce_strict_openai_profile(model_obj)
 
 
 def resolve_under(root: Path, user_path: str) -> Path:

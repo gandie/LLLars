@@ -10,6 +10,7 @@ from pydantic_ai import Agent
 from pydantic_ai import ModelRetry
 
 from lllars_core.agent_builder import (
+    _enforce_strict_openai_profile,
     _make_allowed_shell_runner,
     _normalize_provider_base_url,
     _resolve_model_spec,
@@ -175,6 +176,38 @@ class AgentBuilderProviderUrlNormalizationTests(unittest.TestCase):
             _normalize_provider_base_url("openai", "https://api.openai.com"),
             "https://api.openai.com",
         )
+
+
+class AgentBuilderStrictOpenAIProfileTests(unittest.TestCase):
+    def test_enforce_strict_openai_profile_updates_flags(self) -> None:
+        class _StubModel:
+            def __init__(self) -> None:
+                self._profile = None
+
+            @property
+            def profile(self):
+                from pydantic_ai.profiles.openai import OpenAIModelProfile
+
+                if self._profile is None:
+                    self._profile = OpenAIModelProfile()
+                return self._profile
+
+        model = _StubModel()
+        _ = model.profile
+
+        _enforce_strict_openai_profile(model)
+
+        self.assertFalse(model.profile.supports_inline_system_prompts)
+        self.assertFalse(
+            model.profile.openai_chat_supports_multiple_system_messages
+        )
+
+    def test_enforce_strict_openai_profile_ignores_models_without_profile(self) -> None:
+        class _NoProfile:
+            pass
+
+        model = _NoProfile()
+        _enforce_strict_openai_profile(model)
 
 
 if __name__ == "__main__":
