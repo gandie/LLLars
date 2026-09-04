@@ -56,33 +56,28 @@ def build_openai_models_url(provider_url: str) -> str:
     return f"{base_url}/models"
 
 
-def read_model_payload(probe_url: str) -> tuple[bool, int, str, str | None]:
+def read_model_payload(
+    probe_url: str,
+    *,
+    headers: dict[str, str] | None = None,
+) -> tuple[bool, int, str, str | None]:
     request = url_request.Request(
         probe_url,
-        headers={"Accept": "application/json"},
+        headers=headers or {"Accept": "application/json"},
     )
     try:
         with url_request.urlopen(request, timeout=5.0) as response:
             status = int(getattr(response, "status", 200))
             payload_raw = response.read().decode("utf-8", errors="replace")
     except url_error.URLError as exc:
-        message = (
-            "model_endpoint: failed "
-            f"url={probe_url} reason={exc}"
-        )
+        message = f"model_endpoint: failed url={probe_url} reason={exc}"
         return False, 0, "", message
     except Exception as exc:
-        message = (
-            "model_endpoint: failed "
-            f"url={probe_url} reason={exc}"
-        )
+        message = f"model_endpoint: failed url={probe_url} reason={exc}"
         return False, 0, "", message
 
     if status >= 400:
-        message = (
-            "model_endpoint: failed "
-            f"url={probe_url} http_status={status}"
-        )
+        message = f"model_endpoint: failed url={probe_url} http_status={status}"
         return False, status, payload_raw, message
     return True, status, payload_raw, None
 

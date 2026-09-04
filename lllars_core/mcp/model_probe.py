@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
+
 from lllars_core.config import HarnessConfig
 from lllars_core.mcp.model_probe_support import (
     UNKNOWN_PROVIDER_FAMILY,
+    OPENAI_COMPATIBLE_PROVIDER,
     extract_model_names_for_family,
     infer_provider_family,
     parse_model_spec,
@@ -55,7 +58,10 @@ def _probe_and_verify(
     probe_url: str,
     lines: list[str],
 ) -> tuple[bool, list[str]]:
-    ok, status_code, payload_raw, error_line = read_model_payload(probe_url)
+    ok, status_code, payload_raw, error_line = read_model_payload(
+        probe_url,
+        headers=_probe_headers_for_family(provider_family),
+    )
     if not ok:
         return _failed_probe_result(
             provider_family,
@@ -75,6 +81,16 @@ def _probe_and_verify(
         payload_raw,
         lines,
     )
+
+
+def _probe_headers_for_family(provider_family: str) -> dict[str, str]:
+    headers = {"Accept": "application/json"}
+    if provider_family != OPENAI_COMPATIBLE_PROVIDER:
+        return headers
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
 
 
 def _unsupported_provider_skip_line(

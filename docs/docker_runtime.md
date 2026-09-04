@@ -8,6 +8,10 @@ Prepare environment file if needed:
 Copy-Item .\.env.runtime.example .\.env.runtime -Force
 ```
 
+For OpenAI or OpenAI-compatible providers, add `OPENAI_API_KEY` to
+`.env.runtime`. Docker Compose passes that variable into the runtime process,
+and startup model probes use it as a bearer token for `/v1/models`.
+
 Run runtime service:
 
 ```powershell

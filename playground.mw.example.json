@@ -1,0 +1,70 @@
+{
+  "service": {
+    "mode": "oneshot",
+    "host": "127.0.0.1",
+    "port": 8000,
+    "workers": 1,
+    "mount_work_root": "playground",
+    "mount_config_root": ".",
+    "mount_artifacts_root": ".",
+    "queue_backend": "inmemory",
+    "network_policy": "inherit"
+  },
+  "run": {
+    "model": "openai:Qwen3.8-27B-NVFP4",
+    "provider_url": "https://llm.aihosting.mittwald.de/v1",
+    "project_root": "playground",
+    "commands": {},
+    "command_profile": "unrestricted-python",
+    "command_profiles_path": "playground.command-profiles.yaml",
+    "tool_groups": {
+      "enabled": [
+        "native_file_read",
+        "native_file_write",
+        "native_shell",
+        "native_web_research",
+        "plugin_local",
+        "mcp_toolsets"
+      ],
+      "disabled": []
+    },
+    "web_research": {
+      "domain_policy": "allowlist",
+      "allowed_domains": [
+        "docs.pydantic.dev",
+        "pydantic.dev"
+      ],
+      "blocked_domains": [],
+      "local_fallback": true
+    },
+    "tool_plugins": {
+      "paths": [
+        "plugins"
+      ]
+    },
+    "eval_expect_json": false,
+    "eval_success_pass_rate": 100.0,
+    "usage_request_limit": null,
+    "usage_tool_calls_limit": 100,
+    "usage_input_tokens_limit": null,
+    "usage_output_tokens_limit": null,
+    "usage_total_tokens_limit": null,
+    "usage_count_tokens_before_request": false,
+    "agent_retries_tools": 1,
+    "agent_retries_output": 1,
+    "tool_timeout_sec": 90,
+    "max_concurrency": null,
+    "instrumentation_enabled": false,
+    "instrumentation_include_content": false,
+    "skills_enabled": true,
+    "skills_glob": "skills/python-*.md",
+    "skills_defer_loading": false,
+    "skills_require_description": true,
+    "mcp_enabled": true,
+    "mcp_config_path": "mcp.servers.json",
+    "mcp_init_timeout_sec": 60,
+    "todo_capability_enabled": false,
+    "system_prompt": "You are senior Python developer. You have access to tools for file operations and running shell commands. Remember to adhere to the tool usage policies and constraints provided.",
+    "tool_policy": "Tool policy:\n- Only edit files inside the project root.\n- Use list_files/read_file/write_file for file operations.\n- For shell execution, call list_allowed_shell_commands first, then run_allowlisted_shell(command_id=...).\n- Stay within configured native usage limits and retries."
+  }
+}

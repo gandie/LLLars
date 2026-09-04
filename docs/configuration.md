@@ -19,6 +19,10 @@ If `env_file` is provided, values are resolved in this order:
 3. values from JSON config
 4. CLI flags
 
+Provider credentials are read from the process environment by the provider
+libraries. For OpenAI and OpenAI-compatible providers, set `OPENAI_API_KEY`
+in the shell before running the CLI. Keep API keys out of JSON config files.
+
 ## Example
 
 ```json
@@ -202,6 +206,8 @@ mechanics, then probes only supported listing families:
   - Expects model names under `models[].name`
 - OpenAI-compatible family:
   - Endpoint: `.../v1/models`
+  - Sends `Authorization: Bearer $OPENAI_API_KEY` when the environment variable
+    is present.
   - Expects model ids under `data[].id`
 
 When model listing is unsupported (or when the resolved provider family does not

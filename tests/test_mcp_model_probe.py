@@ -68,13 +68,40 @@ class ModelProbeTests(unittest.TestCase):
         with patch(
             "lllars_core.mcp.model_probe_support.url_request.urlopen",
             return_value=_FakeResponse(200, payload),
-        ) as urlopen:
+        ) as urlopen, patch.dict(
+            "os.environ",
+            {"OPENAI_API_KEY": "probe-token"},
+        ):
             ok, lines = check_model_endpoint(cfg)
 
         self.assertTrue(ok)
         request_obj = urlopen.call_args.args[0]
         self.assertIn("/v1/models", request_obj.full_url)
+        self.assertEqual(
+            request_obj.get_header("Authorization"),
+            "Bearer probe-token",
+        )
         self.assertIn("provider_family=openai-compatible", "\n".join(lines))
+
+    def test_ollama_probe_ignores_openai_api_key(self) -> None:
+        cfg = _cfg(
+            model="ollama:qwen2.5-coder:7b",
+            provider_url="http://localhost:11434",
+        )
+        payload = {"models": [{"name": "qwen2.5-coder:7b"}]}
+
+        with patch(
+            "lllars_core.mcp.model_probe_support.url_request.urlopen",
+            return_value=_FakeResponse(200, payload),
+        ) as urlopen, patch.dict(
+            "os.environ",
+            {"OPENAI_API_KEY": "probe-token"},
+        ):
+            ok, _lines = check_model_endpoint(cfg)
+
+        self.assertTrue(ok)
+        request_obj = urlopen.call_args.args[0]
+        self.assertIsNone(request_obj.get_header("Authorization"))
 
     def test_openai_listing_unsupported_is_warning(self) -> None:
         cfg = _cfg(

@@ -197,9 +197,9 @@ class AgentBuilderStrictOpenAIProfileTests(unittest.TestCase):
 
         _enforce_strict_openai_profile(model)
 
-        self.assertFalse(model.profile.supports_inline_system_prompts)
+        self.assertFalse(model.profile["supports_inline_system_prompts"])
         self.assertFalse(
-            model.profile.openai_chat_supports_multiple_system_messages
+            model.profile["openai_chat_supports_multiple_system_messages"]
         )
 
     def test_enforce_strict_openai_profile_ignores_models_without_profile(self) -> None:
